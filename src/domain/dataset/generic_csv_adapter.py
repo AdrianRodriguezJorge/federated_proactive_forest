@@ -3,7 +3,6 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler, LabelEncoder
 import numpy as np
 from pathlib import Path
-from typing import List, Optional
 
 from .base_adapter import IDatasetAdapter, DatasetSplit
 

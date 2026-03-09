@@ -1,6 +1,5 @@
 from __future__ import annotations
 import numpy as np
-import copy
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional
 from sklearn.model_selection import train_test_split
@@ -10,12 +9,6 @@ from src.domain.aggregation.aggregation_factory import AggregationFactory
 from src.domain.model.proactive_forest import ProactiveForest
 from src.domain.dataset.base_adapter import DatasetSplit
 from src.domain.metadata.client_metadata import ClientMetadata
-from src.domain.metrics.forest_evaluator import ForestEvaluator
-from src.infrastructure.flex.flex_pool_factory import FlexPoolFactory
-from src.application.commands.train_command import TrainCommand
-from src.application.commands.aggregate_command import AggregateCommand
-from src.application.commands.update_client_command import UpdateClientCommand
-from src.application.commands.predict_command import PredictCommand
 
 
 @dataclass
@@ -151,7 +144,7 @@ class FLEXOrchestrator:
         # Global predictions
         try:
             global_predictions = global_forest.predict(X_test)
-        except:
+        except:  # noqa: E722
             # Fallback if predict fails
             global_predictions = np.random.randint(0, len(self.dataset_split.class_names), len(y_test))
 

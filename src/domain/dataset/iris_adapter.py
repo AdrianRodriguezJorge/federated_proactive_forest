@@ -1,10 +1,7 @@
 """Adaptador para el dataset Iris."""
-import pandas as pd
 from sklearn.datasets import load_iris
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
-import numpy as np
-from typing import List
 
 from .base_adapter import IDatasetAdapter, DatasetSplit
 
