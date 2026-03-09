@@ -1,0 +1,58 @@
+"""
+Cálculo de todas las métricas para el panel Streamlit.
+Usa el ProactiveForestClassifier original directamente.
+"""
+from dataclasses import dataclass, field
+from typing import Any, Dict, List
+import numpy as np
+from sklearn.metrics import (accuracy_score, confusion_matrix,
+                              precision_score, recall_score, f1_score)
+
+
+@dataclass
+class ForestReport:
+    accuracy: float
+    macro_f1: float
+    macro_precision: float
+    macro_recall: float
+    per_class_f1: Dict[str, float]
+    per_class_prec: Dict[str, float]
+    per_class_recall: Dict[str, float]
+    confusion_matrix: np.ndarray
+    pcd: float
+    forest_size: int
+    class_names: List[str]
+
+
+class ForestEvaluator:
+    """Evalúa un ProactiveForestClassifier (o DecisionForestClassifier) ya entrenado."""
+
+    @staticmethod
+    def evaluate(forest, X: np.ndarray, y: np.ndarray,
+                 class_names: List[str]) -> ForestReport:
+        y_pred = forest.predict(X)
+        labels = list(range(len(class_names)))
+
+        per_f1   = f1_score(y, y_pred, labels=labels, average=None, zero_division=0)
+        per_prec = precision_score(y, y_pred, labels=labels, average=None, zero_division=0)
+        per_rec  = recall_score(y, y_pred, labels=labels, average=None, zero_division=0)
+
+        # PCD usando el método nativo del bosque
+        try:
+            pcd = float(forest.diversity_measure(X, y, diversity='pcd'))
+        except Exception:
+            pcd = 0.0
+
+        return ForestReport(
+            accuracy=float(accuracy_score(y, y_pred)),
+            macro_f1=float(f1_score(y, y_pred, average='macro', zero_division=0)),
+            macro_precision=float(precision_score(y, y_pred, average='macro', zero_division=0)),
+            macro_recall=float(recall_score(y, y_pred, average='macro', zero_division=0)),
+            per_class_f1={cn: float(v) for cn, v in zip(class_names, per_f1)},
+            per_class_prec={cn: float(v) for cn, v in zip(class_names, per_prec)},
+            per_class_recall={cn: float(v) for cn, v in zip(class_names, per_rec)},
+            confusion_matrix=confusion_matrix(y, y_pred, labels=labels),
+            pcd=pcd,
+            forest_size=len(forest.get_trees()),
+            class_names=class_names,
+        )

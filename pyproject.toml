@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "federated-proactive-forest"
+version = "3.0.0"
+description = "Federated Learning con Proactive Forest (Cepero 2023) + 7 estrategias de agregación + UI Streamlit"
+requires-python = ">=3.10"
+
+dependencies = [
+    "numpy>=1.24",
+    "pandas>=2.0",
+    "scikit-learn>=1.3",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+ui = [
+    "streamlit>=1.35",
+    "plotly>=5.20",
+]
+dev = [
+    "pytest>=7.4",
+    "pytest-cov>=4.1",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["proactive_forest*", "src*"]

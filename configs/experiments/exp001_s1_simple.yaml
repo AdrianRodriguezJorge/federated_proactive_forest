@@ -1,0 +1,40 @@
+experiment:
+  name: "exp001_s1_simple_nslkdd"
+  seed: 42
+
+dataset:
+  type: NSL-KDD
+  name: nslkdd
+  train_path: "data/NSL-KDD_train.csv"
+  test_path:  "data/NSL-KDD_test.csv"
+  target_column: "class"
+  categorical_features: ["protocol_type", "service", "flag"]
+  scale: true
+  scaler_type: standard
+
+federation:
+  n_clients: 5
+  distribution: iid
+  dirichlet_alpha: 0.5
+
+model:
+  n_estimators: 100
+  alpha: 0.1
+  split_criterion: entropy
+  feature_selection: prob
+  use_progressive_stopping: true
+  convergence: 0.002
+  episode_size: 5
+
+aggregation:
+  strategy: s1_simple_pool
+
+prediction:
+  local_weight: 0.4
+  global_weight: 0.6
+
+metadata:
+  validation_split: 0.2
+
+verbose: false
+seed: 42
