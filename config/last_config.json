@@ -1,0 +1,39 @@
+{
+  "dataset": {
+    "type": "Iris",
+    "file_path": "",
+    "target_column": "class",
+    "test_size": 0.2,
+    "scale": true
+  },
+  "federation": {
+    "n_clients": 10,
+    "distribution": "iid",
+    "dirichlet_alpha": 0.5
+  },
+  "model": {
+    "n_estimators": 100,
+    "alpha": 0.1,
+    "split_criterion": "entropy",
+    "feature_selection": "prob",
+    "use_progressive_stopping": true,
+    "convergence": 0.002,
+    "episode_size": 5
+  },
+  "aggregation": {
+    "strategy": "s1_simple_pool",
+    "f1_weight": 0.5,
+    "pcd_weight": 0.5,
+    "convergence": 0.002,
+    "episode_size": 5
+  },
+  "prediction": {
+    "local_weight": 0.4,
+    "global_weight": 0.6
+  },
+  "metadata": {
+    "validation_split": 0.2
+  },
+  "verbose": false,
+  "seed": 42
+}

@@ -1,5 +1,108 @@
 """Página 1 — Configuración completa del experimento."""
 import streamlit as st
+import json
+import os
+from pathlib import Path
+
+# Importar adaptadores de dataset
+from src.domain.dataset import IrisAdapter, GenericCsvAdapter
+
+
+# Configuración de persistencia
+CONFIG_DIR = Path("config")
+CONFIG_FILE = CONFIG_DIR / "last_config.json"
+
+
+def save_config_to_file(config: dict):
+    """Guarda la configuración en un archivo JSON."""
+    try:
+        CONFIG_DIR.mkdir(exist_ok=True)
+        with open(CONFIG_FILE, 'w', encoding='utf-8') as f:
+            # No guardar el dataset_split ya que contiene arrays numpy
+            config_to_save = {k: v for k, v in config.items() if k != "_dataset_split"}
+            json.dump(config_to_save, f, indent=2, ensure_ascii=False)
+        return True
+    except Exception as e:
+        st.error(f"Error al guardar configuración: {e}")
+        return False
+
+
+def load_config_from_file() -> dict:
+    """Carga la configuración desde un archivo JSON."""
+    try:
+        if CONFIG_FILE.exists():
+            with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
+                return json.load(f)
+    except Exception as e:
+        st.warning(f"No se pudo cargar la configuración guardada: {e}")
+    return {}
+
+
+def create_dataset_adapter(config: dict):
+    """Crea el adaptador de dataset basado en la configuración."""
+    dataset_config = config["dataset"]
+
+    if dataset_config["type"] == "Iris":
+        return IrisAdapter(
+            test_size=dataset_config.get("test_size", 0.2),
+            random_state=config.get("seed", 42)
+        )
+    elif dataset_config["type"] == "CSV personalizado":
+        if not dataset_config.get("file_path"):
+            raise ValueError("Debe especificar la ruta del archivo CSV")
+        return GenericCsvAdapter(
+            file_path=dataset_config["file_path"],
+            target_column=dataset_config.get("target_column", "class"),
+            test_size=dataset_config.get("test_size", 0.2),
+            random_state=config.get("seed", 42),
+            scale_features=dataset_config.get("scale", True)
+        )
+    else:
+        raise ValueError(f"Tipo de dataset no soportado: {dataset_config['type']}")
+
+
+def get_default_config():
+    """Retorna configuración por defecto."""
+    return {
+        "dataset": {
+            "type": "Iris",
+            "file_path": "",
+            "target_column": "class",
+            "test_size": 0.2,
+            "scale": True,
+            "scaler_type": "standard",
+        },
+        "federation": {
+            "n_clients": 5,
+            "distribution": "iid",
+            "dirichlet_alpha": 0.5,
+        },
+        "model": {
+            "n_estimators": 100,
+            "alpha": 0.1,
+            "split_criterion": "entropy",
+            "feature_selection": "prob",
+            "use_progressive_stopping": True,
+            "convergence": 0.002,
+            "episode_size": 5,
+        },
+        "aggregation": {
+            "strategy": "s1_simple_pool",
+            "f1_weight": 0.5,
+            "pcd_weight": 0.5,
+            "convergence": 0.002,
+            "episode_size": 5,
+        },
+        "prediction": {
+            "local_weight": 0.4,
+            "global_weight": 0.6,
+        },
+        "metadata": {
+            "validation_split": 0.2,
+        },
+        "verbose": False,
+        "seed": 42,
+    }
 
 
 STRATEGY_LABELS = {
@@ -16,69 +119,57 @@ STRATEGY_LABELS = {
 def render():
     st.header("⚙️ Configuración del Experimento")
 
+    # Cargar configuración guardada o usar valores por defecto
+    saved_config = load_config_from_file()
+    default_config = get_default_config()
+    current_config = {**default_config, **saved_config}
+
     # ── Dataset ───────────────────────────────────────────────────────────────
     st.subheader("📂 Dataset")
     col1, col2 = st.columns(2)
     with col1:
         dataset_type = st.selectbox("Tipo de dataset",
-                                    ["NSL-KDD", "Iris", "CSV personalizado"])
+                                    ["Iris", "CSV personalizado"],
+                                    index=["Iris", "CSV personalizado"].index(
+                                        current_config["dataset"]["type"]))
     with col2:
-        scale = st.checkbox("Escalar features", value=True)
-        scaler_type = st.selectbox("Scaler", ["standard", "minmax"],
-                                   disabled=not scale)
+        scale = st.checkbox("Escalar features",
+                           value=current_config["dataset"].get("scale", True))
 
     # ──────────────────────────────────────────────────────────────────────────
     # CONFIGURACIÓN ESPECÍFICA POR DATASET
     # ──────────────────────────────────────────────────────────────────────────
-    
-    if dataset_type == "NSL-KDD":
-        st.markdown("##### 🔧 Configuración NSL-KDD")
-        col3, col4 = st.columns(2)
-        with col3:
-            train_path = st.text_input("📄 Ruta KDDTrain+.csv",
-                                       value="data/NSL-KDD_train.csv",
-                                       key="nslkdd_train")
-        with col4:
-            test_path = st.text_input("📄 Ruta KDDTest+.csv",
-                                      value="data/NSL-KDD_test.csv",
-                                      key="nslkdd_test")
-        target_col = "class"
-        cat_features = ["protocol_type", "service", "flag"]
-        csv_name = "nslkdd"
-        
-    elif dataset_type == "Iris":
+
+    if dataset_type == "Iris":
         st.markdown("##### 🌸 Configuración Iris")
-        st.success("✓ Dataset Iris cargado automáticamente")
+        st.success("✓ Dataset Iris cargado automáticamente desde sklearn")
         st.markdown("""
         **📊 Características:**
         - Muestras: 150
         - Features: 4 (sepallength, sepalwidth, petallength, petalwidth)
         - Clases: 3 (setosa, versicolor, virginica)
-        - Split: Automático 70-30 Train/Test
+        - Split: Automático Train/Test
         """)
-        train_path = "data/iris.csv"
-        test_path = None
-        target_col = "class"
-        cat_features = []
-        csv_name = "iris"
-        
+        test_size = st.slider("Tamaño del conjunto de test", 0.1, 0.5,
+                             value=current_config["dataset"].get("test_size", 0.2),
+                             step=0.05, key="iris_test_size")
+        file_path = ""  # No se necesita para Iris
+        target_column = "class"
+
     else:  # CSV personalizado
         st.markdown("##### ⚙️ Configuración CSV Personalizado")
         col3, col4 = st.columns(2)
         with col3:
-            train_path = st.text_input("📄 Ruta CSV entrenamiento",
-                                       key="csv_train")
+            file_path = st.text_input("📄 Ruta del archivo CSV",
+                                     value=current_config["dataset"].get("file_path", ""),
+                                     key="csv_file")
         with col4:
-            test_path  = st.text_input("📄 Ruta CSV test (dejar vacío para split automático: 80-20)",
-                                       key="csv_test")
-        col5, col6 = st.columns(2)
-        with col5:
-            target_col   = st.text_input("🎯 Columna target", value="class", key="csv_target")
-        with col6:
-            cat_input = st.text_input("🏷️  Columnas categóricas (separadas por coma)", 
-                                      key="csv_cat")
-            cat_features = [c.strip() for c in cat_input.split(",") if c.strip()]
-        csv_name     = st.text_input("📛 Nombre del dataset", value="custom", key="csv_name")
+            target_column = st.text_input("🎯 Columna objetivo",
+                                         value=current_config["dataset"].get("target_column", "class"),
+                                         key="csv_target")
+        test_size = st.slider("Tamaño del conjunto de test", 0.1, 0.5,
+                             value=current_config["dataset"].get("test_size", 0.2),
+                             step=0.05, key="csv_test_size")
 
     st.divider()
 
@@ -86,14 +177,20 @@ def render():
     st.subheader("🔗 Federación")
     col5, col6 = st.columns(2)
     with col5:
-        n_clients    = st.slider("Número de clientes", 2, 20, 5)
-        distribution = st.selectbox("Distribución de datos",
-                                    ["iid", "noniid_dirichlet"])
+        n_clients    = st.slider("Número de clientes", 2, 20,
+                                value=current_config["federation"].get("n_clients", 5))
+        distribution_options = ["iid", "noniid_dirichlet"]
+        distribution = st.selectbox("Distribución de datos", distribution_options,
+                                   index=distribution_options.index(
+                                       current_config["federation"].get("distribution", "iid")))
     with col6:
-        dirichlet_alpha = 0.5
+        dirichlet_alpha = current_config["federation"].get("dirichlet_alpha", 0.5)
         if distribution == "noniid_dirichlet":
-            dirichlet_alpha = st.slider("Parámetro Dirichlet α", 0.1, 5.0, 0.5, 0.1)
-        val_split = st.slider("Fracción validación local (metadatos)", 0.1, 0.4, 0.2, 0.05)
+            dirichlet_alpha = st.slider("Parámetro Dirichlet α", 0.1, 5.0,
+                                       value=dirichlet_alpha, step=0.1)
+        val_split = st.slider("Fracción validación local (metadatos)", 0.1, 0.4,
+                             value=current_config["metadata"].get("validation_split", 0.2),
+                             step=0.05)
 
     st.divider()
 
@@ -101,35 +198,48 @@ def render():
     st.subheader("🌲 Modelo — Proactive Forest")
     col7, col8 = st.columns(2)
     with col7:
-        n_estimators  = st.slider("Árboles máximos por cliente", 10, 500, 100, 10)
-        alpha_pf      = st.slider("α diversidad Proactive Forest", 0.05, 0.5, 0.1, 0.05)
-        split_crit    = st.selectbox("Criterio de split", ["entropy", "gini"])
-        feat_sel      = st.selectbox("Selección de features",
-                                     ["prob", "log", "all"],
-                                     help="'prob' = proactivo (recomendado para PF)")
+        n_estimators  = st.slider("Árboles máximos por cliente", 10, 500,
+                                 value=current_config["model"].get("n_estimators", 100), step=10)
+        alpha_pf      = st.slider("α diversidad Proactive Forest", 0.05, 0.5,
+                                 value=current_config["model"].get("alpha", 0.1), step=0.05)
+        split_options = ["entropy", "gini"]
+        split_crit    = st.selectbox("Criterio de split", split_options,
+                                    index=split_options.index(
+                                        current_config["model"].get("split_criterion", "entropy")))
+        feat_options = ["prob", "log", "all"]
+        feat_sel      = st.selectbox("Selección de features", feat_options,
+                                    index=feat_options.index(
+                                        current_config["model"].get("feature_selection", "prob")),
+                                    help="'prob' = proactivo (recomendado para PF)")
     with col8:
-        use_cpf       = st.checkbox("Usar Progressive Forest (CPF)", value=True)
-        convergence   = 0.002
-        episode_size  = 5
+        use_cpf       = st.checkbox("Usar Progressive Forest (CPF)",
+                                   value=current_config["model"].get("use_progressive_stopping", True))
+        convergence   = current_config["model"].get("convergence", 0.002)
+        episode_size  = current_config["model"].get("episode_size", 5)
         if use_cpf:
             convergence  = st.number_input("Umbral convergencia CPF", 0.0001, 0.01,
-                                           0.002, format="%.4f")
-            episode_size = st.number_input("Tamaño episodio CPF", 2, 20, 5)
-        verbose_cpf = st.checkbox("Verbose CPF (debug)", value=False)
+                                           value=convergence, format="%.4f")
+            episode_size = st.number_input("Tamaño episodio CPF", 2, 20,
+                                          value=episode_size)
+        verbose_cpf = st.checkbox("Verbose CPF (debug)",
+                                 value=current_config.get("verbose", False))
 
     st.divider()
 
     # ── Agregación ────────────────────────────────────────────────────────────
     st.subheader("🔀 Estrategia de Agregación")
-    strategy_key = st.selectbox("Estrategia", list(STRATEGY_LABELS.keys()),
+    strategy_options = list(STRATEGY_LABELS.keys())
+    current_strategy = current_config["aggregation"].get("strategy", "s1_simple_pool")
+    strategy_key = st.selectbox("Estrategia", strategy_options,
+                                index=strategy_options.index(current_strategy) if current_strategy in strategy_options else 0,
                                 format_func=lambda k: STRATEGY_LABELS[k])
 
-    f1_weight  = 0.5
-    pcd_weight = 0.5
+    f1_weight  = current_config["aggregation"].get("f1_weight", 0.5)
+    pcd_weight = current_config["aggregation"].get("pcd_weight", 0.5)
     if strategy_key in ("s4_global_f1_pcd", "s7_perclient_f1_pcd"):
         col9, col10 = st.columns(2)
         with col9:
-            f1_weight = st.slider("Peso F1 (α)", 0.0, 1.0, 0.5, 0.05)
+            f1_weight = st.slider("Peso F1 (α)", 0.0, 1.0, value=f1_weight, step=0.05)
         with col10:
             pcd_weight = round(1.0 - f1_weight, 4)
             st.metric("Peso PCD (β)", f"{pcd_weight:.2f}")
@@ -140,7 +250,8 @@ def render():
     st.subheader("🎯 Predicción Híbrida")
     col11, col12 = st.columns(2)
     with col11:
-        local_w = st.slider("Peso votos locales", 0.0, 1.0, 0.4, 0.05)
+        local_w = st.slider("Peso votos locales", 0.0, 1.0,
+                           value=current_config["prediction"].get("local_weight", 0.4), step=0.05)
     with col12:
         global_w = round(1.0 - local_w, 4)
         st.metric("Peso votos globales", f"{global_w:.2f}")
@@ -149,7 +260,8 @@ def render():
 
     # ── Reproducibilidad ──────────────────────────────────────────────────────
     st.subheader("🎲 Reproducibilidad")
-    seed = st.number_input("Semilla global", 0, 99999, 42)
+    seed = st.number_input("Semilla global", 0, 99999,
+                          value=current_config.get("seed", 42))
 
     st.divider()
 
@@ -160,14 +272,11 @@ def render():
 
         cfg = {
             "dataset": {
-                "type":     dataset_type,
-                "name":     csv_name,
-                "train_path": train_path,
-                "test_path":  test_path,
-                "target_column": target_col,
-                "categorical_features": cat_features,
+                "type": dataset_type,
+                "file_path": file_path if dataset_type == "CSV personalizado" else "",
+                "target_column": target_column,
+                "test_size": test_size,
                 "scale": scale,
-                "scaler_type": scaler_type,
             },
             "federation": {
                 "n_clients":       n_clients,
@@ -205,6 +314,11 @@ def render():
         try:
             ds = _load_dataset(cfg)
             cfg["_dataset_split"] = ds
+            
+            # Guardar configuración en archivo
+            if save_config_to_file(cfg):
+                st.success("💾 Configuración guardada en archivo y cargada en memoria.")
+            
             st.session_state["fl_config"] = cfg
             st.success(f"✅ Configuración guardada. Dataset '{ds.dataset_name}' cargado: "
                        f"{ds.X_train.shape[0]} train / {ds.X_test.shape[0]} test, "
@@ -212,35 +326,33 @@ def render():
         except Exception as e:
             st.error(f"❌ Error al cargar el dataset: {e}")
 
+    # Mostrar información sobre configuración guardada
+    if CONFIG_FILE.exists():
+        st.info(f"📁 Configuración guardada en: `{CONFIG_FILE}`")
+        if st.button("🔄 Recargar configuración guardada"):
+            st.rerun()
+
 
 def _load_dataset(cfg):
     """Instancia el adaptador correcto según la config."""
     d = cfg["dataset"]
-    if d["type"] == "NSL-KDD":
-        from src.infrastructure.dataset.nslkdd_adapter import NslKddAdapter
-        adapter = NslKddAdapter(
-            train_path=d["train_path"],
-            test_path=d["test_path"],
-            scale=d.get("scale", True),
-            scaler_type=d.get("scaler_type", "standard"),
-        )
-    elif d["type"] == "Iris":
-        from src.infrastructure.dataset.iris_adapter import IrisAdapter
+
+    if d["type"] == "Iris":
         adapter = IrisAdapter(
-            data_path=d["train_path"],  # Para Iris, train_path es la ruta al CSV
-            scale=d.get("scale", True),
-            scaler_type=d.get("scaler_type", "standard"),
-            train_test_split_ratio=0.7,  # 70% train, 30% test
+            test_size=d.get("test_size", 0.2),
+            random_state=cfg.get("seed", 42)
+        )
+    elif d["type"] == "CSV personalizado":
+        if not d.get("file_path"):
+            raise ValueError("Debe especificar la ruta del archivo CSV")
+        adapter = GenericCsvAdapter(
+            file_path=d["file_path"],
+            target_column=d.get("target_column", "class"),
+            test_size=d.get("test_size", 0.2),
+            random_state=cfg.get("seed", 42),
+            scale_features=d.get("scale", True)
         )
     else:
-        from src.infrastructure.dataset.csv_adapter import GenericCsvAdapter
-        adapter = GenericCsvAdapter(
-            name=d.get("name", "custom"),
-            train_path=d["train_path"],
-            test_path=d.get("test_path") or None,
-            target_column=d["target_column"],
-            categorical_features=d.get("categorical_features", []),
-            scale=d.get("scale", True),
-            scaler_type=d.get("scaler_type", "standard"),
-        )
+        raise ValueError(f"Tipo de dataset no soportado: {d['type']}")
+
     return adapter.load()

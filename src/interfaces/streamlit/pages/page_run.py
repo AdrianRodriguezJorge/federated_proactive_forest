@@ -39,9 +39,12 @@ def render():
             log_box.code("\n".join(log_lines[-30:]))
 
         try:
-            from src.application.fl_orchestrator import FLOrchestrator
-            orch    = FLOrchestrator.from_config(cfg, step_callback=step_cb)
-            results = orch.run()
+            from src.application.fl_orchestrator import FLEXOrchestrator
+            orch    = FLEXOrchestrator(cfg, step_callback=step_cb)
+            # Get dataset split from config
+            ds = cfg.get('_dataset_split')
+            orch.setup_federation(ds)
+            results = orch.run_federated_round()
 
             st.session_state["fl_results"] = results
             progress.progress(1.0, text="✅ Completado")
