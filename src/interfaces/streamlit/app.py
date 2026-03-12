@@ -11,6 +11,15 @@ if ROOT not in sys.path:
 
 import streamlit as st
 
+import subprocess, sys
+
+try:
+    import pkg_resources
+except ImportError:
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "setuptools"])
+    import pkg_resources
+
+
 st.set_page_config(
     page_title="Federated Proactive Forest",
     page_icon="🌲",
