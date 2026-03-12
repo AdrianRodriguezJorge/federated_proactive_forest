@@ -52,13 +52,14 @@ def main():
           f"{ds.X_train.shape[0]} train / {ds.X_test.shape[0]} test, "
           f"{len(ds.class_names)} clases")
 
-    from src.application.fl_orchestrator import FLOrchestrator
+    from src.application.fl_orchestrator import FLEXOrchestrator
 
     def cb(msg, pct, detail=""):
         print(f"  [{pct:3d}%] {msg} {detail}")
 
-    orch    = FLOrchestrator.from_config(cfg, step_callback=cb)
-    results = orch.run()
+    orch = FLEXOrchestrator.from_config(cfg, step_callback=cb)
+    orch.setup_federation(cfg.get("_dataset_split"))
+    results = orch.run_federated_round()
 
     print("\n" + "=" * 60)
     print(f"Estrategia:      {results.strategy_id}")

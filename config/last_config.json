@@ -21,7 +21,7 @@
     "episode_size": 5
   },
   "aggregation": {
-    "strategy": "s2_global_accuracy",
+    "strategy": "s1_simple_pool",
     "f1_weight": 0.5,
     "pcd_weight": 0.5,
     "convergence": 0.002,

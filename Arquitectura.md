@@ -524,7 +524,7 @@ Página 2 — Ejecutar experimento y mostrar progreso.
 """
 import streamlit as st
 from ..state.session_state import get_config, save_results
-from ....application.fl_orchestrator import FLOrchestrator
+from ....application.fl_orchestrator import FLEXOrchestrator
 
 st.header("▶️ Ejecutar Experimento")
 

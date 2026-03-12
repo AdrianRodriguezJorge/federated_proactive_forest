@@ -1,0 +1,39 @@
+experiment:
+  name: "exp_noniid_moderate_heterogeneity_s5"
+  description: "Moderate heterogeneity (alpha=1.0) with S5 Per-Client Accuracy aggregation"
+  
+dataset:
+  type: "NSL-KDD"  # For more complex multi-class classification
+  test_size: 0.3
+  scale: true
+
+federation:
+  n_clients: 10  # More clients for complex dataset
+  distribution: "noniid_dirichlet"
+  alpha: 1.0  # Moderate heterogeneity
+              # More balanced than alpha=0.1, still realistic
+  seed: 42
+
+model:
+  n_estimators: 50  # Smaller for NSL-KDD (larger dataset)
+  alpha: 0.1
+  split_criterion: "gini"
+  verbose: false
+
+aggregation:
+  strategy: "S5"  # S5: Per-Client Accuracy (prioritize locally accurate trees)
+  
+prediction:
+  local_weight: 0.5
+  global_weight: 0.5
+
+metadata:
+  validation_split: 0.2
+
+notes: |
+  With alpha=1.0, label distributions are more balanced than extreme heterogeneity
+  but still show meaningful client-specific patterns.
+  
+  S5 is designed for scenarios where clients have very different local data
+  distributions and we want to select trees that perform best on each client's
+  local validation set, leading to more personalized aggregation.
