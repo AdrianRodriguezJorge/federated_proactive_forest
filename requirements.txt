@@ -9,4 +9,7 @@ flexible-fl
 flex
 flextrees
 tensorly
-setuptools>=65.0.0
+setuptools<70
+pkg-resources
+
+
