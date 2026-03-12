@@ -23,6 +23,8 @@ class FLResults:
     client_metadata: Dict[str, ClientMetadata] = field(default_factory=dict)
     client_reports: Dict[str, Any] = field(default_factory=dict)
     selected_ids: Dict[str, List[int]] = field(default_factory=dict)
+    all_tree_entries: List[Any] = field(default_factory=list)  # TreeEntry list for Streamlit
+    global_report: Any = None  # Evaluation report for global model
 
 
 class FLEXOrchestrator:

@@ -2,15 +2,15 @@ from typing import Dict, List, Any, Tuple
 from ..tree_ranker import TreeRanker, RankingCriterion, TreeEntry
 
 
-class S2GlobalAccuracyStrategy:
+class S3GlobalF1Strategy:
     """
-    Strategy S2: Global Accuracy
-    Ranks all trees globally by accuracy and selects the best ones.
+    Strategy S3: Global F1
+    Ranks all trees globally by F1 macro score and selects the best ones.
     """
 
     @property
     def strategy_id(self) -> str:
-        return "S2"
+        return "S3"
 
     def aggregate(
         self,
@@ -18,17 +18,17 @@ class S2GlobalAccuracyStrategy:
         client_metadata: Dict,
     ) -> Tuple[List[Any], Dict[str, List[int]]]:
         """
-        Rank all trees by global accuracy and select top performers.
+        Rank all trees by global F1 macro and select top performers.
         
         Returns:
-          - List[Any]: Global trees (all trees ranked by accuracy)
+          - List[Any]: Global trees (all trees ranked by F1)
           - Dict[str, List[int]]: {client_id: [global_indices_of_selected_trees]}
         """
         # Build entries for all trees
         entries = TreeEntry.build_entries(client_trees, client_metadata)
         
-        # Rank by accuracy
-        ranker = TreeRanker(criterion=RankingCriterion.ACCURACY)
+        # Rank by F1
+        ranker = TreeRanker(criterion=RankingCriterion.MACRO_F1)
         ranked_entries = ranker.rank(entries)
         
         # All trees are selected (ranked)

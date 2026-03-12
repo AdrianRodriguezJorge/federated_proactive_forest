@@ -1,49 +1,90 @@
 from typing import List, Any
 import numpy as np
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import train_test_split
 from .base_forest import ABCForest
+from .cpf_implementation.estimator import ProactiveForestClassifier
+from .cpf_implementation.newalg import ComparativeProgressiveForest
+
 
 class ProactiveForest(ABCForest):
     """
     Proactive Forest implementation for Federated Learning.
-    Based on the Comparative Progressive Forest (CPF) algorithm.
+    Based on the Comparative Progressive Forest (CPF) algorithm (Cepero, 2023).
     """
 
-    def __init__(self, n_estimators: int = 100, alpha: float = 0.5, random_state: int = 42):
+    def __init__(self, n_estimators: int = 100, alpha: float = 0.1, random_state: int = 42, verbose: bool = False):
+        """
+        Args:
+            n_estimators: Number of trees in the forest
+            alpha: Diversity rate for feature probability adjustment (Cepero parameter)
+            random_state: Random seed
+            verbose: Whether to print CPF training logs
+        """
         self.n_estimators = n_estimators
         self.alpha = alpha
         self.random_state = random_state
-        self._trees: List[Any] = []
+        self.verbose = verbose
+        
+        # Create the internal ProactiveForestClassifier using CPF
+        self._classifier = ProactiveForestClassifier(
+            n_estimators=n_estimators,
+            alpha=alpha,
+            bootstrap=True,
+            split_criterion='entropy'
+        )
+        self._cpf = None
         self._is_fitted = False
 
     def fit(self, X: np.ndarray, y: np.ndarray) -> None:
-        """Train the Proactive Forest using CPF algorithm."""
-        # Implementation based on newalg.py and estimator.py
-        # For now, use RandomForest as placeholder - replace with full Proactive Forest
-        rf = RandomForestClassifier(
-            n_estimators=self.n_estimators,
-            random_state=self.random_state
-        )
-        rf.fit(X, y)
-        self._trees = rf.estimators_
+        """
+        Train the Proactive Forest using CPF algorithm with early stopping.
+        
+        Args:
+            X: Training features
+            y: Training labels
+        """
+        # Split for early stopping (80-20)
+        if len(X) > 30:
+            X_train, X_val, y_train, y_val = train_test_split(
+                X, y, test_size=0.2, random_state=self.random_state
+            )
+        else:
+            X_train, X_val = X, X
+            y_train, y_val = y, y
+
+        # Use Comparative Progressive Forest with early stopping
+        self._cpf = ComparativeProgressiveForest(self._classifier, verbose=self.verbose)
+        self._cpf.fit(X_train, y_train, X_val, y_val)
+        
         self._is_fitted = True
 
     def predict(self, X: np.ndarray) -> np.ndarray:
         """Make predictions using the trained forest."""
-        if not self._is_fitted:
-            raise ValueError("Forest not fitted yet")
-        # Simple majority voting for now
-        predictions = np.array([tree.predict(X) for tree in self._trees])
-        return np.apply_along_axis(lambda x: np.bincount(x).argmax(), axis=0, arr=predictions.astype(int))
+        if not self._is_fitted or self._cpf is None:
+            raise ValueError("Forest not fitted yet. Call fit() first.")
+        return self._cpf.return_forest().predict(X)
 
     def get_trees(self) -> List[Any]:
         """Return the list of trained trees."""
-        return self._trees.copy()
+        if not self._is_fitted or self._cpf is None:
+            raise ValueError("Forest not fitted yet.")
+        forest = self._cpf.return_forest()
+        return forest.get_trees()
 
     @classmethod
     def from_trees(cls, trees: List[Any]) -> 'ProactiveForest':
         """Create a forest instance from a list of trees."""
         instance = cls()
-        instance._trees = trees.copy()
+        
+        # Create a dummy classifier with the trees
+        dummy_classifier = ProactiveForestClassifier(n_estimators=len(trees), alpha=0.1)
+        dummy_classifier.set_trees(trees)
+        
+        # Mark as fitted
+        instance._classifier = dummy_classifier
         instance._is_fitted = True
+        
+        # Wrap with empty CPF (not used for prediction)
+        instance._cpf = ComparativeProgressiveForest(dummy_classifier)
+        
         return instance

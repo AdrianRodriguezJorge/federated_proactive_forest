@@ -2,20 +2,27 @@ from typing import Dict, Type
 from .base_strategy import IAggregationStrategy
 from .strategies.s1_simple_pool import S1SimplePoolStrategy
 from .strategies.s2_global_accuracy import S2GlobalAccuracyStrategy
+from .strategies.s3_global_f1 import S3GlobalF1Strategy
+from .strategies.s4_global_f1_pcd import S4GlobalF1PCDStrategy
+from .strategies.s5_perclient_accuracy import S5PerClientAccuracyStrategy
+from .strategies.s6_perclient_f1 import S6PerClientF1Strategy
+from .strategies.s7_perclient_f1_pcd import S7PerClientF1PCDStrategy
 
-# Import other strategies when implemented
-# from .strategies.s3_global_f1 import S3GlobalF1Strategy
-# etc.
 
 class AggregationFactory:
     """
     Factory for creating aggregation strategies based on configuration.
+    Supports 7 strategies: S1-S7 (Cepero, 2023 + FL extensions).
     """
 
     _strategies: Dict[str, Type[IAggregationStrategy]] = {
         "S1": S1SimplePoolStrategy,
         "S2": S2GlobalAccuracyStrategy,
-        # Add others as implemented
+        "S3": S3GlobalF1Strategy,
+        "S4": S4GlobalF1PCDStrategy,
+        "S5": S5PerClientAccuracyStrategy,
+        "S6": S6PerClientF1Strategy,
+        "S7": S7PerClientF1PCDStrategy,
     }
 
     @classmethod
@@ -24,7 +31,7 @@ class AggregationFactory:
         Create an aggregation strategy instance.
 
         Args:
-            strategy_name: Name of the strategy (S1, S2, etc.)
+            strategy_name: Name of the strategy (S1-S7)
 
         Returns:
             Instance of the requested strategy
@@ -33,7 +40,7 @@ class AggregationFactory:
             ValueError: If strategy name is not recognized
         """
         if strategy_name not in cls._strategies:
-            available = list(cls._strategies.keys())
+            available = sorted(cls._strategies.keys())
             raise ValueError(f"Unknown strategy '{strategy_name}'. Available: {available}")
 
         return cls._strategies[strategy_name]()

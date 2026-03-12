@@ -1,5 +1,7 @@
-"""Proactive Forest package — Cepero (2023), adaptado para FL."""
-from proactive_forest.estimator import ProactiveForestClassifier, DecisionForestClassifier
-from proactive_forest.newalg import ComparativeProgressiveForest
+"""
+Legacy re-export for backward compatibility.
+The actual implementation has been moved to src/domain/model/cpf_implementation/
+"""
+from src.domain.model.cpf_implementation import ProactiveForestClassifier, DecisionForestClassifier, ComparativeProgressiveForest
 
 __all__ = ['ProactiveForestClassifier', 'DecisionForestClassifier', 'ComparativeProgressiveForest']
