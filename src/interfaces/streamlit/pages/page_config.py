@@ -5,7 +5,9 @@ import os
 from pathlib import Path
 
 # Importar adaptadores de dataset
-from src.domain.dataset import IrisAdapter, GenericCsvAdapter
+from src.infrastructure.dataset.iris_adapter import IrisAdapter
+from src.infrastructure.dataset.nslkdd_adapter import NslKddAdapter
+from src.infrastructure.dataset.csv_adapter import GenericCsvAdapter
 
 
 # Configuración de persistencia
@@ -44,18 +46,31 @@ def create_dataset_adapter(config: dict):
 
     if dataset_config["type"] == "Iris":
         return IrisAdapter(
+            data_path=dataset_config.get("file_path", "data/iris.csv"),
             test_size=dataset_config.get("test_size", 0.2),
-            random_state=config.get("seed", 42)
+            scale=dataset_config.get("scale", True),
+            scaler_type=dataset_config.get("scaler_type", "standard")
+        )
+    elif dataset_config["type"] == "NSL-KDD":
+        return NslKddAdapter(
+            train_path=dataset_config.get("train_path", "data/NSL-KDD_train.csv"),
+            test_path=dataset_config.get("test_path", "data/NSL-KDD_test.csv"),
+            scale=dataset_config.get("scale", True),
+            scaler_type=dataset_config.get("scaler_type", "standard")
         )
     elif dataset_config["type"] == "CSV personalizado":
         if not dataset_config.get("file_path"):
             raise ValueError("Debe especificar la ruta del archivo CSV")
         return GenericCsvAdapter(
-            file_path=dataset_config["file_path"],
+            name=dataset_config.get("name", "custom"),
+            train_path=dataset_config["file_path"],
             target_column=dataset_config.get("target_column", "class"),
+            test_path=dataset_config.get("test_path"),
+            categorical_features=dataset_config.get("categorical_features", []),
+            scale=dataset_config.get("scale", True),
+            scaler_type=dataset_config.get("scaler_type", "standard"),
             test_size=dataset_config.get("test_size", 0.2),
-            random_state=config.get("seed", 42),
-            scale_features=dataset_config.get("scale", True)
+            seed=config.get("seed", 42)
         )
     else:
         raise ValueError(f"Tipo de dataset no soportado: {dataset_config['type']}")
@@ -129,8 +144,8 @@ def render():
     col1, col2 = st.columns(2)
     with col1:
         dataset_type = st.selectbox("Tipo de dataset",
-                                    ["Iris", "CSV personalizado"],
-                                    index=["Iris", "CSV personalizado"].index(
+                                    ["Iris", "NSL-KDD", "CSV personalizado"],
+                                    index=["Iris", "NSL-KDD", "CSV personalizado"].index(
                                         current_config["dataset"]["type"]))
     with col2:
         scale = st.checkbox("Escalar features",
@@ -142,7 +157,7 @@ def render():
 
     if dataset_type == "Iris":
         st.markdown("##### 🌸 Configuración Iris")
-        st.success("✓ Dataset Iris cargado automáticamente desde sklearn")
+        st.success("✓ Dataset Iris cargado automáticamente desde CSV local")
         st.markdown("""
         **📊 Características:**
         - Muestras: 150
@@ -153,8 +168,31 @@ def render():
         test_size = st.slider("Tamaño del conjunto de test", 0.1, 0.5,
                              value=current_config["dataset"].get("test_size", 0.2),
                              step=0.05, key="iris_test_size")
-        file_path = ""  # No se necesita para Iris
+        file_path = current_config["dataset"].get("file_path", "data/iris.csv")
         target_column = "class"
+
+    elif dataset_type == "NSL-KDD":
+        st.markdown("##### 🛡️ Configuración NSL-KDD")
+        st.success("✓ Dataset NSL-KDD para detección de intrusiones")
+        st.markdown("""
+        **📊 Características:**
+        - Muestras: ~148K train, ~22K test
+        - Features: 41 (numéricas + categóricas)
+        - Clases: 5 (normal, dos, probe, r2l, u2r)
+        - Archivos separados: Train y Test
+        """)
+        col_nsl1, col_nsl2 = st.columns(2)
+        with col_nsl1:
+            train_path = st.text_input("📄 Archivo de entrenamiento",
+                                      value=current_config["dataset"].get("train_path", "data/NSL-KDD_train.csv"),
+                                      key="nsl_train")
+        with col_nsl2:
+            test_path = st.text_input("📄 Archivo de test",
+                                     value=current_config["dataset"].get("test_path", "data/NSL-KDD_test.csv"),
+                                     key="nsl_test")
+        file_path = ""  # No se usa
+        target_column = "class"
+        test_size = 0.0  # No se usa, archivos separados
 
     else:  # CSV personalizado
         st.markdown("##### ⚙️ Configuración CSV Personalizado")
@@ -273,10 +311,13 @@ def render():
         cfg = {
             "dataset": {
                 "type": dataset_type,
-                "file_path": file_path if dataset_type == "CSV personalizado" else "",
+                "file_path": file_path if dataset_type in ["Iris", "CSV personalizado"] else "",
+                "train_path": train_path if dataset_type == "NSL-KDD" else "",
+                "test_path": test_path if dataset_type == "NSL-KDD" else "",
                 "target_column": target_column,
                 "test_size": test_size,
                 "scale": scale,
+                "scaler_type": current_config["dataset"].get("scaler_type", "standard"),
             },
             "federation": {
                 "n_clients":       n_clients,
@@ -339,18 +380,31 @@ def _load_dataset(cfg):
 
     if d["type"] == "Iris":
         adapter = IrisAdapter(
+            data_path=d.get("file_path", "data/iris.csv"),
             test_size=d.get("test_size", 0.2),
-            random_state=cfg.get("seed", 42)
+            scale=d.get("scale", True),
+            scaler_type=d.get("scaler_type", "standard")
+        )
+    elif d["type"] == "NSL-KDD":
+        adapter = NslKddAdapter(
+            train_path=d.get("train_path", "data/NSL-KDD_train.csv"),
+            test_path=d.get("test_path", "data/NSL-KDD_test.csv"),
+            scale=d.get("scale", True),
+            scaler_type=d.get("scaler_type", "standard")
         )
     elif d["type"] == "CSV personalizado":
         if not d.get("file_path"):
             raise ValueError("Debe especificar la ruta del archivo CSV")
         adapter = GenericCsvAdapter(
-            file_path=d["file_path"],
+            name=d.get("name", "custom"),
+            train_path=d["file_path"],
             target_column=d.get("target_column", "class"),
+            test_path=d.get("test_path"),
+            categorical_features=d.get("categorical_features", []),
+            scale=d.get("scale", True),
+            scaler_type=d.get("scaler_type", "standard"),
             test_size=d.get("test_size", 0.2),
-            random_state=cfg.get("seed", 42),
-            scale_features=d.get("scale", True)
+            seed=cfg.get("seed", 42)
         )
     else:
         raise ValueError(f"Tipo de dataset no soportado: {d['type']}")
