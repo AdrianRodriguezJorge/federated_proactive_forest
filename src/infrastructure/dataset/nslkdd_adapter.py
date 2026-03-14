@@ -60,14 +60,18 @@ class NslKddAdapter(IDatasetAdapter):
 
         X_train = train_df[FEAT_COLS].values.astype(np.float64)
         X_test  = test_df[FEAT_COLS].values.astype(np.float64)
-        y_train = self._label_encoder.fit_transform(train_df["class"].values)
-        y_test  = self._label_encoder.transform(test_df["class"].values)
+        y_train_raw = train_df["class"].values
+        y_test_raw  = test_df["class"].values
+
+        # Mantener y como strings
+        y_train = y_train_raw
+        y_test  = y_test_raw
 
         if self._scaler:
             X_train = self._scaler.fit_transform(X_train)
             X_test  = self._scaler.transform(X_test)
 
-        self._class_names_ = self._label_encoder.classes_.tolist()
+        self._class_names_ = sorted(list(set(y_train_raw)))  # clases únicas en orden
 
         return DatasetSplit(
             X_train=X_train, X_test=X_test,

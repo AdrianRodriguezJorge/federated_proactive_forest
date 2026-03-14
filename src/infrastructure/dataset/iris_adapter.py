@@ -73,12 +73,10 @@ class IrisAdapter(IDatasetAdapter):
         X = df[self.FEAT_COLS].values.astype(np.float64)
         y_raw = df["class"].values
         
-        # 3. Codificar etiquetas de clase (strings → ints)
-        # Asegurar que el encoder SIEMPRE conoce todas las 3 clases posibles
-        # (importante para datasets pequeños donde algunos clientes pueden no ver todas las clases)
-        self._label_encoder.fit(self.KNOWN_CLASSES)
-        y = self._label_encoder.transform(y_raw)
-        self._class_names_ = self._label_encoder.classes_.tolist()
+        # 3. Mantener etiquetas como strings (el CPF las codifica internamente)
+        # Asegurar que todas las clases conocidas estén presentes
+        y = y_raw
+        self._class_names_ = sorted(list(set(y_raw)))  # clases únicas en orden
         
         # 4. Train-test split (70-30)
         # Usar solo test_size para evitar problemas de redondeo con datasets pequeños

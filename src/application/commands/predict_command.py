@@ -40,8 +40,9 @@ class PredictCommand:
         """
         from src.domain.model.proactive_forest import ProactiveForest
         global_trees = global_data.get('global_trees', [])
+        class_names = global_data.get('class_names', None)
         if not global_trees:
             raise ValueError("No global trees found")
 
-        global_model = ProactiveForest.from_trees(global_trees)
+        global_model = ProactiveForest.from_trees(global_trees, class_names=class_names)
         return global_model.predict(X_test)

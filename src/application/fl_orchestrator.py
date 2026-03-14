@@ -26,6 +26,7 @@ if TYPE_CHECKING:
         Dataset = Any
 
 from src.domain.aggregation.aggregation_factory import AggregationFactory
+from src.domain.metrics.forest_evaluator import ForestEvaluator, ForestReport
 from src.domain.model.proactive_forest import ProactiveForest
 from src.domain.dataset.base_adapter import DatasetSplit
 from src.domain.metadata.client_metadata import ClientMetadata
@@ -303,36 +304,42 @@ class FLEXOrchestrator:
 
         # ── STEP 4: EVALUATE on test set ───────────────────────────────────────
         self.step_callback("Evaluating global model...", 85)
-        global_forest = ProactiveForest.from_trees(global_trees)
+        global_forest = ProactiveForest.from_trees(global_trees, class_names=self.dataset_split.class_names)
         X_test, y_test = self.dataset_split.X_test, self.dataset_split.y_test
+        class_names = self.dataset_split.class_names
 
-        try:
-            global_predictions = global_forest.predict(X_test)
-        except Exception as e:
-            self.step_callback(f"Prediction error: {str(e)}", 85)
-            global_predictions = np.random.randint(0, len(self.dataset_split.class_names), len(y_test))
+        global_report = ForestEvaluator.evaluate(global_forest, X_test, y_test, class_names)
 
-        global_accuracy = float(accuracy_score(y_test, global_predictions))
-        global_f1 = float(f1_score(y_test, global_predictions, average='macro', zero_division=0))
-
-        # Generate client reports (accuracy of global model on each client's data)
+        # Generate client reports (evaluate global model performance on each client's data)
         client_reports = {}
         for cid, (X_client, y_client) in self.client_partitions.items():
             if y_client is not None and len(X_client) > 0:
                 try:
-                    y_pred = global_forest.predict(X_client)
-                    client_acc = float(accuracy_score(y_client, y_pred))
-                    client_f1 = float(f1_score(y_client, y_pred, average='macro', zero_division=0))
-                    client_reports[cid] = {'accuracy': client_acc, 'macro_f1': client_f1}
+                    client_reports[cid] = ForestEvaluator.evaluate(
+                        global_forest, X_client, y_client, class_names
+                    )
                 except Exception:
-                    client_reports[cid] = {'accuracy': 0.0, 'macro_f1': 0.0}
+                    # Fallback empty report
+                    client_reports[cid] = ForestReport(
+                        accuracy=0.0,
+                        macro_f1=0.0,
+                        macro_precision=0.0,
+                        macro_recall=0.0,
+                        per_class_f1={cn: 0.0 for cn in class_names},
+                        per_class_prec={cn: 0.0 for cn in class_names},
+                        per_class_recall={cn: 0.0 for cn in class_names},
+                        confusion_matrix=np.zeros((len(class_names), len(class_names)), dtype=int),
+                        pcd=0.0,
+                        forest_size=0,
+                        class_names=class_names,
+                    )
 
         self.step_callback("Round completed", 100)
 
         return FLResults(
             strategy_id=strategy_name,
-            global_accuracy=global_accuracy,
-            global_macro_f1=global_f1,
+            global_accuracy=global_report.accuracy,
+            global_macro_f1=global_report.macro_f1,
             n_trees_global=len(global_trees),
             client_ids=client_ids,
             client_accuracies={cid: m.accuracy for cid, m in client_metadata.items()},
@@ -340,6 +347,7 @@ class FLEXOrchestrator:
             client_metadata=client_metadata,
             client_reports=client_reports,
             selected_ids=selected_ids,
+            global_report=global_report,
             num_rounds=1,
             communication_cost=self._data_transferred,
         )

@@ -35,7 +35,7 @@ class S4GlobalF1PCDStrategy:
           - Dict[str, List[int]]: {client_id: [global_indices_selected]}
         """
         # Build entries for all trees
-        entries = TreeEntry.build_entries(client_trees, client_metadata)
+        entries = TreeRanker.build_entries(client_trees, client_metadata)
         
         # Rank by combined F1+PCD
         ranker = TreeRanker(

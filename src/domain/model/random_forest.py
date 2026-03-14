@@ -37,7 +37,7 @@ class RandomForestWrapper(ABCForest):
         return self._rf.estimators_.copy()
 
     @classmethod
-    def from_trees(cls, trees: List[Any]) -> 'RandomForestWrapper':
+    def from_trees(cls, trees: List[Any], class_names: List[str] = None) -> 'RandomForestWrapper':
         """Create a Random Forest from a list of trees."""
         instance = cls()
         instance._rf = RandomForestClassifier()

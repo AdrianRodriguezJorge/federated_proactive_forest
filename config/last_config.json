@@ -7,7 +7,7 @@
     "scale": true
   },
   "federation": {
-    "n_clients": 10,
+    "n_clients": 2,
     "distribution": "iid",
     "dirichlet_alpha": 0.5
   },
@@ -21,15 +21,15 @@
     "episode_size": 5
   },
   "aggregation": {
-    "strategy": "s1_simple_pool",
+    "strategy": "s7_perclient_f1_pcd",
     "f1_weight": 0.5,
     "pcd_weight": 0.5,
     "convergence": 0.002,
     "episode_size": 5
   },
   "prediction": {
-    "local_weight": 0.4,
-    "global_weight": 0.6
+    "local_weight": 0.3,
+    "global_weight": 0.7
   },
   "metadata": {
     "validation_split": 0.2

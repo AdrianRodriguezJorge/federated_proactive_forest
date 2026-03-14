@@ -25,7 +25,7 @@ class S3GlobalF1Strategy:
           - Dict[str, List[int]]: {client_id: [global_indices_of_selected_trees]}
         """
         # Build entries for all trees
-        entries = TreeEntry.build_entries(client_trees, client_metadata)
+        entries = TreeRanker.build_entries(client_trees, client_metadata)
         
         # Rank by F1
         ranker = TreeRanker(criterion=RankingCriterion.MACRO_F1)

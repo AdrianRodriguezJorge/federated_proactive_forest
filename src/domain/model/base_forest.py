@@ -26,6 +26,6 @@ class ABCForest(ABC):
 
     @classmethod
     @abstractmethod
-    def from_trees(cls, trees: List[Any]) -> 'ABCForest':
+    def from_trees(cls, trees: List[Any], class_names: List[str] = None) -> 'ABCForest':
         """Create a forest instance from a list of trees."""
         pass

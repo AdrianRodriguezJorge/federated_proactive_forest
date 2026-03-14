@@ -1,6 +1,7 @@
-from typing import List, Any
+from typing import List, Any, Optional
 import numpy as np
 from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder
 from .base_forest import ABCForest
 from .cpf_implementation.estimator import ProactiveForestClassifier
 from .cpf_implementation.newalg import ComparativeProgressiveForest
@@ -72,12 +73,26 @@ class ProactiveForest(ABCForest):
         return forest.get_trees()
 
     @classmethod
-    def from_trees(cls, trees: List[Any]) -> 'ProactiveForest':
+    def from_trees(cls, trees: List[Any], class_names: List[str] = None) -> 'ProactiveForest':
         """Create a forest instance from a list of trees."""
         instance = cls()
         
+        # Infer n_features from the trees (assuming all trees have the same n_features)
+        if trees:
+            n_features = trees[0].n_features
+            n_classes = len(class_names) if class_names else 1
+        else:
+            n_features = 0
+            n_classes = 1
+        
         # Create a dummy classifier with the trees
         dummy_classifier = ProactiveForestClassifier(n_estimators=len(trees), alpha=0.1)
+        dummy_classifier._n_features = n_features  # Set n_features
+        dummy_classifier._n_classes = n_classes
+        if class_names:
+            from sklearn.preprocessing import LabelEncoder
+            dummy_classifier._encoder = LabelEncoder()
+            dummy_classifier._encoder.classes_ = np.array(class_names)
         dummy_classifier.set_trees(trees)
         
         # Mark as fitted

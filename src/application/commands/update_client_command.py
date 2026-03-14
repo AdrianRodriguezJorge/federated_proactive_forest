@@ -26,7 +26,8 @@ class UpdateClientCommand:
 
         # Update client's model with selected trees
         from src.domain.model.proactive_forest import ProactiveForest
-        updated_forest = ProactiveForest.from_trees(selected_trees)
+        class_names = global_data.get('class_names', None)
+        updated_forest = ProactiveForest.from_trees(selected_trees, class_names=class_names)
         client_data['model'] = updated_forest
         client_data['selected_trees'] = selected_trees
 

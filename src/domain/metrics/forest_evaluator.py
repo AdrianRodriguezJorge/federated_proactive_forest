@@ -31,7 +31,14 @@ class ForestEvaluator:
     def evaluate(forest, X: np.ndarray, y: np.ndarray,
                  class_names: List[str]) -> ForestReport:
         y_pred = forest.predict(X)
-        labels = list(range(len(class_names)))
+        
+        # Ensure y and y_pred are strings for consistency
+        if len(y) > 0 and isinstance(y[0], (int, np.integer)):
+            y = np.array([class_names[i] for i in y])
+        if len(y_pred) > 0 and isinstance(y_pred[0], (int, np.integer)):
+            y_pred = np.array([class_names[i] for i in y_pred])
+        
+        labels = class_names  # Usar nombres de clases como labels
 
         per_f1   = f1_score(y, y_pred, labels=labels, average=None, zero_division=0)
         per_prec = precision_score(y, y_pred, labels=labels, average=None, zero_division=0)

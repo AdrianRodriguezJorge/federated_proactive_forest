@@ -43,16 +43,16 @@ class FlexTreesAdapter(IDatasetAdapter):
             # For other datasets, would need to implement
             raise NotImplementedError(f"Dataset {self.dataset_name} not implemented yet")
 
-        # Encode labels
-        y_encoded = self._label_encoder.fit_transform(y)
+        # Mantener y como strings
+        self._label_encoder.fit(y)  # Fit para obtener classes
         self._class_names = list(self._label_encoder.classes_)
 
         # Split data
         X_train, X_test, y_train, y_test = train_test_split(
-            X, y_encoded,
+            X, y,  # y como strings
             test_size=self.test_size,
             random_state=self.random_state,
-            stratify=y_encoded
+            stratify=y
         )
 
         return DatasetSplit(
