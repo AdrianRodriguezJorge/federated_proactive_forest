@@ -55,6 +55,7 @@ class FLResults:
     global_report: Any = None
     num_rounds: int = 1
     communication_cost: float = 0.0  # Estimación de datos transferidos (MB)
+    client_hybrid_predictions: Dict[str, np.ndarray] = field(default_factory=dict)
 
 
 class FLEXOrchestrator:
@@ -300,7 +301,7 @@ class FLEXOrchestrator:
         self.step_callback("Aggregating forests...", 60)
         strategy_name = self._get_strategy_name()
         strategy = AggregationFactory.create_strategy(strategy_name)
-        global_trees, selected_ids = strategy.aggregate(client_trees, client_metadata)
+        global_trees, selected_ids, all_tree_entries = strategy.aggregate(client_trees, client_metadata)
 
         # ── STEP 4: EVALUATE on test set ───────────────────────────────────────
         self.step_callback("Evaluating global model...", 85)
@@ -310,29 +311,17 @@ class FLEXOrchestrator:
 
         global_report = ForestEvaluator.evaluate(global_forest, X_test, y_test, class_names)
 
-        # Generate client reports (evaluate global model performance on each client's data)
-        client_reports = {}
-        for cid, (X_client, y_client) in self.client_partitions.items():
-            if y_client is not None and len(X_client) > 0:
-                try:
-                    client_reports[cid] = ForestEvaluator.evaluate(
-                        global_forest, X_client, y_client, class_names
-                    )
-                except Exception:
-                    # Fallback empty report
-                    client_reports[cid] = ForestReport(
-                        accuracy=0.0,
-                        macro_f1=0.0,
-                        macro_precision=0.0,
-                        macro_recall=0.0,
-                        per_class_f1={cn: 0.0 for cn in class_names},
-                        per_class_prec={cn: 0.0 for cn in class_names},
-                        per_class_recall={cn: 0.0 for cn in class_names},
-                        confusion_matrix=np.zeros((len(class_names), len(class_names)), dtype=int),
-                        pcd=0.0,
-                        forest_size=0,
-                        class_names=class_names,
-                    )
+        # Perform hybrid prediction on clients using local and global trees
+        client_hybrid_predictions = {}
+        local_weight = self.config.get('prediction', {}).get('local_weight', 0.4)
+        global_weight = self.config.get('prediction', {}).get('global_weight', 0.6)
+        n_classes = len(class_names)
+        from src.domain.prediction.hybrid_predictor import HybridPredictor
+        predictor = HybridPredictor(local_weight=local_weight, global_weight=global_weight, n_classes=n_classes)
+        for cid, pf in client_forests.items():
+            local_trees = pf.get_trees()
+            hybrid_preds = predictor.predict(X_test, local_trees, global_trees)
+            client_hybrid_predictions[cid] = hybrid_preds
 
         self.step_callback("Round completed", 100)
 
@@ -345,11 +334,13 @@ class FLEXOrchestrator:
             client_accuracies={cid: m.accuracy for cid, m in client_metadata.items()},
             client_f1_scores={cid: m.macro_f1 for cid, m in client_metadata.items()},
             client_metadata=client_metadata,
-            client_reports=client_reports,
+            client_reports={},  # Removed client reports as per user request
             selected_ids=selected_ids,
+            all_tree_entries=all_tree_entries,
             global_report=global_report,
             num_rounds=1,
             communication_cost=self._data_transferred,
+            client_hybrid_predictions=client_hybrid_predictions,
         )
 
     def _train_local_forests(self) -> Tuple[Dict[str, ProactiveForest], Dict[str, ClientMetadata]]:
@@ -362,7 +353,6 @@ class FLEXOrchestrator:
         client_forests = {}
         client_metadata = {}
 
-        val_split = self._get_config_value('metadata', 'validation_split', default=0.2)
         n_estimators = self._get_config_value('model', 'n_estimators') or self._get_config_value('n_estimators', default=100)
         alpha_pf = self._get_config_value('model', 'alpha') or self._get_config_value('alpha_pf', default=0.1)
 
@@ -370,28 +360,19 @@ class FLEXOrchestrator:
             if len(X_client) < 5:
                 continue
 
-            # Split into train/validation
-            if val_split > 0 and len(X_client) > 10:
-                X_train, X_val, y_train, y_val = train_test_split(
-                    X_client, y_client, test_size=val_split, random_state=42
-                )
-            else:
-                X_train, X_val = X_client, X_client
-                y_train, y_val = y_client, y_client
-
-            # Train ProactiveForest
+            # Train ProactiveForest with 100% of client's data (no validation split)
             pf = ProactiveForest(
                 n_estimators=n_estimators,
                 alpha=alpha_pf,
                 verbose=self._get_config_value('verbose', default=False)
             )
-            pf.fit(X_train, y_train)
+            pf.fit(X_client, y_client)
 
-            # Calculate metadata
-            y_pred_val = pf.predict(X_val)
-            acc = float(accuracy_score(y_val, y_pred_val))
-            f1 = float(f1_score(y_val, y_pred_val, average='macro', zero_division=0))
-            pcd = float(pf.diversity_measure(X_val, y_val, 'pcd'))
+            # Calculate metadata using global test set
+            y_pred_test = pf.predict(self.dataset_split.X_test)
+            acc = float(accuracy_score(self.dataset_split.y_test, y_pred_test))
+            f1 = float(f1_score(self.dataset_split.y_test, y_pred_test, average='macro', zero_division=0))
+            pcd = float(pf.diversity_measure(self.dataset_split.X_test, self.dataset_split.y_test, 'pcd'))
 
             client_forests[client_id] = pf
             client_metadata[client_id] = ClientMetadata(

@@ -28,9 +28,6 @@ prediction:
   local_weight: 0.5
   global_weight: 0.5
 
-metadata:
-  validation_split: 0.2
-
 notes: |
   With alpha=10.0, label distributions are very similar across clients.
   Example comparison:

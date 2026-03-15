@@ -27,9 +27,6 @@ prediction:
   local_weight: 0.5
   global_weight: 0.5
 
-metadata:
-  validation_split: 0.2
-
 notes: |
   With alpha=1.0, label distributions are more balanced than extreme heterogeneity
   but still show meaningful client-specific patterns.

@@ -7,9 +7,12 @@ from typing import Any, Dict, List
 class ClientMetadata:
     client_id: str
     n_trees: int
-    accuracy: float        # Accuracy del bosque local sobre val split
-    macro_f1: float        # Macro-F1 del bosque local sobre val split
-    pcd: float             # Pair Classifier Disagreement (diversidad)
+    accuracy: float        # Accuracy del bosque local sobre el conjunto de test global
+    macro_f1: float        # Macro-F1 del bosque local sobre el conjunto de test global
+    pcd: float             # Pair Classifier Disagreement (diversidad) sobre el conjunto de test global
+    # IDs de árboles del bosque LOCAL seleccionados durante la agregación
+    # (llenado por el servidor, devuelto al cliente para el No-Repeat Merge)
+    selected_local_tree_ids: List[int] = field(default_factory=list)
     # IDs de árboles del bosque LOCAL seleccionados durante la agregación
     # (llenado por el servidor, devuelto al cliente para el No-Repeat Merge)
     selected_local_tree_ids: List[int] = field(default_factory=list)

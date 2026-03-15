@@ -24,18 +24,15 @@
     "episode_size": 5
   },
   "aggregation": {
-    "strategy": "s6_perclient_f1",
-    "f1_weight": 0.5,
-    "pcd_weight": 0.5,
+    "strategy": "s2_global_accuracy",
+    "f1_weight": 0.6,
+    "pcd_weight": 0.4,
     "convergence": 0.002,
     "episode_size": 5
   },
   "prediction": {
     "local_weight": 0.6,
     "global_weight": 0.4
-  },
-  "metadata": {
-    "validation_split": 0.2
   },
   "verbose": false,
   "seed": 42

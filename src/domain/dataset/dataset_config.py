@@ -2,6 +2,9 @@ from dataclasses import dataclass
 from typing import List, Optional
 import yaml
 
+# NOTE: This module is currently not used by the core FL flow.
+# It can be removed or integrated if you add YAML-driven dataset configuration.
+
 @dataclass
 class DatasetConfig:
     """

@@ -28,9 +28,6 @@ prediction:
   local_weight: 0.3
   global_weight: 0.7
 
-metadata:
-  validation_split: 0.2
-
 notes: |
   With alpha=0.1, each client's label distribution will be very skewed.
   Example 5-client iris split with alpha=0.1:

@@ -1,12 +1,13 @@
-"""Módulo de datasets del dominio FL."""
+"""Módulo de datasets del dominio FL.
+
+Este paquete expone la interfaz (puerto) que deben implementar los adaptadores
+de dataset. Las implementaciones concretas viven en
+`src/infrastructure/dataset/`.
+"""
 
 from .base_adapter import IDatasetAdapter, DatasetSplit
-from .iris_adapter import IrisAdapter
-from .generic_csv_adapter import GenericCsvAdapter
 
 __all__ = [
     'IDatasetAdapter',
     'DatasetSplit',
-    'IrisAdapter',
-    'GenericCsvAdapter'
 ]

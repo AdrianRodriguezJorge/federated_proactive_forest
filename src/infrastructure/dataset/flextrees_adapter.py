@@ -1,4 +1,8 @@
-"""Adapter for datasets from flex-trees library."""
+"""Adapter for datasets from flex-trees library.
+
+NOTE: This adapter is currently unused in the main FL workflows.
+It is kept as a placeholder for future use if flex-trees datasets are needed.
+"""
 import numpy as np
 from typing import List
 from src.domain.dataset.base_adapter import IDatasetAdapter, DatasetSplit

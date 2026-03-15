@@ -9,11 +9,13 @@ class IAggregationStrategy(ABC):
         self,
         client_trees: Dict[str, List[Any]],
         client_metadata: Dict,
-    ) -> Tuple[List[Any], Dict[str, List[int]]]:
-        """
-        Retorna:
+    ) -> Tuple[List[Any], Dict[str, List[int]], List[Any]]:
+        """Aggregate trees for the global model.
+
+        Returns:
           - List[DecisionTree]: árboles del bosque global
-          - Dict[str, List[int]]: {client_id: [local_tree_ids seleccionados]}
+          - Dict[str, List[int]]: {client_id: [global_indices_of_selected_trees]}
+          - List[TreeEntry]: todas las entradas (trees + metadata) en el orden usado para el ranking
         """
         ...
 

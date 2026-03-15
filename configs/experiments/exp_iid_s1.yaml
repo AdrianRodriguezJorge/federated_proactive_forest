@@ -24,6 +24,3 @@ aggregation:
 prediction:
   local_weight: 0.4
   global_weight: 0.6
-
-metadata:
-  validation_split: 0.2

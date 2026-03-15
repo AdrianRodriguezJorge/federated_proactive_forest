@@ -1,4 +1,8 @@
-"""Adaptador para el dataset Iris."""
+"""Adaptador para el dataset Iris.
+
+NOTE: Esta implementación es legacy. El proyecto usa ahora los adaptadores
+bajo `src.infrastructure.dataset` (ej. `src.infrastructure.dataset.iris_adapter`).
+"""
 from sklearn.datasets import load_iris
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler

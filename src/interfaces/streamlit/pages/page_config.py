@@ -26,6 +26,9 @@ def save_config_to_file(config: dict):
         return True
     except Exception as e:
         st.error(f"Error al guardar configuración: {e}")
+        import traceback
+        with st.expander("Traceback completo"):
+            st.code(traceback.format_exc())
         return False
 
 
@@ -37,6 +40,9 @@ def load_config_from_file() -> dict:
                 return json.load(f)
     except Exception as e:
         st.warning(f"No se pudo cargar la configuración guardada: {e}")
+        import traceback
+        with st.expander("Traceback completo"):
+            st.code(traceback.format_exc())
     return {}
 
 
@@ -47,14 +53,14 @@ def create_dataset_adapter(config: dict):
     if dataset_config["type"] == "Iris":
         return IrisAdapter(
             data_path=dataset_config.get("file_path", "data/iris.csv"),
-            test_size=dataset_config.get("test_size", 0.2),
+            train_test_split_ratio=1 - dataset_config.get("test_size", 0.2),
             scale=dataset_config.get("scale", True),
             scaler_type=dataset_config.get("scaler_type", "standard")
         )
     elif dataset_config["type"] == "NSL-KDD":
         return NslKddAdapter(
-            train_path=dataset_config.get("train_path", "data/NSL-KDD_train.csv"),
-            test_path=dataset_config.get("test_path", "data/NSL-KDD_test.csv"),
+            train_path="data/NSL-KDD_train.csv",
+            test_path="data/NSL-KDD_test.csv",
             scale=dataset_config.get("scale", True),
             scaler_type=dataset_config.get("scaler_type", "standard")
         )
@@ -205,15 +211,6 @@ def render():
         - Clases: 5 (normal, dos, probe, r2l, u2r)
         - Archivos separados: Train y Test
         """)
-        col_nsl1, col_nsl2 = st.columns(2)
-        with col_nsl1:
-            train_path = st.text_input("📄 Archivo de entrenamiento",
-                                      value=current_config["dataset"].get("train_path", "data/NSL-KDD_train.csv"),
-                                      key="nsl_train")
-        with col_nsl2:
-            test_path = st.text_input("📄 Archivo de test",
-                                     value=current_config["dataset"].get("test_path", "data/NSL-KDD_test.csv"),
-                                     key="nsl_test")
         file_path = ""  # No se usa
         target_column = "class"
         test_size = 0.0  # No se usa, archivos separados
@@ -266,9 +263,6 @@ def render():
         if distribution == "noniid_dirichlet":
             dirichlet_alpha = st.slider("Parámetro Dirichlet α", 0.1, 5.0,
                                        value=dirichlet_alpha, step=0.1)
-        val_split = st.slider("Fracción validación local (metadatos)", 0.1, 0.4,
-                             value=current_config["metadata"].get("validation_split", 0.2),
-                             step=0.05)
 
     st.divider()
 
@@ -352,8 +346,8 @@ def render():
             "dataset": {
                 "type": dataset_type,
                 "file_path": file_path if dataset_type in ["Iris", "Students Dropout", "CSV personalizado"] else "",
-                "train_path": train_path if dataset_type == "NSL-KDD" else (file_path if dataset_type == "Students Dropout" else ""),
-                "test_path": test_path if dataset_type == "NSL-KDD" else "",
+                "train_path": "data/NSL-KDD_train.csv" if dataset_type == "NSL-KDD" else (file_path if dataset_type == "Students Dropout" else ""),
+                "test_path": "data/NSL-KDD_test.csv" if dataset_type == "NSL-KDD" else "",
                 "target_column": target_column,
                 "test_size": test_size,
                 "scale": scale,
@@ -384,9 +378,6 @@ def render():
                 "local_weight":  local_w,
                 "global_weight": global_w,
             },
-            "metadata": {
-                "validation_split": val_split,
-            },
             "verbose": verbose_cpf,
             "seed":    seed,
         }
@@ -406,6 +397,9 @@ def render():
                        f"{len(ds.class_names)} clases.")
         except Exception as e:
             st.error(f"❌ Error al cargar el dataset: {e}")
+            import traceback
+            with st.expander("Traceback completo"):
+                st.code(traceback.format_exc())
 
     # Mostrar información sobre configuración guardada
     if CONFIG_FILE.exists():
@@ -421,14 +415,14 @@ def _load_dataset(cfg):
     if d["type"] == "Iris":
         adapter = IrisAdapter(
             data_path=d.get("file_path", "data/iris.csv"),
-            test_size=d.get("test_size", 0.2),
+            train_test_split_ratio=1 - d.get("test_size", 0.2),
             scale=d.get("scale", True),
             scaler_type=d.get("scaler_type", "standard")
         )
     elif d["type"] == "NSL-KDD":
         adapter = NslKddAdapter(
-            train_path=d.get("train_path", "data/NSL-KDD_train.csv"),
-            test_path=d.get("test_path", "data/NSL-KDD_test.csv"),
+            train_path="data/NSL-KDD_train.csv",
+            test_path="data/NSL-KDD_test.csv",
             scale=d.get("scale", True),
             scaler_type=d.get("scaler_type", "standard")
         )

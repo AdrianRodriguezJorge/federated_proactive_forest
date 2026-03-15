@@ -27,9 +27,12 @@ class AggregateCommand:
             client_trees[client_id] = model_data.get('trees', [])
 
         # Aggregate using strategy
-        global_trees, selected_indices = self.strategy.aggregate(client_trees, client_metadata)
+        global_trees, selected_indices, all_tree_entries = self.strategy.aggregate(
+            client_trees, client_metadata
+        )
 
         return {
             'global_trees': global_trees,
-            'selected_indices': selected_indices
+            'selected_indices': selected_indices,
+            'all_tree_entries': all_tree_entries,
         }

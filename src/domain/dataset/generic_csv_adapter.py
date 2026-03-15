@@ -1,4 +1,8 @@
-"""Adaptador genérico para datasets en formato CSV."""
+"""Adaptador genérico para datasets en formato CSV.
+
+NOTE: Esta implementación es legacy. El proyecto usa ahora los adaptadores
+bajo `src.infrastructure.dataset` (ej. `src.infrastructure.dataset.csv_adapter`).
+"""
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler, LabelEncoder
 import numpy as np
