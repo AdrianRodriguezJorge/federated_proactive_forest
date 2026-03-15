@@ -138,12 +138,6 @@ dmypy.json
 # macOS
 .DS_Store
 
-# Data (si es muy grande)
-data/*.csv
-data/*.zip
-!data/iris.csv
-!data/NSL-KDD_*.csv
-
 # Outputs y resultados
 results/
 outputs/

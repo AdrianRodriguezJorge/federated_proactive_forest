@@ -182,7 +182,7 @@ class FLEXOrchestrator:
         else:
             raise ValueError(f"Unknown distribution type: {distribution_type}")
 
-        self.step_callback("Federation setup completed", 10)
+        self.step_callback("Configuración de federación completada", 10)
 
     def _get_config_value(self, *keys: str, default=None):
         """
@@ -287,12 +287,12 @@ class FLEXOrchestrator:
             raise ValueError("Federation not set up. Call setup_federation first.")
 
         # ── STEP 1: TRAIN local forests on each client ────────────────────────
-        self.step_callback("Training local forests on clients...", 15)
+        self.step_callback("Entrenando bosques locales en clientes...", 15)
         client_forests, client_metadata = self._train_local_forests()
         client_ids = list(client_forests.keys())
 
         # ── STEP 2: COLLECT trees from all clients ────────────────────────────
-        self.step_callback("Collecting trees from clients...", 40)
+        self.step_callback("Recolectando árboles de clientes...", 40)
         client_trees = {cid: pf.get_trees() for cid, pf in client_forests.items()}
         
         # Estimate communication cost (MB per tree)
@@ -301,13 +301,13 @@ class FLEXOrchestrator:
         self._data_transferred = sum(trees_per_client) * avg_tree_size_kb / 1024
 
         # ── STEP 3: AGGREGATE using selected strategy ──────────────────────────
-        self.step_callback("Aggregating forests...", 60)
+        self.step_callback("Agregando bosques...", 60)
         strategy_name = self._get_strategy_name()
         strategy = AggregationFactory.create_strategy(strategy_name)
         global_trees, selected_ids, all_tree_entries = strategy.aggregate(client_trees, client_metadata)
 
         # ── STEP 4: EVALUATE on test set ───────────────────────────────────────
-        self.step_callback("Evaluating global model...", 85)
+        self.step_callback("Evaluando modelo global...", 85)
         global_forest = ProactiveForest.from_trees(global_trees, class_names=self.dataset_split.class_names)
         X_test, y_test = self.dataset_split.X_test, self.dataset_split.y_test
         class_names = self.dataset_split.class_names
@@ -328,7 +328,7 @@ class FLEXOrchestrator:
             client_hybrid_predictions[cid] = hybrid_preds
             client_hybrid_forest_sizes[cid] = len(local_trees) + len(global_trees)
 
-        self.step_callback("Round completed", 100)
+        self.step_callback("Ronda completada", 100)
 
         return FLResults(
             strategy_id=strategy_name,
@@ -408,7 +408,7 @@ class FLEXOrchestrator:
         """
         results = []
         for round_num in range(num_rounds):
-            self.step_callback(f"Starting round {round_num + 1}/{num_rounds}", 0)
+            self.step_callback(f"Iniciando ronda {round_num + 1}/{num_rounds}", 0)
             result = self.run_federated_round()
             result.num_rounds = round_num + 1
             results.append(result)

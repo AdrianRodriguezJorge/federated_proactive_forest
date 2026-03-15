@@ -124,15 +124,15 @@ def render():
     if st.button("🚀 Ejecutar ronda federada", type="primary"):
         progress  = st.progress(0, text="Inicializando...")
         status    = st.empty()
-        log_lines = []
-        log_box   = st.expander("📜 Log de ejecución", expanded=True)
+        log_placeholder = st.empty()  # Para el log acumulativo
+        log_lines = []  # Usar lista para evitar problemas de closure
 
         def step_cb(msg: str, pct: int, detail: str = ""):
             progress.progress(pct / 100, text=f"{msg} ({pct}%)")
             status.info(f"**{msg}**  {detail}")
             ts = time.strftime("%H:%M:%S")
             log_lines.append(f"[{ts}] {pct:3d}% | {msg} {detail}")
-            log_box.code("\n".join(log_lines[-30:]))
+            log_placeholder.code("\n".join(log_lines))
 
         try:
             from src.application.fl_orchestrator import FLEXOrchestrator
