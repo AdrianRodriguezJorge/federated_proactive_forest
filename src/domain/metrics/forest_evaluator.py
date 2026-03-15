@@ -63,3 +63,35 @@ class ForestEvaluator:
             forest_size=len(forest.get_trees()),
             class_names=class_names,
         )
+
+    @staticmethod
+    def evaluate_from_predictions(y_pred: np.ndarray, y_true: np.ndarray,
+                                  class_names: List[str], forest_size: int,
+                                  pcd: float = 0.0) -> ForestReport:
+        """Evalúa métricas a partir de predicciones ya calculadas (útil para inferencia híbrida)."""
+        
+        # Ensure y and y_pred are strings for consistency
+        if len(y_true) > 0 and isinstance(y_true[0], (int, np.integer)):
+            y_true = np.array([class_names[i] for i in y_true])
+        if len(y_pred) > 0 and isinstance(y_pred[0], (int, np.integer)):
+            y_pred = np.array([class_names[i] for i in y_pred])
+        
+        labels = class_names
+
+        per_f1   = f1_score(y_true, y_pred, labels=labels, average=None, zero_division=0)
+        per_prec = precision_score(y_true, y_pred, labels=labels, average=None, zero_division=0)
+        per_rec  = recall_score(y_true, y_pred, labels=labels, average=None, zero_division=0)
+
+        return ForestReport(
+            accuracy=float(accuracy_score(y_true, y_pred)),
+            macro_f1=float(f1_score(y_true, y_pred, average='macro', zero_division=0)),
+            macro_precision=float(precision_score(y_true, y_pred, average='macro', zero_division=0)),
+            macro_recall=float(recall_score(y_true, y_pred, average='macro', zero_division=0)),
+            per_class_f1={cn: float(v) for cn, v in zip(class_names, per_f1)},
+            per_class_prec={cn: float(v) for cn, v in zip(class_names, per_prec)},
+            per_class_recall={cn: float(v) for cn, v in zip(class_names, per_rec)},
+            confusion_matrix=confusion_matrix(y_true, y_pred, labels=labels),
+            pcd=pcd,
+            forest_size=forest_size,
+            class_names=class_names,
+        )

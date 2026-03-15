@@ -13,18 +13,20 @@ class ProactiveForest(ABCForest):
     Based on the Comparative Progressive Forest (CPF) algorithm (Cepero, 2023).
     """
 
-    def __init__(self, n_estimators: int = 100, alpha: float = 0.1, random_state: int = 42, verbose: bool = False):
+    def __init__(self, n_estimators: int = 100, alpha: float = 0.1, random_state: int = 42, verbose: bool = False, class_names: Optional[List[str]] = None):
         """
         Args:
             n_estimators: Number of trees in the forest
             alpha: Diversity rate for feature probability adjustment (Cepero parameter)
             random_state: Random seed
             verbose: Whether to print CPF training logs
+            class_names: List of all possible class names (for consistent encoding)
         """
         self.n_estimators = n_estimators
         self.alpha = alpha
         self.random_state = random_state
         self.verbose = verbose
+        self.class_names = class_names
         
         # Create the internal ProactiveForestClassifier using CPF
         self._classifier = ProactiveForestClassifier(
@@ -35,6 +37,12 @@ class ProactiveForest(ABCForest):
         )
         self._cpf = None
         self._is_fitted = False
+
+        # Set encoder if class_names provided
+        if class_names:
+            from sklearn.preprocessing import LabelEncoder
+            self._classifier._encoder = LabelEncoder()
+            self._classifier._encoder.classes_ = np.array(class_names)
 
     def fit(self, X: np.ndarray, y: np.ndarray) -> None:
         """

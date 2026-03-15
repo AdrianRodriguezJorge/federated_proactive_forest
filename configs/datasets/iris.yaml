@@ -1,13 +1,13 @@
 name: "iris"
 path: "data/iris.csv"
-target_column: "species"
+target_column: "class"
 test_size: 0.2
 random_state: 42
 scale_numerical: true
 encode_categorical: false
 categorical_columns: []
 numerical_columns:
-  - "sepal_length"
-  - "sepal_width"
-  - "petal_length"
-  - "petal_width"
+  - "sepallength"
+  - "sepalwidth"
+  - "petallength"
+  - "petalwidth"

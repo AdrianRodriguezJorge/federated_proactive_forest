@@ -55,7 +55,8 @@ class GenericCsvAdapter(IDatasetAdapter):
             test_df[self.categorical_features]  = enc.transform(test_df[self.categorical_features])
 
         le = LabelEncoder()
-        le.fit(train_df[self.target_column].values)  # Fit para obtener classes
+        all_y = np.concatenate([train_df[self.target_column].values, test_df[self.target_column].values])
+        le.fit(all_y)  # Fit para obtener classes de train y test
         y_train = train_df[self.target_column].values  # Mantener como strings
         y_test  = test_df[self.target_column].values   # Mantener como strings
         self._class_names_ = [str(c) for c in le.classes_]

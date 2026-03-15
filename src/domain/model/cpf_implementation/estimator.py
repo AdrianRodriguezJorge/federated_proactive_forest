@@ -318,8 +318,11 @@ class ProactiveForestClassifier(DecisionForestClassifier):
 
     def fit(self, X, y):
         X, y = check_X_y(X, y, dtype=None)
-        self._encoder = LabelEncoder()
-        y = self._encoder.fit_transform(y)
+        if self._encoder is None:
+            self._encoder = LabelEncoder()
+            y = self._encoder.fit_transform(y)
+        else:
+            y = self._encoder.transform(y)
         self._n_instances, self._n_features = X.shape
         self._n_classes = utils.count_classes(y)
         self._trees = []

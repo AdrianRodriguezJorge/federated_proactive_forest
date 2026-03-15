@@ -56,6 +56,9 @@ class FLResults:
     num_rounds: int = 1
     communication_cost: float = 0.0  # Estimación de datos transferidos (MB)
     client_hybrid_predictions: Dict[str, np.ndarray] = field(default_factory=dict)
+    y_test: np.ndarray = None
+    class_names: List[str] = field(default_factory=list)
+    client_hybrid_forest_sizes: Dict[str, int] = field(default_factory=dict)
 
 
 class FLEXOrchestrator:
@@ -318,10 +321,12 @@ class FLEXOrchestrator:
         n_classes = len(class_names)
         from src.domain.prediction.hybrid_predictor import HybridPredictor
         predictor = HybridPredictor(local_weight=local_weight, global_weight=global_weight, n_classes=n_classes)
+        client_hybrid_forest_sizes = {}
         for cid, pf in client_forests.items():
             local_trees = pf.get_trees()
             hybrid_preds = predictor.predict(X_test, local_trees, global_trees)
             client_hybrid_predictions[cid] = hybrid_preds
+            client_hybrid_forest_sizes[cid] = len(local_trees) + len(global_trees)
 
         self.step_callback("Round completed", 100)
 
@@ -341,6 +346,9 @@ class FLEXOrchestrator:
             num_rounds=1,
             communication_cost=self._data_transferred,
             client_hybrid_predictions=client_hybrid_predictions,
+            y_test=y_test,
+            class_names=class_names,
+            client_hybrid_forest_sizes=client_hybrid_forest_sizes,
         )
 
     def _train_local_forests(self) -> Tuple[Dict[str, ProactiveForest], Dict[str, ClientMetadata]]:
@@ -364,7 +372,8 @@ class FLEXOrchestrator:
             pf = ProactiveForest(
                 n_estimators=n_estimators,
                 alpha=alpha_pf,
-                verbose=self._get_config_value('verbose', default=False)
+                verbose=self._get_config_value('verbose', default=False),
+                class_names=self.dataset_split.class_names
             )
             pf.fit(X_client, y_client)
 

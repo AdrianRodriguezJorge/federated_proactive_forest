@@ -1,10 +1,10 @@
 {
   "dataset": {
-    "type": "Students Dropout",
+    "type": "Iris",
     "file_path": "data/students_dropout.csv",
-    "train_path": "data/students_dropout.csv",
+    "train_path": "",
     "test_path": "",
-    "target_column": "Target",
+    "target_column": "class",
     "test_size": 0.2,
     "scale": true,
     "scaler_type": "standard"
@@ -24,15 +24,15 @@
     "episode_size": 5
   },
   "aggregation": {
-    "strategy": "s2_global_accuracy",
+    "strategy": "s7_perclient_f1_pcd",
     "f1_weight": 0.6,
     "pcd_weight": 0.4,
     "convergence": 0.002,
     "episode_size": 5
   },
   "prediction": {
-    "local_weight": 0.6,
-    "global_weight": 0.4
+    "local_weight": 0.5,
+    "global_weight": 0.5
   },
   "verbose": false,
   "seed": 42

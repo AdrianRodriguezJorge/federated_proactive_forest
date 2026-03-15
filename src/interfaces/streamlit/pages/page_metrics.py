@@ -22,13 +22,18 @@ def render():
         meta   = None
     else:
         cid    = sel.replace("👤 ", "")
-        report = results.client_reports.get(cid)
-        title  = f"Modelo Local — {cid} (bosque extendido local+global)"
+        # For clients, compute report from hybrid predictions
+        from src.domain.metrics.forest_evaluator import ForestEvaluator
+        y_pred = results.client_hybrid_predictions.get(cid)
+        if y_pred is None:
+            st.error("No se encontraron predicciones híbridas para este cliente.")
+            return
+        forest_size = results.client_hybrid_forest_sizes.get(cid, 0)
+        report = ForestEvaluator.evaluate_from_predictions(
+            y_pred, results.y_test, results.class_names, forest_size, pcd=0.0
+        )
+        title  = f"Modelo Local — {cid} (inferencia híbrida local+global)"
         meta   = results.client_metadata.get(cid)
-
-    if report is None:
-        st.error("No se encontró el reporte para este modelo.")
-        return
 
     st.subheader(f"📋 {title}")
 
