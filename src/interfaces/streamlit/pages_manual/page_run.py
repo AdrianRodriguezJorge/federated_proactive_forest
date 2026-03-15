@@ -155,19 +155,29 @@ def render():
             # Tabla rápida de clientes
             st.subheader("Resumen por cliente")
             import pandas as pd
+            from src.domain.metrics.forest_evaluator import ForestEvaluator
             rows = []
             for cid in results.client_ids:
                 meta = results.client_metadata.get(cid)
-                rep  = results.client_reports.get(cid)
-                if meta and rep:
+                if meta:
+                    # Calcular accuracy híbrida
+                    y_pred = results.client_hybrid_predictions.get(cid)
+                    if y_pred is not None:
+                        hybrid_report = ForestEvaluator.evaluate_from_predictions(
+                            y_pred, results.y_test, results.class_names, 0, 0.0
+                        )
+                        acc_hibrido = f"{hybrid_report.accuracy:.4f}"
+                    else:
+                        acc_hibrido = "N/A"
+                    
                     rows.append({
                         "Cliente":      cid,
-                        "Árboles loc.": int(meta.n_trees) if meta.n_trees else 0,
+                        "Árboles loc.": int(meta.n_trees),
                         "Acc local":    f"{meta.accuracy:.4f}",
                         "F1 local":     f"{meta.macro_f1:.4f}",
                         "PCD local":    f"{meta.pcd:.4f}",
                         "Sel. en global": int(len(results.selected_ids.get(cid, []))),
-                        "Acc extendido": f"{rep.accuracy:.4f}",
+                        "Acc híbrido": acc_hibrido,
                     })
             if rows:
                 df_summary = pd.DataFrame(rows).set_index("Cliente")

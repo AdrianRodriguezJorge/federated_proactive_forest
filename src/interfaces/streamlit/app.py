@@ -37,7 +37,7 @@ pages = {
 
 st.sidebar.title("🌲 Federated Proactive Forest")
 st.sidebar.markdown("---")
-page = st.sidebar.selectbox("Navegación", list(pages.keys()))
+page = st.sidebar.radio("Navegación", list(pages.keys()))
 
 # Estado global
 if "fl_config"  not in st.session_state: st.session_state["fl_config"]  = None
@@ -47,14 +47,14 @@ if "fl_results" not in st.session_state: st.session_state["fl_results"] = None
 key = pages[page]
 
 if key == "config":
-    from src.interfaces.streamlit.pages import page_config
+    from src.interfaces.streamlit.pages_manual import page_config
     page_config.render()
 elif key == "run":
-    from src.interfaces.streamlit.pages import page_run
+    from src.interfaces.streamlit.pages_manual import page_run
     page_run.render()
 elif key == "ranking":
-    from src.interfaces.streamlit.pages import page_ranking
+    from src.interfaces.streamlit.pages_manual import page_ranking
     page_ranking.render()
 elif key == "metrics":
-    from src.interfaces.streamlit.pages import page_metrics
+    from src.interfaces.streamlit.pages_manual import page_metrics
     page_metrics.render()

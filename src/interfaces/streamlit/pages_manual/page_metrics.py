@@ -12,6 +12,51 @@ def render():
         st.warning("⚠️ Ejecuta primero el experimento en la página '▶️ Ejecutar'.")
         return
 
+    # ── Comparación de todos los clientes vs Global ───────────────────────────
+    st.subheader("📈 Comparación de todos los Clientes vs Global")
+    
+    # Preparar datos para la tabla
+    comparison_data = []
+    
+    # Modelo Global
+    global_report = results.global_report
+    comparison_data.append({
+        "Modelo": "🌐 Global",
+        "Accuracy": f"{global_report.accuracy:.4f}",
+        "Macro-F1": f"{global_report.macro_f1:.4f}",
+        "Macro Precision": f"{global_report.macro_precision:.4f}",
+        "Macro Recall": f"{global_report.macro_recall:.4f}",
+        "PCD": f"{global_report.pcd:.4f}",
+        "Tamaño Bosque": global_report.forest_size
+    })
+    
+    # Clientes (con inferencia híbrida)
+    from src.domain.metrics.forest_evaluator import ForestEvaluator
+    for cid in results.client_ids:
+        y_pred = results.client_hybrid_predictions.get(cid)
+        meta = results.client_metadata.get(cid)
+        if y_pred is not None:
+            forest_size = results.client_hybrid_forest_sizes.get(cid, 0)
+            client_report = ForestEvaluator.evaluate_from_predictions(
+                y_pred, results.y_test, results.class_names, forest_size, pcd=0.0
+            )
+            pcd_value = f"{meta.pcd:.4f}" if meta else "N/A"
+            comparison_data.append({
+                "Modelo": f"👤 {cid}",
+                "Accuracy": f"{client_report.accuracy:.4f}",
+                "Macro-F1": f"{client_report.macro_f1:.4f}",
+                "Macro Precision": f"{client_report.macro_precision:.4f}",
+                "Macro Recall": f"{client_report.macro_recall:.4f}",
+                "PCD": pcd_value,
+                "Tamaño Bosque": client_report.forest_size
+            })
+    
+    # Mostrar tabla
+    df_comparison = pd.DataFrame(comparison_data)
+    st.dataframe(df_comparison.set_index("Modelo"), use_container_width=True)
+    
+    st.divider()
+
     # ── Selector de modelo ────────────────────────────────────────────────────
     options = ["🌐 Modelo Global"] + [f"👤 {cid}" for cid in results.client_ids]
     sel = st.selectbox("Seleccionar modelo a analizar", options)
@@ -100,40 +145,3 @@ def render():
         pass
 
     st.dataframe(per_df.set_index("Clase"), use_container_width=True)
-
-    st.divider()
-
-    # ── Comparación multi-cliente ─────────────────────────────────────────────
-    st.markdown("#### Comparación de todos los clientes vs Global")
-    rows = []
-    for cid in results.client_ids:
-        rep = results.client_reports.get(cid)
-        m   = results.client_metadata.get(cid)
-        if rep:
-            rows.append({
-                "Modelo":      cid,
-                "Accuracy":    round(rep.accuracy, 4),
-                "Macro-F1":    round(rep.macro_f1, 4),
-                "Prec macro":  round(rep.macro_precision, 4),
-                "Recall mac.": round(rep.macro_recall, 4),
-                "PCD":         round(rep.pcd, 4),
-                "Bosque size": rep.forest_size,
-                "Árboles loc": m.n_trees if m else "—",
-            })
-    gr = results.global_report
-    rows.append({
-        "Modelo":      "🌐 GLOBAL",
-        "Accuracy":    round(gr.accuracy, 4),
-        "Macro-F1":    round(gr.macro_f1, 4),
-        "Prec macro":  round(gr.macro_precision, 4),
-        "Recall mac.": round(gr.macro_recall, 4),
-        "PCD":         round(gr.pcd, 4),
-        "Bosque size": gr.forest_size,
-        "Árboles loc": "—",
-    })
-    comp_df = pd.DataFrame(rows).set_index("Modelo")
-    st.dataframe(comp_df.style.highlight_max(subset=["Accuracy", "Macro-F1"],
-                                              color="#D5F5E3")
-                              .highlight_min(subset=["Accuracy", "Macro-F1"],
-                                              color="#FADBD8"),
-                 use_container_width=True)
