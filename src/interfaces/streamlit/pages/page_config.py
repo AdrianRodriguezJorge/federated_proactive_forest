@@ -58,7 +58,31 @@ def create_dataset_adapter(config: dict):
             scale=dataset_config.get("scale", True),
             scaler_type=dataset_config.get("scaler_type", "standard")
         )
-    elif dataset_config["type"] == "CSV personalizado":
+    elif dataset_config["type"] == "Students Dropout":
+        # Usar GenericCsvAdapter con configuración específica
+        categorical_cols = [
+            "Marital status", "Application mode", "Application order", "Course",
+            "Daytime/evening attendance", "Previous qualification", "Nacionality",
+            "Mother's qualification", "Father's qualification", "Mother's occupation",
+            "Father's occupation", "Displaced", "Educational special needs", "Debtor",
+            "Tuition fees up to date", "Gender", "Scholarship holder", "International",
+            "Curricular units 1st sem (credited)", "Curricular units 1st sem (enrolled)",
+            "Curricular units 1st sem (evaluations)", "Curricular units 1st sem (approved)",
+            "Curricular units 1st sem (without evaluations)", "Curricular units 2nd sem (credited)",
+            "Curricular units 2nd sem (enrolled)", "Curricular units 2nd sem (evaluations)",
+            "Curricular units 2nd sem (approved)", "Curricular units 2nd sem (without evaluations)"
+        ]
+        return GenericCsvAdapter(
+            name="students_dropout",
+            train_path=dataset_config.get("file_path", "data/students_dropout.csv"),
+            target_column="Target",
+            test_size=dataset_config.get("test_size", 0.2),
+            categorical_features=categorical_cols,
+            scale=dataset_config.get("scale", True),
+            scaler_type=dataset_config.get("scaler_type", "standard"),
+            seed=config.get("seed", 42),
+            sep=";"
+        )
         if not dataset_config.get("file_path"):
             raise ValueError("Debe especificar la ruta del archivo CSV")
         return GenericCsvAdapter(
@@ -144,8 +168,8 @@ def render():
     col1, col2 = st.columns(2)
     with col1:
         dataset_type = st.selectbox("Tipo de dataset",
-                                    ["Iris", "NSL-KDD", "CSV personalizado"],
-                                    index=["Iris", "NSL-KDD", "CSV personalizado"].index(
+                                    ["Iris", "NSL-KDD", "Students Dropout", "CSV personalizado"],
+                                    index=["Iris", "NSL-KDD", "Students Dropout", "CSV personalizado"].index(
                                         current_config["dataset"]["type"]))
     with col2:
         scale = st.checkbox("Escalar features",
@@ -193,6 +217,22 @@ def render():
         file_path = ""  # No se usa
         target_column = "class"
         test_size = 0.0  # No se usa, archivos separados
+
+    elif dataset_type == "Students Dropout":
+        st.markdown("##### 🎓 Configuración Students Dropout")
+        st.success("✓ Dataset Students Dropout cargado automáticamente desde CSV local")
+        st.markdown("""
+        **📊 Características:**
+        - Muestras: ~4K
+        - Features: 36 (demográficas, académicas, socioeconómicas)
+        - Clases: 3 (Dropout, Graduate, Enrolled)
+        - Formato: CSV con separador ';'
+        """)
+        file_path = "data/students_dropout.csv"  # Ruta fija
+        target_column = "Target"
+        test_size = st.slider("Tamaño del conjunto de test", 0.1, 0.5,
+                             value=current_config["dataset"].get("test_size", 0.2),
+                             step=0.05, key="dropout_test_size")
 
     else:  # CSV personalizado
         st.markdown("##### ⚙️ Configuración CSV Personalizado")
@@ -311,8 +351,8 @@ def render():
         cfg = {
             "dataset": {
                 "type": dataset_type,
-                "file_path": file_path if dataset_type in ["Iris", "CSV personalizado"] else "",
-                "train_path": train_path if dataset_type == "NSL-KDD" else "",
+                "file_path": file_path if dataset_type in ["Iris", "Students Dropout", "CSV personalizado"] else "",
+                "train_path": train_path if dataset_type == "NSL-KDD" else (file_path if dataset_type == "Students Dropout" else ""),
                 "test_path": test_path if dataset_type == "NSL-KDD" else "",
                 "target_column": target_column,
                 "test_size": test_size,
@@ -392,19 +432,29 @@ def _load_dataset(cfg):
             scale=d.get("scale", True),
             scaler_type=d.get("scaler_type", "standard")
         )
-    elif d["type"] == "CSV personalizado":
-        if not d.get("file_path"):
-            raise ValueError("Debe especificar la ruta del archivo CSV")
+    elif d["type"] == "Students Dropout":
+        categorical_cols = [
+            "Marital status", "Application mode", "Application order", "Course",
+            "Daytime/evening attendance", "Previous qualification", "Nacionality",
+            "Mother's qualification", "Father's qualification", "Mother's occupation",
+            "Father's occupation", "Displaced", "Educational special needs", "Debtor",
+            "Tuition fees up to date", "Gender", "Scholarship holder", "International",
+            "Curricular units 1st sem (credited)", "Curricular units 1st sem (enrolled)",
+            "Curricular units 1st sem (evaluations)", "Curricular units 1st sem (approved)",
+            "Curricular units 1st sem (without evaluations)", "Curricular units 2nd sem (credited)",
+            "Curricular units 2nd sem (enrolled)", "Curricular units 2nd sem (evaluations)",
+            "Curricular units 2nd sem (approved)", "Curricular units 2nd sem (without evaluations)"
+        ]
         adapter = GenericCsvAdapter(
-            name=d.get("name", "custom"),
-            train_path=d["file_path"],
-            target_column=d.get("target_column", "class"),
-            test_path=d.get("test_path"),
-            categorical_features=d.get("categorical_features", []),
+            name="students_dropout",
+            train_path=d.get("file_path", "data/students_dropout.csv"),
+            target_column="Target",
+            test_size=d.get("test_size", 0.2),
+            categorical_features=categorical_cols,
             scale=d.get("scale", True),
             scaler_type=d.get("scaler_type", "standard"),
-            test_size=d.get("test_size", 0.2),
-            seed=cfg.get("seed", 42)
+            seed=cfg.get("seed", 42),
+            sep=";"
         )
     else:
         raise ValueError(f"Tipo de dataset no soportado: {d['type']}")

@@ -42,31 +42,12 @@ def render():
 
     st.divider()
 
-    # ── Filtros ───────────────────────────────────────────────────────────────
-    all_clients = sorted(set(e.client_id for e in results.all_tree_entries))
-    color_map   = {cid: _COLORS[i % len(_COLORS)] for i, cid in enumerate(all_clients)}
-
-    col_f1, col_f2, col_f3 = st.columns(3)
-    with col_f1:
-        sel_clients = st.multiselect("Filtrar clientes", all_clients, default=all_clients)
-    with col_f2:
-        only_selected = st.checkbox("Mostrar sólo seleccionados", value=False)
-    with col_f3:
-        sort_by = st.selectbox("Ordenar por", ["Rank original", "Accuracy ↓", "Macro-F1 ↓",
-                                                "PCD ↓", "Score ↓"])
-
-    st.divider()
-
     # ── Construir tabla ───────────────────────────────────────────────────────
     rows = []
     for rank, entry in enumerate(results.all_tree_entries, 1):
-        if entry.client_id not in sel_clients:
-            continue
         sel = entry.tree_local_id in results.selected_ids.get(entry.client_id, [])
-        if only_selected and not sel:
-            continue
         rows.append({
-            "rank_orig":  rank,
+            "Rank":       rank,
             "ID árbol":   f"{entry.client_id}_tree{entry.tree_local_id}",
             "Cliente":    entry.client_id,
             "Accuracy":   round(entry.accuracy, 4),
@@ -78,32 +59,14 @@ def render():
             "_cid":       entry.client_id,
         })
 
-    if not rows:
-        st.warning("No hay árboles con los filtros aplicados.")
-        return
-
     df = pd.DataFrame(rows)
 
-    # Ordenamiento secundario
-    sort_map = {
-        "Rank original": ("rank_orig", True),
-        "Accuracy ↓":    ("Accuracy", False),
-        "Macro-F1 ↓":    ("Macro-F1", False),
-        "PCD ↓":         ("PCD", False),
-        "Score ↓":       ("Score", False),
-    }
-    col_sort, asc = sort_map[sort_by]
-
-    if is_per_client:
-        # Agrupar por cliente primero, luego por criterio
-        df = df.sort_values(["Cliente", col_sort], ascending=[True, asc]).reset_index(drop=True)
-    else:
-        df = df.sort_values(col_sort, ascending=asc).reset_index(drop=True)
-
-    df.insert(0, "Rank", range(1, len(df) + 1))
+    # Para estrategia s1, ordenar por cliente
+    if sid == "s1_simple_pool":
+        df = df.sort_values(["Cliente", "Rank"], ascending=[True, True]).reset_index(drop=True)
+        df["Rank"] = range(1, len(df) + 1)  # Reasignar rank después de ordenar
 
     # ── Mostrar tabla ─────────────────────────────────────────────────────────
-    # Tabla simple sin estilos (Streamlit 1.35+ tiene issues con Styler)
     display_cols = ["Rank", "ID árbol", "Cliente", "Accuracy", "Macro-F1", "PCD", "Score", "Estado"]
     df_display = df[display_cols].copy()
     

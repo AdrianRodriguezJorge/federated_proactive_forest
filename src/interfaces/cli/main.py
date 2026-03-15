@@ -21,6 +21,29 @@ def load_dataset(cfg: dict):
         return NslKddAdapter(train_path=d["train_path"], test_path=d["test_path"],
                              scale=d.get("scale", True),
                              scaler_type=d.get("scaler_type", "standard")).load()
+    elif t == "Students Dropout":
+        from src.infrastructure.dataset.csv_adapter import GenericCsvAdapter
+        categorical_cols = [
+            "Marital status", "Application mode", "Application order", "Course",
+            "Daytime/evening attendance", "Previous qualification", "Nacionality",
+            "Mother's qualification", "Father's qualification", "Mother's occupation",
+            "Father's occupation", "Displaced", "Educational special needs", "Debtor",
+            "Tuition fees up to date", "Gender", "Scholarship holder", "International",
+            "Curricular units 1st sem (credited)", "Curricular units 1st sem (enrolled)",
+            "Curricular units 1st sem (evaluations)", "Curricular units 1st sem (approved)",
+            "Curricular units 1st sem (without evaluations)", "Curricular units 2nd sem (credited)",
+            "Curricular units 2nd sem (enrolled)", "Curricular units 2nd sem (evaluations)",
+            "Curricular units 2nd sem (approved)", "Curricular units 2nd sem (without evaluations)"
+        ]
+        return GenericCsvAdapter(
+            name="students_dropout",
+            train_path=d["train_path"],
+            target_column="Target",
+            categorical_features=categorical_cols,
+            scale=d.get("scale", True),
+            scaler_type=d.get("scaler_type", "standard"),
+            sep=";"
+        ).load()
     else:
         from src.infrastructure.dataset.csv_adapter import GenericCsvAdapter
         return GenericCsvAdapter(

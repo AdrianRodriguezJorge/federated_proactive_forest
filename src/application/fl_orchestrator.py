@@ -391,6 +391,7 @@ class FLEXOrchestrator:
             y_pred_val = pf.predict(X_val)
             acc = float(accuracy_score(y_val, y_pred_val))
             f1 = float(f1_score(y_val, y_pred_val, average='macro', zero_division=0))
+            pcd = float(pf.diversity_measure(X_val, y_val, 'pcd'))
 
             client_forests[client_id] = pf
             client_metadata[client_id] = ClientMetadata(
@@ -398,7 +399,7 @@ class FLEXOrchestrator:
                 n_trees=len(pf.get_trees()),
                 accuracy=acc,
                 macro_f1=f1,
-                pcd=0.0,  # TODO: Calculate real PCD
+                pcd=pcd,
             )
 
         return client_forests, client_metadata

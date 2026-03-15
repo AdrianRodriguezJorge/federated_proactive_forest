@@ -72,6 +72,13 @@ class ProactiveForest(ABCForest):
         forest = self._cpf.return_forest()
         return forest.get_trees()
 
+    def diversity_measure(self, X, y, diversity='pcd'):
+        """Calculate diversity measure of the forest."""
+        if not self._is_fitted or self._cpf is None:
+            raise ValueError("Forest not fitted yet.")
+        forest = self._cpf.return_forest()
+        return forest.diversity_measure(X, y, diversity)
+
     @classmethod
     def from_trees(cls, trees: List[Any], class_names: List[str] = None) -> 'ProactiveForest':
         """Create a forest instance from a list of trees."""

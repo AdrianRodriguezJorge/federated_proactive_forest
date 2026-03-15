@@ -18,7 +18,7 @@ class GenericCsvAdapter(IDatasetAdapter):
                  test_path: Optional[str] = None,
                  categorical_features: Optional[List[str]] = None,
                  scale: bool = True, scaler_type: str = "standard",
-                 test_size: float = 0.2, seed: int = 42):
+                 test_size: float = 0.2, seed: int = 42, sep: str = ","):
         self._name = name
         self.train_path = train_path
         self.test_path = test_path
@@ -28,6 +28,7 @@ class GenericCsvAdapter(IDatasetAdapter):
         self.scaler_type = scaler_type
         self.test_size = test_size
         self.seed = seed
+        self.sep = sep
         self._class_names_: list = []
 
     @property
@@ -39,9 +40,9 @@ class GenericCsvAdapter(IDatasetAdapter):
         return len(self._class_names_)
 
     def load(self) -> DatasetSplit:
-        train_df = pd.read_csv(self.train_path)
+        train_df = pd.read_csv(self.train_path, sep=self.sep)
         if self.test_path:
-            test_df = pd.read_csv(self.test_path)
+            test_df = pd.read_csv(self.test_path, sep=self.sep)
         else:
             train_df, test_df = train_test_split(train_df, test_size=self.test_size,
                                                  random_state=self.seed)
