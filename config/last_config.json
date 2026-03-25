@@ -10,29 +10,29 @@
     "scaler_type": "standard"
   },
   "federation": {
-    "n_clients": 2,
+    "n_clients": 5,
     "distribution": "iid",
     "dirichlet_alpha": 0.5
   },
   "model": {
     "n_estimators": 100,
     "alpha": 0.1,
-    "split_criterion": "entropy",
+    "split_criterion": "gini",
     "feature_selection": "prob",
     "use_progressive_stopping": true,
     "convergence": 0.002,
     "episode_size": 5
   },
   "aggregation": {
-    "strategy": "s2_global_accuracy",
-    "f1_weight": 0.6,
-    "pcd_weight": 0.4,
+    "strategy": "s4_global_f1_pcd",
+    "f1_weight": 0.7,
+    "pcd_weight": 0.3,
     "convergence": 0.002,
     "episode_size": 5
   },
   "prediction": {
-    "local_weight": 0.5,
-    "global_weight": 0.5
+    "local_weight": 0.4,
+    "global_weight": 0.6
   },
   "verbose": false,
   "seed": 42

@@ -6,7 +6,7 @@ build-backend = "setuptools.backends.legacy:build"
 name = "federated-proactive-forest"
 version = "3.0.0"
 description = "Federated Learning con Proactive Forest (Cepero 2023) + 7 estrategias de agregación + UI Streamlit"
-requires-python = ">=3.10"
+requires-python = ">=3.8"
 
 dependencies = [
     "numpy>=1.24",

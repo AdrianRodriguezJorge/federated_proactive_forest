@@ -9,9 +9,13 @@ from src.infrastructure.dataset.iris_adapter import IrisAdapter
 from src.infrastructure.dataset.nslkdd_adapter import NslKddAdapter
 from src.infrastructure.dataset.csv_adapter import GenericCsvAdapter
 
-# Configuración de persistencia (igual que en page_config.py)
-CONFIG_DIR = Path("config")
+# Configuración de persistencia - usar ruta absoluta del proyecto
+PROJECT_ROOT = Path(__file__).resolve().parents[4]  # federated_proactive_forest/
+CONFIG_DIR = PROJECT_ROOT / "config"
 CONFIG_FILE = CONFIG_DIR / "last_config.json"
+
+# Límite de líneas de log para evitar fuga de memoria
+MAX_LOG_LINES = 50
 
 
 def load_config_from_file() -> dict:
@@ -30,16 +34,17 @@ def create_dataset_adapter(config: dict):
     dataset_config = config["dataset"]
 
     if dataset_config["type"] == "Iris":
+        # Iris se carga desde sklearn, el path se ignora
         return IrisAdapter(
-            data_path=dataset_config.get("file_path", "data/iris.csv"),
+            data_path=None,
             train_test_split_ratio=1 - dataset_config.get("test_size", 0.2),
             scale=dataset_config.get("scale", True),
             scaler_type=dataset_config.get("scaler_type", "standard")
         )
     elif dataset_config["type"] == "NSL-KDD":
         return NslKddAdapter(
-            train_path="data/NSL-KDD_train.csv",
-            test_path="data/NSL-KDD_test.csv",
+            train_path=str(PROJECT_ROOT / "data" / "NSL-KDD_train.csv"),
+            test_path=str(PROJECT_ROOT / "data" / "NSL-KDD_test.csv"),
             scale=dataset_config.get("scale", True),
             scaler_type=dataset_config.get("scaler_type", "standard")
         )
@@ -132,6 +137,9 @@ def render():
             status.info(f"**{msg}**  {detail}")
             ts = time.strftime("%H:%M:%S")
             log_lines.append(f"[{ts}] {pct:3d}% | {msg} {detail}")
+            # Limitar líneas de log para evitar fuga de memoria
+            if len(log_lines) > MAX_LOG_LINES:
+                log_lines.pop(0)
             log_placeholder.code("\n".join(log_lines))
 
         try:

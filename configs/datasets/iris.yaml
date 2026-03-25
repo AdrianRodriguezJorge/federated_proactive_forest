@@ -1,5 +1,7 @@
 name: "iris"
-path: "data/iris.csv"
+# Nota: El dataset Iris se carga desde scikit-learn (sklearn.datasets.load_iris)
+# El path es opcional y se ignora en el IrisAdapter
+path: null
 target_column: "class"
 test_size: 0.2
 random_state: 42

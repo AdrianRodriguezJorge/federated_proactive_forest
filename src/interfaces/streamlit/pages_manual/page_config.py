@@ -10,8 +10,9 @@ from src.infrastructure.dataset.nslkdd_adapter import NslKddAdapter
 from src.infrastructure.dataset.csv_adapter import GenericCsvAdapter
 
 
-# Configuración de persistencia
-CONFIG_DIR = Path("config")
+# Configuración de persistencia - usar ruta absoluta del proyecto
+PROJECT_ROOT = Path(__file__).resolve().parents[4]  # federated_proactive_forest/
+CONFIG_DIR = PROJECT_ROOT / "config"
 CONFIG_FILE = CONFIG_DIR / "last_config.json"
 
 
@@ -51,16 +52,17 @@ def create_dataset_adapter(config: dict):
     dataset_config = config["dataset"]
 
     if dataset_config["type"] == "Iris":
+        # Iris se carga desde sklearn, el path se ignora
         return IrisAdapter(
-            data_path=dataset_config.get("file_path", "data/iris.csv"),
+            data_path=None,
             train_test_split_ratio=1 - dataset_config.get("test_size", 0.2),
             scale=dataset_config.get("scale", True),
             scaler_type=dataset_config.get("scaler_type", "standard")
         )
     elif dataset_config["type"] == "NSL-KDD":
         return NslKddAdapter(
-            train_path="data/NSL-KDD_train.csv",
-            test_path="data/NSL-KDD_test.csv",
+            train_path=str(PROJECT_ROOT / "data" / "NSL-KDD_train.csv"),
+            test_path=str(PROJECT_ROOT / "data" / "NSL-KDD_test.csv"),
             scale=dataset_config.get("scale", True),
             scaler_type=dataset_config.get("scaler_type", "standard")
         )
@@ -88,19 +90,6 @@ def create_dataset_adapter(config: dict):
             scaler_type=dataset_config.get("scaler_type", "standard"),
             seed=config.get("seed", 42),
             sep=";"
-        )
-        if not dataset_config.get("file_path"):
-            raise ValueError("Debe especificar la ruta del archivo CSV")
-        return GenericCsvAdapter(
-            name=dataset_config.get("name", "custom"),
-            train_path=dataset_config["file_path"],
-            target_column=dataset_config.get("target_column", "class"),
-            test_path=dataset_config.get("test_path"),
-            categorical_features=dataset_config.get("categorical_features", []),
-            scale=dataset_config.get("scale", True),
-            scaler_type=dataset_config.get("scaler_type", "standard"),
-            test_size=dataset_config.get("test_size", 0.2),
-            seed=config.get("seed", 42)
         )
     else:
         raise ValueError(f"Tipo de dataset no soportado: {dataset_config['type']}")
@@ -198,7 +187,8 @@ def render():
         test_size = st.slider("Tamaño del conjunto de test", 0.1, 0.5,
                              value=current_config["dataset"].get("test_size", 0.2),
                              step=0.05, key="iris_test_size")
-        file_path = current_config["dataset"].get("file_path", "data/iris.csv")
+        # Iris se carga desde sklearn, el path es opcional y se ignora
+        file_path = current_config["dataset"].get("file_path", None)
         target_column = "class"
 
     elif dataset_type == "NSL-KDD":
@@ -346,8 +336,8 @@ def render():
             "dataset": {
                 "type": dataset_type,
                 "file_path": file_path if dataset_type in ["Iris", "Students Dropout", "CSV personalizado"] else "",
-                "train_path": "data/NSL-KDD_train.csv" if dataset_type == "NSL-KDD" else (file_path if dataset_type == "Students Dropout" else ""),
-                "test_path": "data/NSL-KDD_test.csv" if dataset_type == "NSL-KDD" else "",
+                "train_path": str(PROJECT_ROOT / "data" / "NSL-KDD_train.csv") if dataset_type == "NSL-KDD" else (file_path if dataset_type == "Students Dropout" else ""),
+                "test_path": str(PROJECT_ROOT / "data" / "NSL-KDD_test.csv") if dataset_type == "NSL-KDD" else "",
                 "target_column": target_column,
                 "test_size": test_size,
                 "scale": scale,
@@ -413,16 +403,17 @@ def _load_dataset(cfg):
     d = cfg["dataset"]
 
     if d["type"] == "Iris":
+        # Iris se carga desde sklearn, el path es opcional y se ignora
         adapter = IrisAdapter(
-            data_path=d.get("file_path", "data/iris.csv"),
+            data_path=None,
             train_test_split_ratio=1 - d.get("test_size", 0.2),
             scale=d.get("scale", True),
             scaler_type=d.get("scaler_type", "standard")
         )
     elif d["type"] == "NSL-KDD":
         adapter = NslKddAdapter(
-            train_path="data/NSL-KDD_train.csv",
-            test_path="data/NSL-KDD_test.csv",
+            train_path=str(PROJECT_ROOT / "data" / "NSL-KDD_train.csv"),
+            test_path=str(PROJECT_ROOT / "data" / "NSL-KDD_test.csv"),
             scale=d.get("scale", True),
             scaler_type=d.get("scaler_type", "standard")
         )

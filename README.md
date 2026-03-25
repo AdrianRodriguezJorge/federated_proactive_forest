@@ -462,9 +462,9 @@ federated_proactive_forest/
 │       └── exp007_s7_perclient_f1_pcd.yaml
 │
 └── data/
-    ├── iris.csv                      # ✅ Incluido (150 muestras)
     ├── NSL-KDD_train.csv             # Descargar
     └── NSL-KDD_test.csv              # Descargar
+    # Nota: Iris se carga automáticamente desde scikit-learn (no requiere archivo)
 ```
 
 ## 🎨 Interfaz Streamlit
