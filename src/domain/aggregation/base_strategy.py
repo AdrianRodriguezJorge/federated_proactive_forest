@@ -1,6 +1,7 @@
 """Strategy Pattern — 7 implementaciones concretas."""
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Tuple, Optional
+import numpy as np
 
 
 class IAggregationStrategy(ABC):
@@ -9,8 +10,22 @@ class IAggregationStrategy(ABC):
         self,
         client_trees: Dict[str, List[Any]],
         client_metadata: Dict,
+        X_val: Optional[np.ndarray] = None,
+        y_val: Optional[np.ndarray] = None,
+        max_trees: Optional[int] = None,
+        max_trees_per_client: Optional[int] = None,
+        **kwargs
     ) -> Tuple[List[Any], Dict[str, List[int]], List[Any]]:
         """Aggregate trees for the global model.
+
+        Args:
+            client_trees: Dict mapping client_id to list of trees
+            client_metadata: Dict mapping client_id to metadata
+            X_val: Validation features for Progressive Forest convergence (S2-S7)
+            y_val: Validation labels for Progressive Forest convergence (S2-S7)
+            max_trees: Maximum number of trees for global strategies (S2-S4)
+            max_trees_per_client: Maximum trees per client for per-client strategies (S5-S7)
+            **kwargs: Strategy-specific parameters (e.g., f1_weight, pcd_weight)
 
         Returns:
           - List[DecisionTree]: árboles del bosque global

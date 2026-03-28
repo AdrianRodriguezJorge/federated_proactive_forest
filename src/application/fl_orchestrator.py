@@ -291,10 +291,20 @@ class FLEXOrchestrator:
         client_forests, client_metadata = self._train_local_forests()
         client_ids = list(client_forests.keys())
 
+        # Log: árboles entrenados por cliente
+        print("\n" + "=" * 60)
+        print("🌳 ÁRBOLES ENTRENADOS POR CLIENTE")
+        print("=" * 60)
+        for cid in client_ids:
+            n_trees = len(client_forests[cid].get_trees())
+            print(f"  {cid}: {n_trees} árboles entrenados")
+        total_entrenados = sum(len(pf.get_trees()) for pf in client_forests.values())
+        print(f"  TOTAL: {total_entrenados} árboles")
+
         # ── STEP 2: COLLECT trees from all clients ────────────────────────────
         self.step_callback("Recolectando árboles de clientes...", 40)
         client_trees = {cid: pf.get_trees() for cid, pf in client_forests.items()}
-        
+
         # Estimate communication cost (MB per tree)
         trees_per_client = [len(trees) for trees in client_trees.values()]
         avg_tree_size_kb = 0.1  # Approximate for small trees
@@ -304,7 +314,75 @@ class FLEXOrchestrator:
         self.step_callback("Agregando bosques...", 60)
         strategy_name = self._get_strategy_name()
         strategy = AggregationFactory.create_strategy(strategy_name)
-        global_trees, selected_ids, all_tree_entries = strategy.aggregate(client_trees, client_metadata)
+
+        # Get n_estimators from config to limit the number of trees selected
+        n_estimators = self._get_config_value('model', 'n_estimators') or self._get_config_value('n_estimators', default=100)
+
+        # Get validation data for Progressive Forest (S2-S7)
+        X_test, y_test = self.dataset_split.X_test, self.dataset_split.y_test
+
+        # Build kwargs based on strategy type
+        # S2-S4: global strategies use max_trees (for logging, not for stopping)
+        # S5-S7: per-client strategies use max_trees_per_client
+        aggregate_kwargs = {}
+        if strategy_name in ['S2', 'S3', 'S4']:
+            # Global strategies: pass validation data for CPF early stopping
+            aggregate_kwargs['X_val'] = X_test
+            aggregate_kwargs['y_val'] = y_test
+            # max_trees is passed but NOT used for stopping in global strategies
+            aggregate_kwargs['max_trees'] = n_estimators
+        elif strategy_name in ['S5', 'S6', 'S7']:
+            # Per-client strategies: pass validation data for CPF early stopping
+            aggregate_kwargs['X_val'] = X_test
+            aggregate_kwargs['y_val'] = y_test
+            aggregate_kwargs['max_trees_per_client'] = n_estimators
+        else:
+            # S1: simple pool, no validation data needed
+            pass
+
+        # Add strategy-specific parameters
+        if strategy_name == 'S4':
+            aggregate_kwargs['f1_weight'] = self._get_config_value('aggregation', 'f1_weight', default=0.5)
+            aggregate_kwargs['pcd_weight'] = self._get_config_value('aggregation', 'pcd_weight', default=0.5)
+        elif strategy_name == 'S7':
+            aggregate_kwargs['f1_weight'] = self._get_config_value('aggregation', 'f1_weight', default=0.5)
+            aggregate_kwargs['pcd_weight'] = self._get_config_value('aggregation', 'pcd_weight', default=0.5)
+
+        global_trees, selected_ids, all_tree_entries = strategy.aggregate(
+            client_trees,
+            client_metadata,
+            **aggregate_kwargs
+        )
+
+        # Log: árboles seleccionados por cliente
+        print("\n" + "=" * 60)
+        print(f"📊 ÁRBOLES SELECCIONADOS (Estrategia: {strategy_name})")
+        print("=" * 60)
+        for cid, indices in selected_ids.items():
+            n_selected = len(indices)
+            n_total = len(client_trees[cid])
+            print(f"  {cid}: {n_selected}/{n_total} árboles seleccionados")
+
+        # Log: tamaño del bosque global
+        print("\n" + "=" * 60)
+        print(f"🌲 BOSQUE GLOBAL")
+        print("=" * 60)
+        print(f"  Tamaño final: {len(global_trees)} árboles")
+
+        # Log: tamaño final de cada cliente (bosque global + árboles locales)
+        # IMPORTANT: Show sizes without duplicates (each client doesn't use its own trees from global)
+        print("\n" + "=" * 60)
+        print("📈 TAMAÑO FINAL POR CLIENTE (sin duplicados)")
+        print("=" * 60)
+        global_tree_sources = [e.client_id for e in all_tree_entries]
+        for cid in client_ids:
+            n_local = len(client_trees[cid])
+            # Count external global trees (excluding trees from this client)
+            n_external_global = sum(1 for source_cid in global_tree_sources if source_cid != cid)
+            total = n_local + n_external_global
+            n_from_this_client = sum(1 for source_cid in global_tree_sources if source_cid == cid)
+            print(f"  {cid}: {n_local} locales + {n_external_global} globales externos ({n_from_this_client} propios excluidos) = {total} árboles")
+        print("=" * 60 + "\n")
 
         # ── STEP 4: EVALUATE on test set ───────────────────────────────────────
         self.step_callback("Evaluando modelo global...", 85)
@@ -315,6 +393,7 @@ class FLEXOrchestrator:
         global_report = ForestEvaluator.evaluate(global_forest, X_test, y_test, class_names)
 
         # Perform hybrid prediction on clients using local and global trees
+        # IMPORTANT: Avoid duplicates - each client should not use global trees that came from itself
         client_hybrid_predictions = {}
         local_weight = self.config.get('prediction', {}).get('local_weight', 0.4)
         global_weight = self.config.get('prediction', {}).get('global_weight', 0.6)
@@ -322,11 +401,21 @@ class FLEXOrchestrator:
         from src.domain.prediction.hybrid_predictor import HybridPredictor
         predictor = HybridPredictor(local_weight=local_weight, global_weight=global_weight, n_classes=n_classes)
         client_hybrid_forest_sizes = {}
+        
+        # Build a mapping: global_index -> client_id (to know which client each global tree came from)
+        global_tree_sources = [e.client_id for e in all_tree_entries]
+        
         for cid, pf in client_forests.items():
             local_trees = pf.get_trees()
-            hybrid_preds = predictor.predict(X_test, local_trees, global_trees)
+            # Get only global trees that did NOT come from this client (avoid duplicates)
+            external_global_trees = [
+                tree for tree, source_cid in zip(global_trees, global_tree_sources) 
+                if source_cid != cid
+            ]
+            hybrid_preds = predictor.predict(X_test, local_trees, external_global_trees)
             client_hybrid_predictions[cid] = hybrid_preds
-            client_hybrid_forest_sizes[cid] = len(local_trees) + len(global_trees)
+            # Forest size = local trees + external global trees (no duplicates)
+            client_hybrid_forest_sizes[cid] = len(local_trees) + len(external_global_trees)
 
         self.step_callback("Ronda completada", 100)
 

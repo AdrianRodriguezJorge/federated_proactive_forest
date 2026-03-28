@@ -382,6 +382,9 @@ class ProactiveForestClassifier(DecisionForestClassifier):
         prob = [1 / len(y) for _ in range(len(y))]
 
         for i in range(EPISODE):
+            # Verificar límite máximo de árboles
+            if len(self._trees) >= self.n_estimators:
+                break
             ids = self.set_generator.training_ids(prob)
             new_tree = self._tree_builder.build_tree(X[ids], y[ids], self._n_classes)
             self._trees.append(new_tree)

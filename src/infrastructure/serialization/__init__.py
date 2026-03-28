@@ -1,1 +1,0 @@
-# Serialization infrastructure package

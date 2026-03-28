@@ -10,7 +10,7 @@
     "scaler_type": "standard"
   },
   "federation": {
-    "n_clients": 5,
+    "n_clients": 2,
     "distribution": "iid",
     "dirichlet_alpha": 0.5
   },
@@ -24,7 +24,7 @@
     "episode_size": 5
   },
   "aggregation": {
-    "strategy": "s4_global_f1_pcd",
+    "strategy": "s7_perclient_f1_pcd",
     "f1_weight": 0.7,
     "pcd_weight": 0.3,
     "convergence": 0.002,
