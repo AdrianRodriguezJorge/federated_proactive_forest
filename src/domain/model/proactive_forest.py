@@ -39,7 +39,7 @@ class ProactiveForest(ABCForest):
         self._cpf = None
 
         # Set encoder if class_names provided
-        if class_names:
+        if class_names is not None and len(class_names) > 0:
             self._classifier._encoder = LabelEncoder()
             self._classifier._encoder.classes_ = np.array(class_names)
 
