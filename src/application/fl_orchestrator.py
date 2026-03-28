@@ -53,6 +53,7 @@ class FLResults:
     selected_ids: Dict[str, List[int]] = field(default_factory=dict)
     all_tree_entries: List[Any] = field(default_factory=list)
     global_report: Any = None
+    global_predictions: np.ndarray = None
     num_rounds: int = 1
     communication_cost: float = 0.0  # Estimación de datos transferidos (MB)
     client_hybrid_predictions: Dict[str, np.ndarray] = field(default_factory=dict)
@@ -390,6 +391,20 @@ class FLEXOrchestrator:
         X_test, y_test = self.dataset_split.X_test, self.dataset_split.y_test
         class_names = self.dataset_split.class_names
 
+        # Get global predictions in numeric format (class indices)
+        global_predictions_raw = global_forest.predict(X_test)
+        
+        # Convert predictions to numeric format if they are strings
+        if len(global_predictions_raw) > 0 and isinstance(global_predictions_raw[0], str):
+            class_to_idx = {cn: idx for idx, cn in enumerate(class_names)}
+            global_predictions = np.array([class_to_idx[pred] for pred in global_predictions_raw])
+        else:
+            # Ensure numeric format (could be int or float)
+            global_predictions = np.asarray(global_predictions_raw, dtype=np.int64)
+        
+        print(f"[DEBUG] global_predictions type: {type(global_predictions_raw[0]) if len(global_predictions_raw) > 0 else 'N/A'}, shape: {global_predictions.shape}")
+        print(f"[DEBUG] y_test type: {type(y_test[0]) if len(y_test) > 0 else 'N/A'}, shape: {y_test.shape}")
+            
         global_report = ForestEvaluator.evaluate(global_forest, X_test, y_test, class_names)
 
         # Perform hybrid prediction on clients using local and global trees
@@ -432,6 +447,7 @@ class FLEXOrchestrator:
             selected_ids=selected_ids,
             all_tree_entries=all_tree_entries,
             global_report=global_report,
+            global_predictions=global_predictions,
             num_rounds=1,
             communication_cost=self._data_transferred,
             client_hybrid_predictions=client_hybrid_predictions,
