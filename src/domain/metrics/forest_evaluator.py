@@ -31,7 +31,13 @@ class ForestEvaluator:
     def evaluate(forest, X: np.ndarray, y: np.ndarray,
                  class_names: List[str]) -> ForestReport:
         y_pred = forest.predict(X)
-        
+
+        # Convert to numpy array to handle pandas Series with non-default index
+        if hasattr(y, 'values'):
+            y = y.values
+        if hasattr(y_pred, 'values'):
+            y_pred = y_pred.values
+
         # Ensure y and y_pred are strings for consistency
         if len(y) > 0 and isinstance(y[0], (int, np.integer)):
             y = np.array([class_names[i] for i in y])
@@ -69,7 +75,13 @@ class ForestEvaluator:
                                   class_names: List[str], forest_size: int,
                                   pcd: float = 0.0) -> ForestReport:
         """Evalúa métricas a partir de predicciones ya calculadas (útil para inferencia híbrida)."""
-        
+
+        # Convert to numpy array to handle pandas Series with non-default index
+        if hasattr(y_true, 'values'):
+            y_true = y_true.values
+        if hasattr(y_pred, 'values'):
+            y_pred = y_pred.values
+
         # Ensure y and y_pred are strings for consistency
         if len(y_true) > 0 and isinstance(y_true[0], (int, np.integer)):
             y_true = np.array([class_names[i] for i in y_true])
