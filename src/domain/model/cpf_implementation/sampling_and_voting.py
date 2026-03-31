@@ -83,10 +83,13 @@ class PerformanceWeightingVoter(WeightingVoter):
     def predict(self, x):
         weights = np.array([model.weight for model in self._predictors])
         weights = weights / np.sum(weights)
-        results = np.zeros(self._n_classes)
+        results = {}
         for model, w in zip(self._predictors, weights):
-            results[model.predict(x)] += w
-        return np.argmax(results)
+            pred = model.predict(x)
+            if pred not in results:
+                results[pred] = 0
+            results[pred] += w
+        return max(results, key=results.get)
 
 
 class DistributionSummationVoter(WeightingVoter):

@@ -51,14 +51,24 @@ class ProactiveForest(ABCForest):
             X: Training features
             y: Training labels
         """
+        # Encode labels using consistent encoder if available
+        if self._classifier._encoder is None:
+            self._classifier._encoder = LabelEncoder()
+            y_encoded = self._classifier._encoder.fit_transform(y)
+        else:
+            y_encoded = self._classifier._encoder.transform(y)
+
+        # Keep n_classes anchored in the encoder for consistent global mapping.
+        self._classifier._n_classes = len(self._classifier._encoder.classes_)
+
         # Split for early stopping (80-20)
         if len(X) > 30:
             X_train, X_val, y_train, y_val = train_test_split(
-                X, y, test_size=0.2, random_state=self.random_state
+                X, y_encoded, test_size=0.2, random_state=self.random_state
             )
         else:
             X_train, X_val = X, X
-            y_train, y_val = y, y
+            y_train, y_val = y_encoded, y_encoded
 
         # Use Comparative Progressive Forest with early stopping
         self._cpf = ComparativeProgressiveForest(self._classifier, verbose=self.verbose)

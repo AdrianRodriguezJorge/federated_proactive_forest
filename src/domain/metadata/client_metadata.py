@@ -13,9 +13,6 @@ class ClientMetadata:
     # IDs de árboles del bosque LOCAL seleccionados durante la agregación
     # (llenado por el servidor, devuelto al cliente para el No-Repeat Merge)
     selected_local_tree_ids: List[int] = field(default_factory=list)
-    # IDs de árboles del bosque LOCAL seleccionados durante la agregación
-    # (llenado por el servidor, devuelto al cliente para el No-Repeat Merge)
-    selected_local_tree_ids: List[int] = field(default_factory=list)
 
     def to_dict(self) -> Dict[str, Any]:
         return {

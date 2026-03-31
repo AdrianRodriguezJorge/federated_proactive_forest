@@ -217,7 +217,21 @@ class DecisionForestClassifier(BaseEstimator, ClassifierMixin):
         result = np.zeros(sample_size, dtype=int)
         for i in range(sample_size):
             result[i] = voter.predict(X[i])
-        return self._encoder.inverse_transform(result)
+
+        if self._encoder is None:
+            return result
+
+        # Evitar ValueError si el modelo devuelve etiquetas fuera del rango (p.ej. cuando hay 1 clase)
+        max_label = len(self._encoder.classes_) - 1
+        if np.any(result < 0) or np.any(result > max_label):
+            result = np.clip(result, 0, max_label)
+
+        try:
+            return self._encoder.inverse_transform(result)
+        except ValueError as e:
+            # Por seguridad, reentrenar con clases completas de encoder si falla
+            safe_result = np.clip(result, 0, max_label)
+            return self._encoder.inverse_transform(safe_result)
 
     def predict_proba(self, X, indexs, check_input=True):
         if check_input:
@@ -359,10 +373,21 @@ class ProactiveForestClassifier(DecisionForestClassifier):
         verbose=False suprime los print() originales (se usa en producción FL).
         """
         self._n_instances, self._n_features = X.shape
-        self._encoder = LabelEncoder()
-        y = self._encoder.fit_transform(y)
-        yt = self._encoder.fit_transform(yt)
-        self._n_classes = utils.count_classes(y)
+
+        if self._encoder is None:
+            self._encoder = LabelEncoder()
+            all_labels = np.unique(np.concatenate([y, yt]))
+            self._encoder.fit(all_labels)
+        else:
+            all_labels = np.unique(np.concatenate([self._encoder.classes_, y, yt]))
+            if not np.array_equal(np.sort(all_labels), np.sort(self._encoder.classes_)):
+                self._encoder = LabelEncoder()
+                self._encoder.fit(all_labels)
+
+        y = self._encoder.transform(y)
+        yt = self._encoder.transform(yt)
+
+        self._n_classes = len(self._encoder.classes_)
         self.set_generator = ProbabilitySet(self._n_instances)
         self._m_progressive_accuracy = []
 

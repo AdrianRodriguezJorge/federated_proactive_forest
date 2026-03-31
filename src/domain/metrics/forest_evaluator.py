@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List
 import numpy as np
 from sklearn.metrics import (accuracy_score, confusion_matrix,
-                              precision_score, recall_score, f1_score)
+                              precision_score, recall_score, f1_score, classification_report)
 
 
 @dataclass
@@ -22,6 +22,26 @@ class ForestReport:
     pcd: float
     forest_size: int
     class_names: List[str]
+
+    @property
+    def report(self) -> str:
+        """Generate a detailed classification report string."""
+        # Create dummy y_true and y_pred from confusion matrix for classification_report
+        # This is a bit hacky, but since we don't store the original predictions,
+        # we reconstruct them from the confusion matrix
+        cm = self.confusion_matrix
+        y_true = []
+        y_pred = []
+        for i in range(len(self.class_names)):
+            for j in range(len(self.class_names)):
+                count = int(cm[i, j])
+                y_true.extend([self.class_names[i]] * count)
+                y_pred.extend([self.class_names[j]] * count)
+        
+        if len(y_true) == 0:
+            return "No predictions available for classification report."
+        
+        return classification_report(y_true, y_pred, target_names=self.class_names, zero_division=0)
 
 
 class ForestEvaluator:

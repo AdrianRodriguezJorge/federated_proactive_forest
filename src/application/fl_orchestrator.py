@@ -30,6 +30,24 @@ from src.domain.metrics.forest_evaluator import ForestEvaluator, ForestReport
 from src.domain.model.proactive_forest import ProactiveForest
 from src.domain.dataset.base_adapter import DatasetSplit
 from src.domain.metadata.client_metadata import ClientMetadata
+from src.infrastructure.flex.flex_train_pf import (
+    init_server_model_pf,
+    train_pf,
+    collect_clients_trees_pf,
+)
+from src.infrastructure.flex.flex_deploy_model_pf import (
+    deploy_server_config_pf,
+    deploy_server_model_pf,
+)
+from src.infrastructure.flex.flex_collect_trees_pf import (
+    aggregate_trees_from_pf,
+    set_aggregated_trees_pf,
+)
+from src.infrastructure.flex.flex_evaluate_pf import (
+    evaluate_global_pf_model,
+    evaluate_global_pf_model_at_clients,
+    evaluate_local_pf_model_at_clients,
+)
 
 
 @dataclass
@@ -311,10 +329,34 @@ class FLEXOrchestrator:
         avg_tree_size_kb = 0.1  # Approximate for small trees
         self._data_transferred = sum(trees_per_client) * avg_tree_size_kb / 1024
 
+        # Prepare FLEX server/client models
+        server_flex_model = {
+            'config': self.config,
+            'model': None,
+            'trees': [],
+        }
+
+        clients_flex_models = {}
+        for cid, pf in client_forests.items():
+            clients_flex_models[cid] = {
+                'model': pf,
+                'trees': pf.get_trees(),
+                'X_test': self.dataset_split.X_test,
+                'y_test': self.dataset_split.y_test,
+            }
+
+        for client_flex_model in clients_flex_models.values():
+            deploy_server_config_pf(server_flex_model, client_flex_model)
+            deploy_server_model_pf(server_flex_model, client_flex_model)
+
+        collect_clients_trees_pf(server_flex_model, clients_flex_models)
+
+        # Store client metadata for aggregation
+        server_flex_model['client_metadata'] = client_metadata
+
         # ── STEP 3: AGGREGATE using selected strategy ──────────────────────────
         self.step_callback("Agregando bosques...", 60)
         strategy_name = self._get_strategy_name()
-        strategy = AggregationFactory.create_strategy(strategy_name)
 
         # Get n_estimators from config to limit the number of trees selected
         n_estimators = self._get_config_value('model', 'n_estimators') or self._get_config_value('n_estimators', default=100)
@@ -324,27 +366,18 @@ class FLEXOrchestrator:
         X_test, y_test = self.dataset_split.X_test, self.dataset_split.y_test
 
         # Build kwargs based on strategy type
-        # S2-S4: global strategies use max_trees (for logging, not for stopping)
-        # S5-S7: per-client strategies use max_trees_per_client
         aggregate_kwargs = {}
         if strategy_name in ['S2', 'S3', 'S4']:
-            # Global strategies: pass validation data for CPF early stopping
             aggregate_kwargs['X_val'] = X_test
             aggregate_kwargs['y_val'] = y_test
-            # max_trees is passed but NOT used for stopping in global strategies
             aggregate_kwargs['max_trees'] = n_estimators
-            aggregate_kwargs['t_max'] = t_max  # Límite máximo de árboles en agregación
+            aggregate_kwargs['t_max'] = t_max
         elif strategy_name in ['S5', 'S6', 'S7']:
-            # Per-client strategies: pass validation data for CPF early stopping
             aggregate_kwargs['X_val'] = X_test
             aggregate_kwargs['y_val'] = y_test
             aggregate_kwargs['max_trees_per_client'] = n_estimators
-            aggregate_kwargs['t_max'] = t_max  # Límite máximo de árboles en agregación
-        else:
-            # S1: simple pool, no validation data needed
-            pass
+            aggregate_kwargs['t_max'] = t_max
 
-        # Add strategy-specific parameters
         if strategy_name == 'S4':
             aggregate_kwargs['f1_weight'] = self._get_config_value('aggregation', 'f1_weight', default=0.5)
             aggregate_kwargs['pcd_weight'] = self._get_config_value('aggregation', 'pcd_weight', default=0.5)
@@ -352,11 +385,14 @@ class FLEXOrchestrator:
             aggregate_kwargs['f1_weight'] = self._get_config_value('aggregation', 'f1_weight', default=0.5)
             aggregate_kwargs['pcd_weight'] = self._get_config_value('aggregation', 'pcd_weight', default=0.5)
 
-        global_trees, selected_ids, all_tree_entries = strategy.aggregate(
-            client_trees,
-            client_metadata,
-            **aggregate_kwargs
-        )
+        # Pass argument bundle only once to avoid duplicate keyword arg errors.
+        aggregate_trees_from_pf(server_flex_model, **aggregate_kwargs)
+
+        set_aggregated_trees_pf(server_flex_model)
+
+        global_trees = server_flex_model.get('trees', [])
+        selected_ids = server_flex_model.get('selected_indices', {})
+        all_tree_entries = server_flex_model.get('all_tree_entries', [])
 
         # Log: árboles seleccionados por cliente
         print("\n" + "=" * 60)
@@ -381,7 +417,6 @@ class FLEXOrchestrator:
         global_tree_sources = [e.client_id for e in all_tree_entries]
         for cid in client_ids:
             n_local = len(client_trees[cid])
-            # Count external global trees (excluding trees from this client)
             n_external_global = sum(1 for source_cid in global_tree_sources if source_cid != cid)
             total = n_local + n_external_global
             n_from_this_client = sum(1 for source_cid in global_tree_sources if source_cid == cid)
@@ -390,7 +425,17 @@ class FLEXOrchestrator:
 
         # ── STEP 4: EVALUATE on test set ───────────────────────────────────────
         self.step_callback("Evaluando modelo global...", 85)
-        global_forest = ProactiveForest.from_trees(global_trees, class_names=self.dataset_split.class_names)
+        server_model = server_flex_model.get('model')
+        if server_model is None:
+            global_forest = ProactiveForest.from_trees(global_trees, class_names=self.dataset_split.class_names)
+        else:
+            global_forest = server_model
+
+        # Evaluate using FLEX primitives if possible
+        # Convert test set to combined data for evaluate_global_pf_model (optional)
+        # since evaluate_global_pf_model expects data with labels in last col
+        # we keep traditional local evaluation path below.
+
         X_test, y_test = self.dataset_split.X_test, self.dataset_split.y_test
         class_names = self.dataset_split.class_names
 
@@ -407,7 +452,12 @@ class FLEXOrchestrator:
         
         print(f"[DEBUG] global_predictions type: {type(global_predictions_raw[0]) if len(global_predictions_raw) > 0 else 'N/A'}, shape: {global_predictions.shape}")
         print(f"[DEBUG] y_test type: {type(y_test[0]) if len(y_test) > 0 else 'N/A'}, shape: {y_test.shape}")
-            
+
+        # Evaluate local and global at clients using FLEX primitives
+        for client_flex_model in clients_flex_models.values():
+            evaluate_global_pf_model_at_clients(client_flex_model)
+            evaluate_local_pf_model_at_clients(client_flex_model)
+
         global_report = ForestEvaluator.evaluate(global_forest, X_test, y_test, class_names)
 
         # Perform hybrid prediction on clients using local and global trees
