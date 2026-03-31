@@ -1,5 +1,6 @@
 """Command for aggregating models from clients."""
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
+import numpy as np
 from src.domain.aggregation.base_strategy import IAggregationStrategy
 
 class AggregateCommand:
@@ -10,13 +11,25 @@ class AggregateCommand:
     def __init__(self, strategy: IAggregationStrategy):
         self.strategy = strategy
 
-    def execute(self, client_models: Dict[str, Any], client_metadata: Dict[str, Any]) -> Dict[str, Any]:
+    def execute(
+        self,
+        client_models: Dict[str, Any],
+        client_metadata: Dict[str, Any],
+        X_val: Optional[np.ndarray] = None,
+        y_val: Optional[np.ndarray] = None,
+        t_max: Optional[int] = None,
+        **kwargs
+    ) -> Dict[str, Any]:
         """
         Aggregate client models into a global model.
 
         Args:
             client_models: Dictionary of client_id -> model data
             client_metadata: Dictionary of client_id -> metadata
+            X_val: Validation features for Progressive Forest (S2-S7)
+            y_val: Validation labels for Progressive Forest (S2-S7)
+            t_max: Maximum trees in global model (T_MAX en tesis)
+            **kwargs: Strategy-specific parameters (f1_weight, pcd_weight, etc.)
 
         Returns:
             Global model data
@@ -28,7 +41,12 @@ class AggregateCommand:
 
         # Aggregate using strategy
         global_trees, selected_indices, all_tree_entries = self.strategy.aggregate(
-            client_trees, client_metadata
+            client_trees,
+            client_metadata,
+            X_val=X_val,
+            y_val=y_val,
+            t_max=t_max,
+            **kwargs
         )
 
         return {

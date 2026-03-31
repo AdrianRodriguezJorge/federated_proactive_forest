@@ -14,6 +14,7 @@ class IAggregationStrategy(ABC):
         y_val: Optional[np.ndarray] = None,
         max_trees: Optional[int] = None,
         max_trees_per_client: Optional[int] = None,
+        t_max: Optional[int] = None,
         **kwargs
     ) -> Tuple[List[Any], Dict[str, List[int]], List[Any]]:
         """Aggregate trees for the global model.
@@ -25,6 +26,7 @@ class IAggregationStrategy(ABC):
             y_val: Validation labels for Progressive Forest convergence (S2-S7)
             max_trees: Maximum number of trees for global strategies (S2-S4)
             max_trees_per_client: Maximum trees per client for per-client strategies (S5-S7)
+            t_max: Maximum number of trees in global model (T_MAX en tesis, default: 100)
             **kwargs: Strategy-specific parameters (e.g., f1_weight, pcd_weight)
 
         Returns:

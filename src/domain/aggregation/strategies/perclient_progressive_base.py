@@ -15,19 +15,29 @@ from ...model.cpf_implementation.estimator import ProactiveForestClassifier
 
 class PerClientProgressiveStrategy(ABC):
     """Base class for per-client ranking strategies with Progressive Forest.
-    
+
     Subclasses define the ranking criterion (accuracy, macro-F1, F1+PCD).
     Each client's trees are ranked independently, then incorporated via round-robin.
-    Aggregation stops only by:
+    
+    Aggregation stops by:
     1. Convergence (CPF early stopping - 2 consecutive episodes with delta < 0.002)
-    2. All trees from all clients have been added
+    2. T_MAX trees reached (límite máximo de árboles en el modelo global)
+    3. All trees from all clients have been added
     
-    The max_trees_per_client parameter limits trees per client BEFORE aggregation.
-    During aggregation, early stopping applies to the combined forest.
+    IMPORTANT: EPISODE = n_clients (W en la tesis), ya que en cada iteración
+    se agrega el mejor árbol de CADA cliente (round-robin).
+    
+    When one client runs out of trees, continue with remaining clients until
+    stopping criteria is met.
+
+    Parameters:
+    - CONVERGENCE: 0.002 (umbral de convergencia)
+    - INITIAL_EPISODE: n_clients (W en la tesis, se calcula dinámicamente)
+    - T_MAX: 100 (límite máximo de árboles, mismo que n_estimators en clientes)
     """
-    
+
     CONVERGENCE = 0.002
-    INITIAL_EPISODE = 5
+    T_MAX = 100
     
     @property
     @abstractmethod
@@ -47,10 +57,11 @@ class PerClientProgressiveStrategy(ABC):
         y_val: Optional[np.ndarray] = None,
         max_trees: int = None,
         max_trees_per_client: int = None,
+        t_max: int = None,
         **kwargs
     ) -> Tuple[List[Any], Dict[str, List[int]], List[TreeEntry]]:
         """Aggregate trees using per-client ranking with round-robin and Progressive Forest.
-        
+
         Args:
             client_trees: Dict mapping client_id to list of trees
             client_metadata: Dict mapping client_id to metadata
@@ -58,8 +69,9 @@ class PerClientProgressiveStrategy(ABC):
             y_val: Validation labels for convergence checking
             max_trees: If provided, distributed evenly among clients
             max_trees_per_client: Maximum trees per client before round-robin
+            t_max: Maximum number of trees in global model (default: 100)
             **kwargs: Strategy-specific parameters (e.g., f1_weight, pcd_weight)
-            
+
         Returns:
             - global_trees: list of progressively selected trees (round-robin order)
             - selected_ids: mapping of client -> local indices selected
@@ -116,7 +128,7 @@ class PerClientProgressiveStrategy(ABC):
         
         # Step 3: Apply Progressive Forest with early stopping using validation data
         global_trees, selected_entries = self._progressive_selection_with_convergence(
-            round_robin_entries, X_val, y_val
+            round_robin_entries, X_val, y_val, t_max=t_max, n_clients=len(client_ids)
         )
         
         # Build selected_ids dictionary
@@ -130,95 +142,124 @@ class PerClientProgressiveStrategy(ABC):
         """Get the ranking criterion, allowing subclasses to override."""
         return self.ranking_criterion
     
-    def _interleave_round_robin(self, client_ranked_entries: Dict[str, List[TreeEntry]], 
+    def _interleave_round_robin(self, client_ranked_entries: Dict[str, List[TreeEntry]],
                                  client_ids: List[str]) -> List[TreeEntry]:
         """Interleave trees from all clients using round-robin scheduling.
         
+        When one client runs out of trees, continue with remaining clients
+        until all trees from all clients are exhausted.
+
         Args:
             client_ranked_entries: Dict mapping client_id to ranked tree entries
             client_ids: List of client IDs in order
-            
+
         Returns:
             List of TreeEntry in round-robin order
         """
         round_robin_entries = []
-        max_len = max(len(entries) for entries in client_ranked_entries.values()) if client_ranked_entries else 0
         
-        for i in range(max_len):
+        # Create indices to track position in each client's ranked list
+        client_indices = {cid: 0 for cid in client_ids}
+        max_trees_any_client = max(
+            len(entries) for entries in client_ranked_entries.values()
+        ) if client_ranked_entries else 0
+        
+        # Round-robin: iterate until all clients are exhausted
+        for _ in range(max_trees_any_client):
             for client_id in client_ids:
                 entries = client_ranked_entries[client_id]
-                if i < len(entries):
-                    round_robin_entries.append(entries[i])
-        
+                idx = client_indices[client_id]
+                
+                # If this client still has trees, add the next one
+                if idx < len(entries):
+                    round_robin_entries.append(entries[idx])
+                    client_indices[client_id] += 1
+                # If client is exhausted, skip and continue with next client
+
         return round_robin_entries
     
     def _progressive_selection_with_convergence(
         self,
         round_robin_entries: List[TreeEntry],
         X_val: np.ndarray,
-        y_val: np.ndarray
+        y_val: np.ndarray,
+        t_max: int = None,
+        n_clients: int = None
     ) -> Tuple[List[Any], List[TreeEntry]]:
         """Select trees progressively using CPF algorithm with early stopping.
-        
-        Aggregation stops only by:
+
+        Aggregation stops by:
         1. Convergence (2 consecutive episodes with accuracy delta < CONVERGENCE)
-        2. All trees from all clients have been added
+        2. T_MAX trees reached (límite máximo de árboles)
+        3. All trees from all clients have been added
         
+        IMPORTANT: EPISODE = n_clients (W en la tesis), ya que en cada iteración
+        se agrega el mejor árbol restante de CADA cliente.
+
         Args:
-            round_robin_entries: Trees in round-robin order
+            round_robin_entries: Trees in round-robin order (already interleaved)
             X_val: Validation features
             y_val: Validation labels
-            
+            t_max: Maximum number of trees (default: class T_MAX = 100)
+            n_clients: Number of clients (used to set EPISODE = W)
+
         Returns:
             Tuple of (selected_trees, selected_entries)
         """
-        EPISODE = self.INITIAL_EPISODE
+        # EPISODE = n_clients (W en la tesis)
+        EPISODE = n_clients if n_clients is not None else 5
         models_built = 0
         stop_counter = 0
         previous_episode_accuracy = None
         episode_accuracy_dif = 0.002
-        
+
         selected_entries: List[TreeEntry] = []
         episode_accuracies = []
-        
-        # Progressive selection: stop only by convergence or all trees added
-        while models_built < len(round_robin_entries):
-            # Build an episode of trees
+
+        # Use provided t_max or default to class constant
+        T_MAX = t_max if t_max is not None else self.T_MAX
+
+        # Progressive selection: stop by convergence, T_MAX, or all trees added
+        while models_built < min(len(round_robin_entries), T_MAX):
+            # Build an episode of trees (EPISODE = n_clients)
             episode_entries = round_robin_entries[models_built:models_built + EPISODE]
             if not episode_entries:
                 break
-            
+
             # Add trees from this episode
             for entry in episode_entries:
                 selected_entries.append(entry)
-            
+
             models_built = len(selected_entries)
-            
+
             # Evaluate ensemble accuracy on validation set
             predictions = self._predict_ensemble(selected_entries, X_val)
             acc = accuracy_score(y_val, predictions)
             episode_accuracies.append(acc)
-            
+
             # Check convergence after first episode
             if len(episode_accuracies) >= 2:
                 # Episode accuracy = range (max - min) of accuracies so far
                 episode_accuracy = max(episode_accuracies) - min(episode_accuracies)
-                
+
                 if previous_episode_accuracy is not None:
                     episode_accuracy_dif = episode_accuracy - previous_episode_accuracy
-                
+
                 # Convergence: small change or small range
                 if episode_accuracy_dif < self.CONVERGENCE or episode_accuracy < self.CONVERGENCE:
                     stop_counter += 1
                     EPISODE = max(1, EPISODE - 1)
+                    if self.verbose if hasattr(self, 'verbose') else False:
+                        print(f"  [Agregación] Convergencia detectada (stop_counter={stop_counter})")
                     if stop_counter == 2:
                         break
                 else:
                     stop_counter = 0
-                    EPISODE += 1
-                
+                    if self.verbose if hasattr(self, 'verbose') else False:
+                        print(f"  [Agregación] No converge, próximo episodio={EPISODE}")
+
                 previous_episode_accuracy = episode_accuracy
-        
+
         return [e.tree for e in selected_entries], selected_entries
     
     def _predict_ensemble(self, selected_entries: List[TreeEntry], X: np.ndarray) -> np.ndarray:

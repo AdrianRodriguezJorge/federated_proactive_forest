@@ -15,18 +15,23 @@ from ...model.cpf_implementation.estimator import ProactiveForestClassifier
 
 class GlobalProgressiveStrategy(ABC):
     """Base class for global ranking strategies with Progressive Forest.
-    
+
     Subclasses define the ranking criterion (accuracy, macro-F1, F1+PCD).
     All trees are ranked globally and incorporated progressively in episodes.
-    Aggregation stops only by:
+    Aggregation stops by:
     1. Convergence (CPF early stopping - 2 consecutive episodes with delta < 0.002)
-    2. All trees from all clients have been added
-    
-    The max_trees parameter is NOT used to stop aggregation in global strategies.
+    2. T_max trees reached (límite máximo de árboles en el modelo global)
+    3. All trees from all clients have been added
+
+    Parameters:
+    - CONVERGENCE: 0.002 (umbral de convergencia)
+    - INITIAL_EPISODE: 5 (tamaño inicial del episodio, k en la tesis)
+    - T_MAX: 100 (límite máximo de árboles, mismo que n_estimators en clientes)
     """
-    
+
     CONVERGENCE = 0.002
     INITIAL_EPISODE = 5
+    T_MAX = 100
     
     @property
     @abstractmethod
@@ -45,18 +50,20 @@ class GlobalProgressiveStrategy(ABC):
         X_val: Optional[np.ndarray] = None,
         y_val: Optional[np.ndarray] = None,
         max_trees: int = None,
+        t_max: int = None,
         **kwargs
     ) -> Tuple[List[Any], Dict[str, List[int]], List[TreeEntry]]:
         """Aggregate trees using global ranking with Progressive Forest.
-        
+
         Args:
             client_trees: Dict mapping client_id to list of trees
             client_metadata: Dict mapping client_id to metadata
             X_val: Validation features for convergence checking
             y_val: Validation labels for convergence checking
             max_trees: NOT used for stopping in global strategies (S2-S4)
+            t_max: Maximum number of trees in global model (default: 100)
             **kwargs: Strategy-specific parameters (e.g., f1_weight, pcd_weight)
-            
+
         Returns:
             - global_trees: list of progressively selected trees
             - selected_ids: mapping of client -> local indices selected
@@ -82,7 +89,7 @@ class GlobalProgressiveStrategy(ABC):
         
         # Apply Progressive Forest with early stopping using validation data
         global_trees, selected_entries = self._progressive_selection_with_convergence(
-            ranked_entries, X_val, y_val
+            ranked_entries, X_val, y_val, t_max=t_max
         )
         
         # Build selected_ids dictionary
@@ -100,19 +107,22 @@ class GlobalProgressiveStrategy(ABC):
         self,
         ranked_entries: List[TreeEntry],
         X_val: np.ndarray,
-        y_val: np.ndarray
+        y_val: np.ndarray,
+        t_max: int = None
     ) -> Tuple[List[Any], List[TreeEntry]]:
         """Select trees progressively using CPF algorithm with early stopping.
-        
-        Aggregation stops only by:
+
+        Aggregation stops by:
         1. Convergence (2 consecutive episodes with accuracy delta < CONVERGENCE)
-        2. All trees from all clients have been added
-        
+        2. T_MAX trees reached (límite máximo de árboles)
+        3. All trees from all clients have been added
+
         Args:
             ranked_entries: Trees ranked by criterion
             X_val: Validation features
             y_val: Validation labels
-            
+            t_max: Maximum number of trees (default: class T_MAX = 100)
+
         Returns:
             Tuple of (selected_trees, selected_entries)
         """
@@ -121,36 +131,39 @@ class GlobalProgressiveStrategy(ABC):
         stop_counter = 0
         previous_episode_accuracy = None
         episode_accuracy_dif = 0.002
-        
+
         selected_entries: List[TreeEntry] = []
         episode_accuracies = []
-        
-        # Progressive selection: stop only by convergence or all trees added
-        while models_built < len(ranked_entries):
+
+        # Use provided t_max or default to class constant
+        T_MAX = t_max if t_max is not None else self.T_MAX
+
+        # Progressive selection: stop by convergence, T_MAX, or all trees added
+        while models_built < min(len(ranked_entries), T_MAX):
             # Build an episode of trees
             episode_entries = ranked_entries[models_built:models_built + EPISODE]
             if not episode_entries:
                 break
-            
+
             # Add trees from this episode
             for entry in episode_entries:
                 selected_entries.append(entry)
-            
+
             models_built = len(selected_entries)
-            
+
             # Evaluate ensemble accuracy on validation set
             predictions = self._predict_ensemble(selected_entries, X_val)
             acc = accuracy_score(y_val, predictions)
             episode_accuracies.append(acc)
-            
+
             # Check convergence after first episode
             if len(episode_accuracies) >= 2:
                 # Episode accuracy = range (max - min) of accuracies so far
                 episode_accuracy = max(episode_accuracies) - min(episode_accuracies)
-                
+
                 if previous_episode_accuracy is not None:
                     episode_accuracy_dif = episode_accuracy - previous_episode_accuracy
-                
+
                 # Convergence: small change or small range
                 if episode_accuracy_dif < self.CONVERGENCE or episode_accuracy < self.CONVERGENCE:
                     stop_counter += 1
@@ -160,9 +173,9 @@ class GlobalProgressiveStrategy(ABC):
                 else:
                     stop_counter = 0
                     EPISODE += 1
-                
+
                 previous_episode_accuracy = episode_accuracy
-        
+
         return [e.tree for e in selected_entries], selected_entries
     
     def _predict_ensemble(self, selected_entries: List[TreeEntry], X: np.ndarray) -> np.ndarray:

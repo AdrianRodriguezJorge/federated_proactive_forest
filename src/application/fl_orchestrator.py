@@ -318,6 +318,7 @@ class FLEXOrchestrator:
 
         # Get n_estimators from config to limit the number of trees selected
         n_estimators = self._get_config_value('model', 'n_estimators') or self._get_config_value('n_estimators', default=100)
+        t_max = self._get_config_value('aggregation', 't_max', default=n_estimators)  # T_MAX por defecto = n_estimators
 
         # Get validation data for Progressive Forest (S2-S7)
         X_test, y_test = self.dataset_split.X_test, self.dataset_split.y_test
@@ -332,11 +333,13 @@ class FLEXOrchestrator:
             aggregate_kwargs['y_val'] = y_test
             # max_trees is passed but NOT used for stopping in global strategies
             aggregate_kwargs['max_trees'] = n_estimators
+            aggregate_kwargs['t_max'] = t_max  # Límite máximo de árboles en agregación
         elif strategy_name in ['S5', 'S6', 'S7']:
             # Per-client strategies: pass validation data for CPF early stopping
             aggregate_kwargs['X_val'] = X_test
             aggregate_kwargs['y_val'] = y_test
             aggregate_kwargs['max_trees_per_client'] = n_estimators
+            aggregate_kwargs['t_max'] = t_max  # Límite máximo de árboles en agregación
         else:
             # S1: simple pool, no validation data needed
             pass

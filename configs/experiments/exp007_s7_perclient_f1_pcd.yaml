@@ -30,8 +30,9 @@ aggregation:
   strategy: s7_perclient_f1_pcd
   f1_weight: 0.5
   pcd_weight: 0.5
+  t_max: 100  # Límite máximo de árboles en el modelo global (default: n_estimators)
   convergence: 0.002
-  episode_size: 5
+  episode_size: 5  # Tamaño del episodio (k en tesis). S2-S4: k=5, S5-S7: k=n_clients
 
 prediction:
   local_weight: 0.4

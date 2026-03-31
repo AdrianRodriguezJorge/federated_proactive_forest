@@ -27,6 +27,7 @@ aggregation:
   strategy: "S7"  # S7: Per-Client F1+PCD (diversity + accuracy)
   f1_weight: 0.5  # Weight for F1 in scoring
   pcd_weight: 0.5  # Weight for PCD (diversity) in scoring
+  t_max: 100  # Límite máximo de árboles en el modelo global (default: n_estimators)
 
 prediction:
   local_weight: 0.4

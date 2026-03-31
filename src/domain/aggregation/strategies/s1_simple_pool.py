@@ -21,6 +21,7 @@ class S1SimplePoolStrategy(IAggregationStrategy):
         y_val: Optional[np.ndarray] = None,
         max_trees: Optional[int] = None,
         max_trees_per_client: Optional[int] = None,
+        t_max: Optional[int] = None,
         **kwargs
     ) -> Tuple[List[Any], Dict[str, List[int]], List[Any]]:
         """Aggregate all trees from all clients.
