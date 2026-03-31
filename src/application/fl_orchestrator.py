@@ -13,6 +13,7 @@ Features:
 
 from __future__ import annotations
 import numpy as np
+import warnings
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional, Tuple, TYPE_CHECKING
 from sklearn.model_selection import train_test_split
@@ -278,6 +279,25 @@ class FLEXOrchestrator:
         # Create distribution from config
         self.federated_data = FedDataDistribution.from_config(dataset, config)
         self.client_partitions = self._convert_fed_data_to_partitions()
+
+        # Ensure FlexPool is initialized if requested, otherwise keep None.
+        if self.use_flex_pool:
+            try:
+                from src.infrastructure.flex.flex_pool_factory import FlexPoolFactory
+
+                # init_model_func is a simple placeholder; in a full FLEX pipeline this should
+                # return a fresh model or function to instantiate per actor.
+                self.flex_pool = FlexPoolFactory.create_client_server_pool(
+                    federated_data=self.federated_data,
+                    init_model_func=lambda: None
+                )
+                self.step_callback("FlexPool inicializado", 15)
+            except ImportError:
+                self.flex_pool = None
+                warnings.warn("FLEX no está instalado, self.flex_pool queda en None.")
+            except Exception as e:
+                self.flex_pool = None
+                warnings.warn(f"No se pudo inicializar FlexPool: {e}")
 
     def _convert_fed_data_to_partitions(self) -> Dict[str, Tuple[np.ndarray, np.ndarray]]:
         """Convert FLEX FedDataDistribution to simple client partitions dict."""
