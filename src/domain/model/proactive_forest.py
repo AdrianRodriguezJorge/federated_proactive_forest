@@ -10,7 +10,6 @@ from .progressive_forest import ComparativeProgressiveForest
 class ProactiveForest(ABCForest):
     """
     Proactive Forest implementation for Federated Learning.
-    Based on the Comparative Progressive Forest (CPF) algorithm (Cepero, 2023).
     """
 
     def __init__(self, n_estimators: int = 100, alpha: float = 0.1, random_state: int = 42, verbose: bool = False, class_names: Optional[List[str]] = None):
