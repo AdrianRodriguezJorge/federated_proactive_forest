@@ -57,8 +57,8 @@ class GenericCsvAdapter(IDatasetAdapter):
         le = LabelEncoder()
         all_y = np.concatenate([train_df[self.target_column].values, test_df[self.target_column].values])
         le.fit(all_y)  # Fit para obtener classes de train y test
-        y_train = train_df[self.target_column].values  # Mantener como strings
-        y_test  = test_df[self.target_column].values   # Mantener como strings
+        y_train = np.array([str(y) for y in train_df[self.target_column].values])  # Convert to strings
+        y_test  = np.array([str(y) for y in test_df[self.target_column].values])   # Convert to strings
         self._class_names_ = [str(c) for c in le.classes_]
 
         X_train = train_df[feat_cols].values.astype(np.float64)

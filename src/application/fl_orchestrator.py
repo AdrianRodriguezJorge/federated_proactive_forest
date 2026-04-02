@@ -487,7 +487,7 @@ class FLEXOrchestrator:
         global_weight = self.config.get('prediction', {}).get('global_weight', 0.6)
         n_classes = len(class_names)
         from src.domain.prediction.hybrid_predictor import HybridPredictor
-        predictor = HybridPredictor(local_weight=local_weight, global_weight=global_weight, n_classes=n_classes)
+        predictor = HybridPredictor(local_weight=local_weight, global_weight=global_weight, n_classes=n_classes, class_names=class_names)
         client_hybrid_forest_sizes = {}
         
         # Build a mapping: global_index -> client_id (to know which client each global tree came from)
@@ -555,11 +555,20 @@ class FLEXOrchestrator:
             )
             pf.fit(X_client, y_client)
 
-            # Calculate metadata using global test set
+            # Calculate metadata using global test set with proper label conversion
             y_pred_test = pf.predict(self.dataset_split.X_test)
-            acc = float(accuracy_score(self.dataset_split.y_test, y_pred_test))
-            f1 = float(f1_score(self.dataset_split.y_test, y_pred_test, average='macro', zero_division=0))
-            pcd = float(pf.diversity_measure(self.dataset_split.X_test, self.dataset_split.y_test, 'pcd'))
+            print(f"DEBUG _train_local_forests {client_id}: y_pred_test sample={y_pred_test[:5]} type={type(y_pred_test[0]) if len(y_pred_test)>0 else 'N/A'}")
+            print(f"DEBUG _train_local_forests {client_id}: y_test sample={self.dataset_split.y_test[:5]} type={type(self.dataset_split.y_test[0]) if len(self.dataset_split.y_test)>0 else 'N/A'}")
+
+            local_report = ForestEvaluator.evaluate(
+                pf,
+                self.dataset_split.X_test,
+                self.dataset_split.y_test,
+                self.dataset_split.class_names
+            )
+            acc = float(local_report.accuracy)
+            f1 = float(local_report.macro_f1)
+            pcd = float(local_report.pcd) if local_report.pcd is not None else 0.0
 
             client_forests[client_id] = pf
             client_metadata[client_id] = ClientMetadata(

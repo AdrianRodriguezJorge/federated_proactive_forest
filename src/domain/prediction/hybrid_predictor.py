@@ -13,12 +13,13 @@ class HybridPredictor:
     """
 
     def __init__(self, local_weight: float = 0.4, global_weight: float = 0.6,
-                 n_classes: int = 2):
+                 n_classes: int = 2, class_names: List[str] = None):
         assert abs(local_weight + global_weight - 1.0) < 1e-6, \
             "local_weight + global_weight debe ser 1.0"
         self.lw = local_weight
         self.gw = global_weight
         self.n_classes = n_classes
+        self.class_names = class_names or [str(i) for i in range(n_classes)]
 
     def predict(self, X: np.ndarray,
                 local_trees: List[Any],
@@ -33,7 +34,11 @@ class HybridPredictor:
             for tree in trees:
                 for i in range(n_samples):
                     pred = tree.predict(X[i])
-                    combined[i, pred] += w_per_tree
+                    if isinstance(pred, str):
+                        pred_idx = self.class_names.index(pred)
+                    else:
+                        pred_idx = int(pred)
+                    combined[i, pred_idx] += w_per_tree
 
         accumulate(local_trees, self.lw)
         accumulate(global_trees, self.gw)

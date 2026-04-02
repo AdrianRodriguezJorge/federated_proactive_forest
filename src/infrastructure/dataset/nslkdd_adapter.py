@@ -63,9 +63,9 @@ class NslKddAdapter(IDatasetAdapter):
         y_train_raw = train_df["class"].values
         y_test_raw  = test_df["class"].values
 
-        # Mantener y como strings
-        y_train = y_train_raw
-        y_test  = y_test_raw
+        # Convert y to strings for consistency
+        y_train = np.array([str(y) for y in y_train_raw])
+        y_test  = np.array([str(y) for y in y_test_raw])
 
         if self._scaler:
             X_train = self._scaler.fit_transform(X_train)

@@ -49,7 +49,7 @@ class FlexTreesAdapter(IDatasetAdapter):
 
         # Mantener y como strings
         self._label_encoder.fit(y)  # Fit para obtener classes
-        self._class_names = list(self._label_encoder.classes_)
+        self._class_names = [str(c) for c in self._label_encoder.classes_]
 
         # Split data
         X_train, X_test, y_train, y_test = train_test_split(
@@ -58,6 +58,10 @@ class FlexTreesAdapter(IDatasetAdapter):
             random_state=self.random_state,
             stratify=y
         )
+
+        # Convert y to strings explicitly
+        y_train = np.array([str(label) for label in y_train])
+        y_test = np.array([str(label) for label in y_test])
 
         return DatasetSplit(
             X_train=X_train,

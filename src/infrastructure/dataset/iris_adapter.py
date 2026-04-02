@@ -54,6 +54,10 @@ class IrisAdapter(IDatasetAdapter):
             random_state=42
         )
 
+        # Convert y values to class names (strings)
+        y_train = np.array([self._class_names_[i] for i in y_train])
+        y_test = np.array([self._class_names_[i] for i in y_test])
+
         if self._scaler:
             X_train = self._scaler.fit_transform(X_train)
             X_test = self._scaler.transform(X_test)
