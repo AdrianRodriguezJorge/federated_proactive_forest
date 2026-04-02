@@ -126,6 +126,9 @@ def get_default_config():
             "pcd_weight": 0.5,
             "convergence": 0.002,
             "episode_size": 5,
+            "window_size": 5,
+            "max_rounds": 20,
+            "alpha": 0.5,
         },
         "prediction": {
             "local_weight": 0.4,
@@ -147,6 +150,7 @@ STRATEGY_LABELS = {
     "s5_perclient_accuracy": "S5 — Per-Client, orden por Accuracy + Progressive",
     "s6_perclient_f1":       "S6 — Per-Client, orden por Macro-F1 + Progressive",
     "s7_perclient_f1_pcd":   "S7 — Per-Client, orden por α·F1 + β·PCD + Progressive",
+    "rr_dynamic":            "RR_DS — Round Robin Dynamic Scoring (ventanas + score dinámico F1+Diversidad)",
 }
 
 
@@ -298,6 +302,10 @@ def render():
 
     f1_weight  = current_config["aggregation"].get("f1_weight", 0.5)
     pcd_weight = current_config["aggregation"].get("pcd_weight", 0.5)
+    window_size = current_config["aggregation"].get("window_size", 5)
+    max_rounds = current_config["aggregation"].get("max_rounds", 20)
+    alpha_score = current_config["aggregation"].get("alpha", 0.5)
+    
     if strategy_key in ("s4_global_f1_pcd", "s7_perclient_f1_pcd"):
         col9, col10 = st.columns(2)
         with col9:
@@ -305,6 +313,19 @@ def render():
         with col10:
             pcd_weight = round(1.0 - f1_weight, 4)
             st.metric("Peso PCD (β)", f"{pcd_weight:.2f}")
+    
+    elif strategy_key == "rr_dynamic":
+        st.info("🔄 **Round Robin Dynamic Scoring**: Entrenamiento por ventanas + selección secuencial con score dinámico")
+        col9, col10, col11 = st.columns(3)
+        with col9:
+            window_size = st.number_input("🪟 Tamaño ventana (W)", 2, 20, value=window_size,
+                                         help="Árboles por ventana que cada cliente envía al servidor")
+        with col10:
+            max_rounds = st.number_input("🔁 Máximo rondas (R_MAX)", 5, 50, value=max_rounds,
+                                        help="Número máximo de rondas Round Robin")
+        with col11:
+            alpha_score = st.slider("α Score (F1 vs Diversidad)", 0.0, 1.0, value=alpha_score, step=0.05,
+                                   help="Score(T) = α·F1(T) + (1-α)·Diversidad(T|G)")
 
     st.divider()
 
@@ -358,11 +379,14 @@ def render():
                 "episode_size":          episode_size,
             },
             "aggregation": {
-                "strategy":    strategy_key,
-                "f1_weight":   f1_weight,
-                "pcd_weight":  pcd_weight,
-                "convergence": convergence,
-                "episode_size": episode_size,
+                "strategy":       strategy_key,
+                "f1_weight":      f1_weight,
+                "pcd_weight":     pcd_weight,
+                "convergence":    convergence,
+                "episode_size":   episode_size,
+                "window_size":    window_size,
+                "max_rounds":     max_rounds,
+                "alpha":          alpha_score,
             },
             "prediction": {
                 "local_weight":  local_w,

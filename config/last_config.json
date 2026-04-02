@@ -10,7 +10,7 @@
     "scaler_type": "standard"
   },
   "federation": {
-    "n_clients": 3,
+    "n_clients": 2,
     "distribution": "iid",
     "dirichlet_alpha": 0.5
   },
@@ -24,15 +24,18 @@
     "episode_size": 5
   },
   "aggregation": {
-    "strategy": "s6_perclient_f1",
+    "strategy": "rr_dynamic",
     "f1_weight": 0.7,
     "pcd_weight": 0.3,
     "convergence": 0.002,
-    "episode_size": 5
+    "episode_size": 5,
+    "window_size": 5,
+    "max_rounds": 20,
+    "alpha": 1.0
   },
   "prediction": {
-    "local_weight": 0.2,
-    "global_weight": 0.8
+    "local_weight": 0.0,
+    "global_weight": 1.0
   },
   "verbose": false,
   "seed": 42

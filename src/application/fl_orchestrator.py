@@ -79,6 +79,8 @@ class FLResults:
     y_test: np.ndarray = None
     class_names: List[str] = field(default_factory=list)
     client_hybrid_forest_sizes: Dict[str, int] = field(default_factory=dict)
+    convergence_round: Optional[int] = None  # Ronda en la que se alcanzó convergencia (RR-DS)
+    hybrid_weights: Dict[str, float] = field(default_factory=lambda: {'local_weight': 0.4, 'global_weight': 0.6})  # Pesos usados en inferencia híbrida
 
 
 class FLEXOrchestrator:
@@ -139,30 +141,35 @@ class FLEXOrchestrator:
     def _get_strategy_name(self) -> str:
         """
         Extract and normalize strategy name from config.
-        
+
         Searches in multiple locations:
         - config['strategy'] (flat structure)
         - config['aggregation']['strategy'] (nested structure from Streamlit)
-        
-        Normalizes: 's7_perclient_f1_pcd' → 'S7', 'S1' → 'S1'
+
+        Normalizes: 's7_perclient_f1_pcd' → 'S7', 'S1' → 'S1', 'rr_dynamic' → 'RR_DS'
         """
         # Try flat structure first
         strategy = self.config.get('strategy')
-        
+
         # Try nested structure (from Streamlit)
         if not strategy:
             strategy = self.config.get('aggregation', {}).get('strategy')
-        
+
         # Default fallback
         if not strategy:
             strategy = 'S1'
-        
+
         # Normalize: extract S1-S7 from format like "s7_perclient_f1_pcd"
         strategy_str = str(strategy).upper()
+        
+        # Special case: RR_DS (Round Robin Dynamic Scoring)
+        if strategy_str == 'RR_DYNAMIC' or strategy_str.startswith('RR_DS'):
+            return 'RR_DS'
+        
         if '_' in strategy_str:
             # Extract first part: "S7_..." → "S7"
             strategy_str = strategy_str.split('_')[0]
-        
+
         return strategy_str
 
     def setup_federation(self, dataset_split: DatasetSplit, seed: int = 42):
@@ -382,7 +389,7 @@ class FLEXOrchestrator:
         n_estimators = self._get_config_value('model', 'n_estimators') or self._get_config_value('n_estimators', default=100)
         t_max = self._get_config_value('aggregation', 't_max', default=n_estimators)  # T_MAX por defecto = n_estimators
 
-        # Get validation data for Progressive Forest (S2-S7)
+        # Get validation data for Progressive Forest (S2-S7) and RR_DS
         X_test, y_test = self.dataset_split.X_test, self.dataset_split.y_test
 
         # Build kwargs based on strategy type
@@ -397,6 +404,14 @@ class FLEXOrchestrator:
             aggregate_kwargs['y_val'] = y_test
             aggregate_kwargs['max_trees_per_client'] = n_estimators
             aggregate_kwargs['t_max'] = t_max
+        elif strategy_name == 'RR_DS':
+            # Round Robin Dynamic Scoring uses different parameters
+            aggregate_kwargs['X_val'] = X_test
+            aggregate_kwargs['y_val'] = y_test
+            aggregate_kwargs['t_max'] = t_max
+            aggregate_kwargs['window_size'] = self._get_config_value('aggregation', 'window_size', default=5)
+            aggregate_kwargs['max_rounds'] = self._get_config_value('aggregation', 'max_rounds', default=20)
+            aggregate_kwargs['alpha'] = self._get_config_value('aggregation', 'alpha', default=0.5)
 
         if strategy_name == 'S4':
             aggregate_kwargs['f1_weight'] = self._get_config_value('aggregation', 'f1_weight', default=0.5)
@@ -507,6 +522,14 @@ class FLEXOrchestrator:
 
         self.step_callback("Ronda completada", 100)
 
+        # Calculate convergence round for RR-DS strategy
+        convergence_round = None
+        if strategy_name == 'RR_DS':
+            # Get strategy instance from server_flex_model
+            strategy_instance = server_flex_model.get('strategy_instance')
+            if strategy_instance and hasattr(strategy_instance, 'convergence_round'):
+                convergence_round = strategy_instance.convergence_round
+
         return FLResults(
             strategy_id=strategy_name,
             global_accuracy=global_report.accuracy,
@@ -527,6 +550,8 @@ class FLEXOrchestrator:
             y_test=y_test,
             class_names=class_names,
             client_hybrid_forest_sizes=client_hybrid_forest_sizes,
+            convergence_round=convergence_round,
+            hybrid_weights={'local_weight': local_weight, 'global_weight': global_weight},
         )
 
     def _train_local_forests(self) -> Tuple[Dict[str, ProactiveForest], Dict[str, ClientMetadata]]:

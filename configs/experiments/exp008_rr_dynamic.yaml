@@ -1,0 +1,47 @@
+experiment:
+  name: "exp008_rr_dynamic_round_robin"
+  seed: 42
+  description: "Round Robin Dynamic Scoring - Federated Proactive Forest with window-based training and dynamic tree selection"
+
+dataset:
+  type: NSL-KDD
+  name: nslkdd
+  train_path: "data/nslkdd/KDDTrain+.csv"
+  test_path:  "data/nslkdd/KDDTest+.csv"
+  target_column: "class"
+  categorical_features: ["protocol_type", "service", "flag"]
+  scale: true
+  scaler_type: standard
+
+federation:
+  n_clients: 5
+  distribution: noniid_dirichlet
+  dirichlet_alpha: 0.5
+
+model:
+  n_estimators: 100
+  alpha: 0.1
+  split_criterion: entropy
+  feature_selection: prob
+  use_progressive_stopping: true
+  convergence: 0.002
+  episode_size: 5
+  window_size: 5  # W: trees per window per round
+
+aggregation:
+  strategy: rr_dynamic  # Round Robin Dynamic Scoring
+  # Dynamic scoring parameters
+  alpha: 0.5  # Balance between F1 (α) and Diversity (1-α) in Score(T) = α*F1 + (1-α)*Diversity
+  # Round Robin parameters
+  window_size: 5  # W: trees per window
+  max_rounds: 20  # R_MAX: maximum rounds (total trees = n_clients * max_rounds = 100)
+  # Progressive Forest global stopping criterion
+  convergence_threshold: 0.002  # Stop if accuracy improvement < threshold for 2 consecutive rounds
+  t_max: 100  # Maximum total trees in global forest
+
+prediction:
+  local_weight: 0.5  # λ: weight for local forest in hybrid prediction
+  global_weight: 0.5  # (1-λ): weight for global forest in hybrid prediction
+
+verbose: false
+seed: 42
