@@ -150,7 +150,7 @@ STRATEGY_LABELS = {
     "s5_perclient_accuracy": "S5 — Per-Client, orden por Accuracy + Progressive",
     "s6_perclient_f1":       "S6 — Per-Client, orden por Macro-F1 + Progressive",
     "s7_perclient_f1_pcd":   "S7 — Per-Client, orden por α·F1 + β·PCD + Progressive",
-    "rr_dynamic":            "RR_DS — Round Robin Dynamic Scoring (ventanas + score dinámico F1+Diversidad)",
+    "pw":                    "PW — Progressive Windows (ventanas + score dinámico F1+Diversidad)",
 }
 
 
@@ -314,8 +314,8 @@ def render():
             pcd_weight = round(1.0 - f1_weight, 4)
             st.metric("Peso PCD (β)", f"{pcd_weight:.2f}")
     
-    elif strategy_key == "rr_dynamic":
-        st.info("🔄 **Round Robin Dynamic Scoring**: Entrenamiento por ventanas + selección secuencial con score dinámico")
+    elif strategy_key == "pw":
+        st.info("🔄 **Progressive Windows**: Entrenamiento por ventanas + selección secuencial con score dinámico")
         col9, col10, col11 = st.columns(3)
         with col9:
             window_size = st.number_input("🪟 Tamaño ventana (W)", 2, 20, value=window_size,

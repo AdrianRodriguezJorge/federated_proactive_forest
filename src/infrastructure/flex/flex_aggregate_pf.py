@@ -42,9 +42,9 @@ def aggregate_trees_from_pf(server_flex_model: Dict[str, Any],
 
     # Build aggregate_kwargs based on strategy type, merging with server_flex_model kwargs
     aggregate_kwargs = {}
-    
-    # RR_DS specific parameters
-    if strategy_name == 'RR_DS':
+
+    # PW (Progressive Windows) specific parameters
+    if strategy_name == 'PW':
         aggregate_kwargs['window_size'] = agg_config.get('window_size', kwargs.get('window_size', 5))
         aggregate_kwargs['max_rounds'] = agg_config.get('max_rounds', kwargs.get('max_rounds', 20))
         aggregate_kwargs['alpha'] = agg_config.get('alpha', kwargs.get('alpha', 0.5))
@@ -92,7 +92,7 @@ def aggregate_trees_from_pf(server_flex_model: Dict[str, Any],
     server_flex_model['selected_indices'] = global_data.get('selected_indices', {})
     server_flex_model['all_tree_entries'] = global_data.get('all_tree_entries', [])
 
-    # Store strategy instance for accessing convergence info (RR-DS)
+    # Store strategy instance for accessing convergence info (PW)
     server_flex_model['strategy_instance'] = strategy
 
     return server_flex_model['global_trees']

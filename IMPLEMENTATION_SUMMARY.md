@@ -1,4 +1,4 @@
-# Implementación Round Robin Dynamic Scoring (RR-DS) - Resumen
+# Implementación Progressive Windows (PW) - Resumen
 
 ## ✅ Archivos Creados/Modificados
 
@@ -6,19 +6,19 @@
 
 | Archivo | Descripción |
 |---------|-------------|
-| `src/domain/aggregation/strategies/round_robin_dynamic/__init__.py` | Package init |
-| `src/domain/aggregation/strategies/round_robin_dynamic/round_robin_dynamic_strategy.py` | Implementación completa RR-DS (523 líneas) |
-| `configs/experiments/exp008_rr_dynamic.yaml` | Configuración experimento |
-| `RR_DS_README.md` | Documentación detallada |
+| `src/domain/aggregation/strategies/progressive_windows/__init__.py` | Package init |
+| `src/domain/aggregation/strategies/progressive_windows/progressive_windows_strategy.py` | Implementación completa PW (523 líneas) |
+| `configs/experiments/exp008_progressive_windows.yaml` | Configuración experimento |
+| `PROGRESSIVE_WINDOWS_README.md` | Documentación detallada |
 | `IMPLEMENTATION_SUMMARY.md` | Este resumen |
 
 ### Archivos Modificados
 
 | Archivo | Cambios |
 |---------|---------|
-| `src/domain/aggregation/aggregation_factory.py` | + Import RR_DS, + registro en factory |
-| `src/interfaces/streamlit/pages_manual/page_config.py` | + UI config RR_DS, + parámetros window_size/max_rounds/alpha |
-| `src/application/fl_orchestrator.py` | + Soporte RR_DS en aggregate_kwargs |
+| `src/domain/aggregation/aggregation_factory.py` | + Import PW, + registro en factory |
+| `src/interfaces/streamlit/pages_manual/page_config.py` | + UI config PW, + parámetros window_size/max_rounds/alpha |
+| `src/application/fl_orchestrator.py` | + Soporte PW en aggregate_kwargs |
 
 ## 📁 Estructura de Carpetas
 
@@ -28,9 +28,9 @@ federated_proactive_forest/
 │   ├── domain/
 │   │   └── aggregation/
 │   │       ├── strategies/
-│   │       │   └── round_robin_dynamic/        [NUEVA CARPETA]
+│   │       │   └── progressive_windows/        [NUEVA CARPETA]
 │   │       │       ├── __init__.py
-│   │       │       └── round_robin_dynamic_strategy.py
+│   │       │       └── progressive_windows_strategy.py
 │   │       └── aggregation_factory.py          [MODIFICADO]
 │   └── interfaces/
 │       └── streamlit/
@@ -38,8 +38,8 @@ federated_proactive_forest/
 │               └── page_config.py              [MODIFICADO]
 ├── configs/
 │   └── experiments/
-│       └── exp008_rr_dynamic.yaml              [NUEVO]
-├── RR_DS_README.md                             [NUEVO]
+│       └── exp008_progressive_windows.yaml     [NUEVO]
+├── PROGRESSIVE_WINDOWS_README.md               [NUEVO]
 └── IMPLEMENTATION_SUMMARY.md                   [NUEVO]
 ```
 
@@ -88,9 +88,9 @@ federated_proactive_forest/
 
 ## 🖥️ Interfaz Streamlit
 
-### Configuración RR-DS
+### Configuración PW
 
-Al seleccionar la estrategia `RR_DS` en Streamlit, se muestran:
+Al seleccionar la estrategia `PW` en Streamlit, se muestran:
 
 1. **🪟 Tamaño ventana (W)**: Número de árboles por ventana
 2. **🔁 Máximo rondas (R_MAX)**: Límite de rondas Round Robin
@@ -106,20 +106,20 @@ S4 — Global, orden por α·F1 + β·PCD + Progressive
 S5 — Per-Client, orden por Accuracy + Progressive
 S6 — Per-Client, orden por Macro-F1 + Progressive
 S7 — Per-Client, orden por α·F1 + β·PCD + Progressive
-RR_DS — Round Robin Dynamic Scoring (ventanas + score dinámico F1+Diversidad) [NUEVA]
+PW — Progressive Windows (ventanas + score dinámico F1+Diversidad) [NUEVA]
 ```
 
 ## 🧪 Tests Realizados
 
 ```bash
 # Test 1: Creación de estrategia desde factory
-✅ AggregationFactory.create_strategy('RR_DS')
+✅ AggregationFactory.create_strategy('PW')
 
 # Test 2: Imports en Streamlit
-✅ STRATEGY_LABELS incluye 'rr_dynamic'
+✅ STRATEGY_LABELS incluye 'pw'
 
 # Test 3: Configuración desde YAML
-✅ exp008_rr_dynamic.yaml válido
+✅ exp008_progressive_windows.yaml válido
 ```
 
 ## 📊 Fórmulas Clave
@@ -144,14 +144,14 @@ Diversidad(T | G) = promedio(PCD(T, T_i) for T_i in G)
 ### Desde Streamlit
 1. Ejecutar: `streamlit run src/interfaces/streamlit/app.py`
 2. Ir a **Configuración del Experimento**
-3. Seleccionar: `RR_DS — Round Robin Dynamic Scoring`
+3. Seleccionar: `PW — Progressive Windows`
 4. Ajustar parámetros según necesidad
 5. Guardar configuración
 6. Ejecutar experimento en **Run Experiment**
 
 ### Desde CLI (próximamente)
 ```bash
-python -m src.interfaces.cli.main --config configs/experiments/exp008_rr_dynamic.yaml
+python -m src.interfaces.cli.main --config configs/experiments/exp008_progressive_windows.yaml
 ```
 
 ## 📈 Ventajas vs Otras Estrategias
@@ -166,9 +166,9 @@ python -m src.interfaces.cli.main --config configs/experiments/exp008_rr_dynamic
 
 ## 🔍 Próximos Pasos (Opcionales)
 
-1. **Visualización**: Agregar panel de métricas específicas para RR_DS
+1. **Visualización**: Agregar panel de métricas específicas para PW
 2. **Protobuf**: Implementar serialización eficiente
-3. **Tests unitarios**: Crear tests específicos para RR_DS
+3. **Tests unitarios**: Crear tests específicos para PW
 4. **Benchmarking**: Comparar rendimiento vs S1-S7
 5. **Ablación**: Estudiar impacto de α, W, R_MAX
 

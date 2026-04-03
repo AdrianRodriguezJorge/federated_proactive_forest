@@ -1,4 +1,4 @@
-"""Test explícito de múltiples rondas RR-DS"""
+"""Test explícito de múltiples rondas Progressive Windows"""
 import numpy as np
 from sklearn.preprocessing import StandardScaler, LabelEncoder
 from sklearn.model_selection import train_test_split
@@ -13,7 +13,7 @@ scaler = StandardScaler()
 X_train_scaled = scaler.fit_transform(X_train)
 X_test_scaled = scaler.transform(X_test)
 
-from src.domain.aggregation.strategies.round_robin_dynamic import RoundRobinDynamicScoringStrategy
+from src.domain.aggregation.strategies.progressive_windows import ProgressiveWindowsStrategy
 
 # Simular datos de clientes
 np.random.seed(42)
@@ -49,8 +49,8 @@ for i in range(n_clients):
 X_val = X_test_scaled[:100]
 y_val = y_test[:100]
 
-# Ejecutar RR-DS
-strategy = RoundRobinDynamicScoringStrategy(
+# Ejecutar Progressive Windows
+strategy = ProgressiveWindowsStrategy(
     window_size=window_size,
     max_rounds=max_rounds,
     alpha=0.5,
@@ -59,7 +59,7 @@ strategy = RoundRobinDynamicScoringStrategy(
 )
 
 print("\n" + "="*100)
-print("TEST EXPLÍCITO DE MÚLTIPLES RONDAS RR-DS")
+print("TEST EXPLÍCITO DE MÚLTIPLES RONDAS PROGRESSIVE WINDOWS")
 print("="*100)
 print(f"Clientes: {n_clients}")
 print(f"Árboles por cliente: {n_trees_per_client}")

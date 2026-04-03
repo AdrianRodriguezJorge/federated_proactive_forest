@@ -114,7 +114,7 @@ config_examples = [
         'config': {'prediction': {'local_weight': 0.5, 'global_weight': 0.5}}
     },
     {
-        'name': 'Config RR-DS',
+        'name': 'Config PW',
         'config': {'prediction': {'local_weight': 0.5, 'global_weight': 0.5}}
     },
     {

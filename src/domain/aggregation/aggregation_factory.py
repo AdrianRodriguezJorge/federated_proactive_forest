@@ -7,13 +7,13 @@ from .strategies.s4_global_f1_pcd import S4GlobalF1PCDStrategy
 from .strategies.s5_perclient_accuracy import S5PerClientAccuracyStrategy
 from .strategies.s6_perclient_f1 import S6PerClientF1Strategy
 from .strategies.s7_perclient_f1_pcd import S7PerClientF1PCDStrategy
-from .strategies.round_robin_dynamic.round_robin_dynamic_strategy import RoundRobinDynamicScoringStrategy
+from .strategies.progressive_windows.progressive_windows_strategy import ProgressiveWindowsStrategy
 
 
 class AggregationFactory:
     """
     Factory for creating aggregation strategies based on configuration.
-    Supports 8 strategies: S1-S7 (Cepero, 2023 + FL extensions) + RR_DS (Round Robin Dynamic Scoring).
+    Supports 9 strategies: S1-S7 (Cepero, 2023 + FL extensions) + PW (Progressive Windows).
     """
 
     _strategies: Dict[str, Type[IAggregationStrategy]] = {
@@ -24,7 +24,7 @@ class AggregationFactory:
         "S5": S5PerClientAccuracyStrategy,
         "S6": S6PerClientF1Strategy,
         "S7": S7PerClientF1PCDStrategy,
-        "RR_DS": RoundRobinDynamicScoringStrategy,
+        "PW": ProgressiveWindowsStrategy,
     }
 
     @classmethod

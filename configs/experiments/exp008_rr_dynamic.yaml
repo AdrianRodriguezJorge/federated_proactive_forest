@@ -1,7 +1,7 @@
 experiment:
-  name: "exp008_rr_dynamic_round_robin"
+  name: "exp008_progressive_windows"
   seed: 42
-  description: "Round Robin Dynamic Scoring - Federated Proactive Forest with window-based training and dynamic tree selection"
+  description: "Progressive Windows - Federated Proactive Forest with window-based training and dynamic tree selection"
 
 dataset:
   type: NSL-KDD
@@ -29,7 +29,7 @@ model:
   window_size: 5  # W: trees per window per round
 
 aggregation:
-  strategy: rr_dynamic  # Round Robin Dynamic Scoring
+  strategy: pw  # Progressive Windows
   # Dynamic scoring parameters
   alpha: 0.5  # Balance between F1 (α) and Diversity (1-α) in Score(T) = α*F1 + (1-α)*Diversity
   # Round Robin parameters

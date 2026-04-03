@@ -1,6 +1,6 @@
-"""Round Robin Dynamic Scoring Strategy.
+"""Progressive Windows Strategy.
 
-Implementation of the Round Robin with Dynamic Scoring (RR-DS) aggregation strategy
+Implementation of the Progressive Windows aggregation strategy
 for federated Proactive Forest.
 
 Key features:
@@ -33,8 +33,8 @@ class WindowReport:
 
 
 @dataclass
-class RoundRobinSelectionResult:
-    """Result of Round Robin selection process."""
+class ProgressiveWindowsResult:
+    """Result of Progressive Windows selection process."""
     global_trees: List[Any] = field(default_factory=list)
     selected_ids: Dict[str, List[int]] = field(default_factory=dict)
     all_tree_entries: List[TreeEntry] = field(default_factory=list)
@@ -44,9 +44,9 @@ class RoundRobinSelectionResult:
     final_macro_f1: float = 0.0
 
 
-class RoundRobinDynamicScoringStrategy(IAggregationStrategy):
+class ProgressiveWindowsStrategy(IAggregationStrategy):
     """
-    Round Robin Dynamic Scoring (RR-DS) aggregation strategy.
+    Progressive Windows aggregation strategy.
 
     This strategy implements the 6-phase federated learning approach:
 
@@ -99,7 +99,7 @@ class RoundRobinDynamicScoringStrategy(IAggregationStrategy):
         verbose: bool = False
     ):
         """
-        Initialize Round Robin Dynamic Scoring strategy.
+        Initialize Progressive Windows strategy.
 
         Args:
             window_size: Number of trees per window (W). Default: 5
@@ -119,14 +119,14 @@ class RoundRobinDynamicScoringStrategy(IAggregationStrategy):
         # Track global forest state
         self._global_trees: List[Any] = []
         self._global_tree_sources: List[str] = []  # Track which client each tree came from
-        
+
         # Track convergence info (for FLResults)
         self.convergence_round: Optional[int] = None
 
     @property
     def strategy_id(self) -> str:
         """Return strategy identifier."""
-        return "RR_DS"
+        return "PW"
 
     def aggregate(
         self,
@@ -161,7 +161,7 @@ class RoundRobinDynamicScoringStrategy(IAggregationStrategy):
             return [], {}, []
 
         # Initialize result tracking
-        result = RoundRobinSelectionResult()
+        result = ProgressiveWindowsResult()
         result.selected_ids = {cid: [] for cid in client_ids}
 
         # Reset global forest state
@@ -178,11 +178,11 @@ class RoundRobinDynamicScoringStrategy(IAggregationStrategy):
         previous_accuracy = None
 
         # ──────────────────────────────────────────────────────────────────────
-        # FASE 3: AGREGACIÓN GLOBAL CON ROUND ROBIN DYNAMIC SCORING
+        # FASE 3: AGREGACIÓN GLOBAL CON PROGRESSIVE WINDOWS
         # ──────────────────────────────────────────────────────────────────────
         if self.verbose:
             print("\n" + "=" * 100)
-            print("🔄 FASE 3: AGREGACIÓN GLOBAL CON ROUND ROBIN DYNAMIC SCORING")
+            print("🔄 FASE 3: AGREGACIÓN GLOBAL CON PROGRESSIVE WINDOWS")
             print("=" * 100)
             print(f"\n📋 Parámetros de configuración:")
             print(f"   • Número de clientes (k): {n_clients}")
@@ -199,7 +199,7 @@ class RoundRobinDynamicScoringStrategy(IAggregationStrategy):
                 print(f"🔁 RONDA {round_num + 1}/{self.max_rounds}")
                 print("=" * 100)
                 print(f"📊 Estado actual del bosque global: {len(self._global_trees)} árboles")
-                
+
                 # Current accuracy before this round
                 if len(self._global_trees) > 0 and X_val is not None and y_val is not None:
                     current_acc = self._evaluate_forest_accuracy(self._global_trees, X_val, y_val)
@@ -220,18 +220,18 @@ class RoundRobinDynamicScoringStrategy(IAggregationStrategy):
             for client_idx, client_id in enumerate(round_permutation):
                 # Get client's trees for this round
                 client_all_trees = client_trees[client_id]
-                
+
                 # Calculate which trees belong to this round window
                 window_start = round_num * self.window_size
                 window_end = min(window_start + self.window_size, len(client_all_trees))
-                
+
                 if window_start >= len(client_all_trees):
                     if self.verbose:
                         print(f"\n  ⚠️  {client_id}: Sin árboles disponibles para esta ventana")
                     continue
 
                 window_trees = client_all_trees[window_start:window_end]
-                
+
                 # Get metadata for this client
                 client_meta = client_metadata.get(client_id, {})
                 if hasattr(client_meta, 'to_dict'):
@@ -256,7 +256,7 @@ class RoundRobinDynamicScoringStrategy(IAggregationStrategy):
 
                 for local_idx, tree in enumerate(window_trees):
                     global_idx = window_start + local_idx
-                    
+
                     # Get tree's F1 score
                     if 'window_f1_scores' in client_meta_dict and local_idx < len(client_meta_dict['window_f1_scores']):
                         tree_f1 = client_meta_dict['window_f1_scores'][local_idx]
@@ -293,7 +293,7 @@ class RoundRobinDynamicScoringStrategy(IAggregationStrategy):
                     print(f"   {'─' * 96}")
                     print(f"   {'Árbol':<10} | {'F1(T)':<12} | {'Diversidad(T|G)':<18} | {'Score(T)':<12} | {'Ranking':<8}")
                     print(f"   {'─' * 96}")
-                    
+
                     ranked_trees = sorted(tree_scores, key=lambda x: x[2], reverse=True)
                     for rank, (idx, tree, score, f1, div) in enumerate(ranked_trees, 1):
                         marker = "⭐" if rank == 1 else "  "

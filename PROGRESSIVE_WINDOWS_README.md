@@ -1,8 +1,8 @@
-# Round Robin Dynamic Scoring (RR-DS) Strategy
+# Progressive Windows Strategy
 
 ## Descripción General
 
-**Round Robin Dynamic Scoring (RR-DS)** es una estrategia de agregación para Federated Proactive Forest que implementa un enfoque de 6 fases con selección secuencial de árboles basada en un score dinámico que balancea rendimiento y diversidad.
+**Progressive Windows (PW)** es una estrategia de agregación para Federated Proactive Forest que implementa un enfoque de 6 fases con selección secuencial de árboles basada en un score dinámico que balancea rendimiento y diversidad.
 
 ## Arquitectura de 6 Fases
 
@@ -111,12 +111,12 @@ hybrid_forest = local_no_selected + global_trees
 | **S1** | Simple Pool | Todas, sin orden | N/A |
 | **S2-S4** | Global | Accuracy/F1/PCD | Progressive |
 | **S5-S7** | Per-Client | Ranking por cliente | Progressive |
-| **RR_DS** | **Round Robin** | **Score dinámico** | **Progressive Global** |
+| **PW** | **Progressive Windows** | **Score dinámico** | **Progressive Global** |
 
 ## Uso en Streamlit
 
 1. Ir a **Configuración del Experimento**
-2. Seleccionar estrategia: `RR_DS — Round Robin Dynamic Scoring`
+2. Seleccionar estrategia: `PW — Progressive Windows`
 3. Ajustar parámetros:
    - 🪟 Tamaño ventana (W)
    - 🔁 Máximo rondas (R_MAX)
@@ -126,7 +126,7 @@ hybrid_forest = local_no_selected + global_trees
 
 ```yaml
 aggregation:
-  strategy: rr_dynamic
+  strategy: pw
   alpha: 0.5          # Balance F1 vs Diversidad
   window_size: 5      # W: árboles por ventana
   max_rounds: 20      # R_MAX: máximo rondas

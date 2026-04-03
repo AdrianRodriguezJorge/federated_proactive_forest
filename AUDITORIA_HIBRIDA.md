@@ -125,7 +125,7 @@ Config balanceada:
    - global_weight leído: 0.5
    ✅ Configuración aplicada correctamente
 
-Config RR-DS:
+Config PW:
    - local_weight leído: 0.5
    - global_weight leído: 0.5
    ✅ Configuración aplicada correctamente
@@ -146,11 +146,11 @@ prediction:
   global_weight: 0.6
 ```
 
-### Estrategia RR-DS (Nueva)
+### Estrategia PW (Progressive Windows)
 
 **Default**: `local_weight=0.5`, `global_weight=0.5`
 
-Se configura en `configs/experiments/exp008_rr_dynamic.yaml`:
+Se configura en `configs/experiments/exp008_progressive_windows.yaml`:
 ```yaml
 prediction:
   local_weight: 0.5   # λ: peso local
@@ -193,7 +193,7 @@ return np.argmax(combined, axis=1)
 | **Priorizar generalización** | 0.3-0.4 | 0.6-0.7 | Más peso a conocimiento global |
 | **Clientes muy especializados** | 0.7-0.8 | 0.2-0.3 | Máximo peso local |
 | **Default (S1-S7)** | 0.4 | 0.6 | Balance hacia global |
-| **RR-DS (balanceado)** | 0.5 | 0.5 | Equilibrio total |
+| **PW (balanceado)** | 0.5 | 0.5 | Equilibrio total |
 
 ---
 
@@ -204,7 +204,7 @@ return np.argmax(combined, axis=1)
 | `page_config.py` | UI de configuración | 333-340, 392-394 |
 | `fl_orchestrator.py` | Lectura de config | 500-504 |
 | `hybrid_predictor.py` | Implementación | 15-45 |
-| `exp008_rr_dynamic.yaml` | Config RR-DS | prediction section |
+| `exp008_progressive_windows.yaml` | Config PW | prediction section |
 
 ---
 
@@ -218,7 +218,7 @@ return np.argmax(combined, axis=1)
 
 ✅ **Los valores por defecto son razonables**
 
-✅ **RR-DS usa configuración específica (0.5/0.5)**
+✅ **PW usa configuración específica (0.5/0.5)**
 
 ---
 

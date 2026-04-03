@@ -17,11 +17,11 @@ from src.application.fl_orchestrator import FLEXOrchestrator, DatasetSplit
 config = {
     'n_clients': 3,
     'distribution': 'iid',
-    'strategy': 'RR_DS',
+    'strategy': 'PW',
     'n_estimators': 20,
     'alpha_pf': 0.1,
     'aggregation': {
-        'strategy': 'rr_dynamic',
+        'strategy': 'pw',
         'window_size': 3,
         'max_rounds': 5,
         'alpha': 0.5,

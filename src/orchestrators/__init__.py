@@ -1,4 +1,4 @@
 """Orchestrators package."""
-from .rr_ds_orchestrator import RRDSOrchestrator, RRDSResults
+from .progressive_windows_orchestrator import ProgressiveWindowsOrchestrator, ProgressiveWindowsResults
 
-__all__ = ['RRDSOrchestrator', 'RRDSResults']
+__all__ = ['ProgressiveWindowsOrchestrator', 'ProgressiveWindowsResults']

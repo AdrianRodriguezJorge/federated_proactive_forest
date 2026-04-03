@@ -79,7 +79,7 @@ class FLResults:
     y_test: np.ndarray = None
     class_names: List[str] = field(default_factory=list)
     client_hybrid_forest_sizes: Dict[str, int] = field(default_factory=dict)
-    convergence_round: Optional[int] = None  # Ronda en la que se alcanzó convergencia (RR-DS)
+    convergence_round: Optional[int] = None  # Ronda en la que se alcanzó convergencia (PW)
     hybrid_weights: Dict[str, float] = field(default_factory=lambda: {'local_weight': 0.4, 'global_weight': 0.6})  # Pesos usados en inferencia híbrida
 
 
@@ -146,7 +146,7 @@ class FLEXOrchestrator:
         - config['strategy'] (flat structure)
         - config['aggregation']['strategy'] (nested structure from Streamlit)
 
-        Normalizes: 's7_perclient_f1_pcd' → 'S7', 'S1' → 'S1', 'rr_dynamic' → 'RR_DS'
+        Normalizes: 's7_perclient_f1_pcd' → 'S7', 'S1' → 'S1', 'pw' → 'PW'
         """
         # Try flat structure first
         strategy = self.config.get('strategy')
@@ -161,11 +161,11 @@ class FLEXOrchestrator:
 
         # Normalize: extract S1-S7 from format like "s7_perclient_f1_pcd"
         strategy_str = str(strategy).upper()
-        
-        # Special case: RR_DS (Round Robin Dynamic Scoring)
-        if strategy_str == 'RR_DYNAMIC' or strategy_str.startswith('RR_DS'):
-            return 'RR_DS'
-        
+
+        # Special case: PW (Progressive Windows)
+        if strategy_str == 'PW' or strategy_str == 'PROGRESSIVE_WINDOWS' or strategy_str.startswith('PW_'):
+            return 'PW'
+
         if '_' in strategy_str:
             # Extract first part: "S7_..." → "S7"
             strategy_str = strategy_str.split('_')[0]
@@ -389,7 +389,7 @@ class FLEXOrchestrator:
         n_estimators = self._get_config_value('model', 'n_estimators') or self._get_config_value('n_estimators', default=100)
         t_max = self._get_config_value('aggregation', 't_max', default=n_estimators)  # T_MAX por defecto = n_estimators
 
-        # Get validation data for Progressive Forest (S2-S7) and RR_DS
+        # Get validation data for Progressive Forest (S2-S7) and PW
         X_test, y_test = self.dataset_split.X_test, self.dataset_split.y_test
 
         # Build kwargs based on strategy type
@@ -404,8 +404,8 @@ class FLEXOrchestrator:
             aggregate_kwargs['y_val'] = y_test
             aggregate_kwargs['max_trees_per_client'] = n_estimators
             aggregate_kwargs['t_max'] = t_max
-        elif strategy_name == 'RR_DS':
-            # Round Robin Dynamic Scoring uses different parameters
+        elif strategy_name == 'PW':
+            # Progressive Windows uses different parameters
             aggregate_kwargs['X_val'] = X_test
             aggregate_kwargs['y_val'] = y_test
             aggregate_kwargs['t_max'] = t_max
@@ -522,9 +522,9 @@ class FLEXOrchestrator:
 
         self.step_callback("Ronda completada", 100)
 
-        # Calculate convergence round for RR-DS strategy
+        # Calculate convergence round for PW strategy
         convergence_round = None
-        if strategy_name == 'RR_DS':
+        if strategy_name == 'PW':
             # Get strategy instance from server_flex_model
             strategy_instance = server_flex_model.get('strategy_instance')
             if strategy_instance and hasattr(strategy_instance, 'convergence_round'):
