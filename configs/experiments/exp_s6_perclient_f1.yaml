@@ -1,0 +1,39 @@
+experiment:
+  name: "exp_s6_perclient_f1_letter"
+  description: "S6 Per-Client F1 - Tree selection based on macro-F1 evaluated per-client"
+
+dataset:
+  type: "Letter"
+  train_path: "data/letter.csv"
+  target_column: "class"
+  categorical_features: []
+  scale: true
+  scaler_type: standard
+  test_size: 0.2
+
+federation:
+  n_clients: 5
+  distribution: "iid"
+  seed: 42
+
+model:
+  n_estimators: 50
+  alpha: 0.1
+  split_criterion: "entropy"
+  use_progressive_stopping: true
+  convergence: 0.002
+  episode_size: 5
+  verbose: false
+
+aggregation:
+  strategy: "S6"
+  t_max: 50
+  convergence: 0.002
+  episode_size: 5
+
+prediction:
+  local_weight: 0.4
+  global_weight: 0.6
+
+verbose: false
+seed: 42

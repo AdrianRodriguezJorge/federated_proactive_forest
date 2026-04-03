@@ -91,11 +91,15 @@ def main():
     print(f"Árboles global:  {results.n_trees_global}")
     print("\nPor cliente:")
     for cid in results.client_ids:
-        rep  = results.client_reports[cid]
-        meta = results.client_metadata[cid]
-        sel  = len(results.selected_ids.get(cid, []))
-        print(f"  {cid}: acc={rep.accuracy:.4f} | f1={rep.macro_f1:.4f} | "
-              f"pcd={meta.pcd:.4f} | árboles_loc={meta.n_trees} | sel={sel}")
+        acc = results.client_accuracies.get(cid, 0.0)
+        f1 = results.client_f1_scores.get(cid, 0.0)
+        meta = results.client_metadata.get(cid)
+        sel = len(results.selected_ids.get(cid, []))
+        if meta:
+            print(f"  {cid}: acc={acc:.4f} | f1={f1:.4f} | "
+                  f"pcd={meta.pcd:.4f} | árboles_loc={meta.n_trees} | sel={sel}")
+        else:
+            print(f"  {cid}: acc={acc:.4f} | f1={f1:.4f}")
     print("=" * 60)
 
 

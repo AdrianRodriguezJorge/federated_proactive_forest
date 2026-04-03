@@ -1,0 +1,33 @@
+experiment:
+  name: "exp_s1_simple_pool_letter"
+  description: "S1 Simple Pool - Baseline: pools all trees from all clients without selection"
+
+dataset:
+  type: "Letter"
+  train_path: "data/letter.csv"
+  target_column: "class"
+  categorical_features: []
+  scale: true
+  scaler_type: standard
+  test_size: 0.2
+
+federation:
+  n_clients: 5
+  distribution: "iid"
+  seed: 42
+
+model:
+  n_estimators: 50
+  alpha: 0.1
+  split_criterion: "entropy"
+  verbose: false
+
+aggregation:
+  strategy: "S1"
+
+prediction:
+  local_weight: 0.4
+  global_weight: 0.6
+
+verbose: false
+seed: 42
