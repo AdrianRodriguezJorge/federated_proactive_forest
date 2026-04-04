@@ -498,8 +498,17 @@ class FLEXOrchestrator:
         # Perform hybrid prediction on clients using local and global trees
         # IMPORTANT: Avoid duplicates - each client should not use global trees that came from itself
         client_hybrid_predictions = {}
-        local_weight = self.config.get('prediction', {}).get('local_weight', 0.4)
-        global_weight = self.config.get('prediction', {}).get('global_weight', 0.6)
+
+        # Get local_weight from strategy instance (PW) or fallback to config
+        strategy_instance = server_flex_model.get('strategy_instance') if strategy_name == 'PW' else None
+
+        if strategy_instance and hasattr(strategy_instance, 'local_weight'):
+            local_weight = strategy_instance.local_weight
+            global_weight = 1.0 - local_weight
+        else:
+            local_weight = self.config.get('prediction', {}).get('local_weight', 0.4)
+            global_weight = self.config.get('prediction', {}).get('global_weight', 0.6)
+        
         n_classes = len(class_names)
         from src.domain.prediction.hybrid_predictor import HybridPredictor
         predictor = HybridPredictor(local_weight=local_weight, global_weight=global_weight, n_classes=n_classes, class_names=class_names)
@@ -524,11 +533,8 @@ class FLEXOrchestrator:
 
         # Calculate convergence round for PW strategy
         convergence_round = None
-        if strategy_name == 'PW':
-            # Get strategy instance from server_flex_model
-            strategy_instance = server_flex_model.get('strategy_instance')
-            if strategy_instance and hasattr(strategy_instance, 'convergence_round'):
-                convergence_round = strategy_instance.convergence_round
+        if strategy_instance and hasattr(strategy_instance, 'convergence_round'):
+            convergence_round = strategy_instance.convergence_round
 
         return FLResults(
             strategy_id=strategy_name,

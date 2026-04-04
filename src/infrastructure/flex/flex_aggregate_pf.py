@@ -49,6 +49,7 @@ def aggregate_trees_from_pf(server_flex_model: Dict[str, Any],
         aggregate_kwargs['max_rounds'] = agg_config.get('max_rounds', kwargs.get('max_rounds', 20))
         aggregate_kwargs['alpha'] = agg_config.get('alpha', kwargs.get('alpha', 0.5))
         aggregate_kwargs['convergence_threshold'] = agg_config.get('convergence_threshold', kwargs.get('convergence_threshold', 0.002))
+        aggregate_kwargs['local_weight'] = config.get('prediction', {}).get('local_weight', kwargs.get('local_weight', 0.5))
         aggregate_kwargs['verbose'] = config.get('verbose', True)  # Pass verbose flag
         aggregate_kwargs['X_val'] = X_val
         aggregate_kwargs['y_val'] = y_val

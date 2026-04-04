@@ -10,4 +10,6 @@ flex
 flextrees
 tensorly
 setuptools<70
+optuna>=3.5.0
+joblib>=1.3.0
 

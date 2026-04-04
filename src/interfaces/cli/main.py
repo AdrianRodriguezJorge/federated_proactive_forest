@@ -75,7 +75,7 @@ def main():
           f"{ds.X_train.shape[0]} train / {ds.X_test.shape[0]} test, "
           f"{len(ds.class_names)} clases")
 
-    from src.application.fl_orchestrator import FLEXOrchestrator
+    from src.application.orchestrators import FLEXOrchestrator
 
     def cb(msg, pct, detail=""):
         print(f"  [{pct:3d}%] {msg} {detail}")

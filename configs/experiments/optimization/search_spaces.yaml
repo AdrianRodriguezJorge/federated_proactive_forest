@@ -1,0 +1,204 @@
+# Search spaces for hyperparameter optimization
+# Each strategy defines which parameters to optimize and their ranges
+# alpha_pf: [0.10, 0.80] step=0.1 for ALL strategies
+# local_weight, f1_weight, alpha_pw, lambda_hybrid: step=0.1
+
+# ============================================================================
+# S1: Simple Pool
+# ============================================================================
+S1:
+  alpha_pf:
+    type: float
+    low: 0.1
+    high: 0.8
+    step: 0.1
+
+  local_weight:
+    type: float
+    low: 0.0
+    high: 1.0
+    step: 0.1
+
+# ============================================================================
+# S2: Global Accuracy with Progressive Forest
+# ============================================================================
+S2:
+  alpha_pf:
+    type: float
+    low: 0.1
+    high: 0.8
+    step: 0.1
+
+  t_max:
+    type: int
+    low: 30
+    high: 150
+    step: 10
+
+  local_weight:
+    type: float
+    low: 0.0
+    high: 1.0
+    step: 0.1
+
+# ============================================================================
+# S3: Global Macro-F1 with Progressive Forest
+# ============================================================================
+S3:
+  alpha_pf:
+    type: float
+    low: 0.1
+    high: 0.8
+    step: 0.1
+
+  t_max:
+    type: int
+    low: 30
+    high: 150
+    step: 10
+
+  local_weight:
+    type: float
+    low: 0.0
+    high: 1.0
+    step: 0.1
+
+# ============================================================================
+# S4: Global F1 + PCD with Progressive Forest
+# ============================================================================
+S4:
+  alpha_pf:
+    type: float
+    low: 0.1
+    high: 0.8
+    step: 0.1
+
+  t_max:
+    type: int
+    low: 30
+    high: 150
+    step: 10
+
+  f1_weight:
+    type: float
+    low: 0.0
+    high: 1.0
+    step: 0.1
+
+  local_weight:
+    type: float
+    low: 0.0
+    high: 1.0
+    step: 0.1
+
+# ============================================================================
+# S5: Per-Client Accuracy with Progressive Forest
+# ============================================================================
+S5:
+  alpha_pf:
+    type: float
+    low: 0.1
+    high: 0.8
+    step: 0.1
+
+  t_max:
+    type: int
+    low: 30
+    high: 150
+    step: 10
+
+  local_weight:
+    type: float
+    low: 0.0
+    high: 1.0
+    step: 0.1
+
+# ============================================================================
+# S6: Per-Client Macro-F1 with Progressive Forest
+# ============================================================================
+S6:
+  alpha_pf:
+    type: float
+    low: 0.1
+    high: 0.8
+    step: 0.1
+
+  t_max:
+    type: int
+    low: 30
+    high: 150
+    step: 10
+
+  local_weight:
+    type: float
+    low: 0.0
+    high: 1.0
+    step: 0.1
+
+# ============================================================================
+# S7: Per-Client F1 + PCD with Progressive Forest
+# ============================================================================
+S7:
+  alpha_pf:
+    type: float
+    low: 0.1
+    high: 0.8
+    step: 0.1
+
+  t_max:
+    type: int
+    low: 30
+    high: 150
+    step: 10
+
+  f1_weight:
+    type: float
+    low: 0.0
+    high: 1.0
+    step: 0.1
+
+  local_weight:
+    type: float
+    low: 0.0
+    high: 1.0
+    step: 0.1
+
+# ============================================================================
+# PW: Progressive Windows
+# ============================================================================
+PW:
+  alpha_pf:
+    type: float
+    low: 0.1
+    high: 0.8
+    step: 0.1
+
+  window_size:
+    type: int
+    low: 3
+    high: 15
+    step: 1
+
+  max_rounds:
+    type: int
+    low: 10
+    high: 50
+    step: 5
+
+  alpha_pw:
+    type: float
+    low: 0.0
+    high: 1.0
+    step: 0.1
+
+  convergence_threshold:
+    type: float
+    low: 0.001
+    high: 0.01
+    log: true
+
+  local_weight:
+    type: float
+    low: 0.0
+    high: 1.0
+    step: 0.1

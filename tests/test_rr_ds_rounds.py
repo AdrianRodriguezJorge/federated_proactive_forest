@@ -12,7 +12,7 @@ scaler = StandardScaler()
 X_train_scaled = scaler.fit_transform(X_train)
 X_test_scaled = scaler.transform(X_test)
 
-from src.application.fl_orchestrator import FLEXOrchestrator, DatasetSplit
+from src.application.orchestrators import FLEXOrchestrator, DatasetSplit
 
 config = {
     'n_clients': 3,

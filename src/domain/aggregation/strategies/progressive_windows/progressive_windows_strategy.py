@@ -87,7 +87,7 @@ class ProgressiveWindowsStrategy(IAggregationStrategy):
     DEFAULT_MAX_ROUNDS = 20  # Maximum rounds (R_MAX)
     DEFAULT_CONVERGENCE_THRESHOLD = 0.002  # Convergence threshold
     DEFAULT_ALPHA = 0.5  # Balance between F1 and Diversity
-    DEFAULT_LAMBDA = 0.5  # Hybrid prediction weight (local vs global)
+    DEFAULT_LOCAL_WEIGHT = 0.5  # Hybrid prediction weight (local vs global)
 
     def __init__(
         self,
@@ -95,7 +95,7 @@ class ProgressiveWindowsStrategy(IAggregationStrategy):
         max_rounds: int = DEFAULT_MAX_ROUNDS,
         convergence_threshold: float = DEFAULT_CONVERGENCE_THRESHOLD,
         alpha: float = DEFAULT_ALPHA,
-        lambda_hybrid: float = DEFAULT_LAMBDA,
+        local_weight: float = DEFAULT_LOCAL_WEIGHT,
         verbose: bool = False
     ):
         """
@@ -106,14 +106,14 @@ class ProgressiveWindowsStrategy(IAggregationStrategy):
             max_rounds: Maximum number of rounds (R_MAX). Default: 20
             convergence_threshold: Convergence threshold for early stopping. Default: 0.002
             alpha: Weight for F1 vs Diversity in score calculation. Default: 0.5
-            lambda_hybrid: Weight for local vs global in hybrid prediction. Default: 0.5
+            local_weight: Weight for local vs global in hybrid prediction. Default: 0.5
             verbose: Enable verbose logging. Default: False
         """
         self.window_size = window_size
         self.max_rounds = max_rounds
         self.convergence_threshold = convergence_threshold
         self.alpha = alpha
-        self.lambda_hybrid = lambda_hybrid
+        self.local_weight = local_weight
         self.verbose = verbose
 
         # Track global forest state
@@ -137,6 +137,7 @@ class ProgressiveWindowsStrategy(IAggregationStrategy):
         max_trees: Optional[int] = None,
         max_trees_per_client: Optional[int] = None,
         t_max: Optional[int] = None,
+        local_weight: Optional[float] = None,
         **kwargs
     ) -> Tuple[List[Any], Dict[str, List[int]], List[Any]]:
         """
@@ -144,11 +145,17 @@ class ProgressiveWindowsStrategy(IAggregationStrategy):
 
         This implements Phase 3 (Round Robin aggregation) and Phase 4
         (Progressive Forest global stopping).
+
+        Args:
+            local_weight: Weight for local vs global in hybrid prediction.
+                         If provided, overrides the instance default.
         """
         # Override defaults with kwargs
         self.alpha = kwargs.get('alpha', self.alpha)
         self.window_size = kwargs.get('window_size', self.window_size)
         self.max_rounds = kwargs.get('max_rounds', self.max_rounds)
+        if local_weight is not None:
+            self.local_weight = local_weight
 
         # If t_max provided, calculate max_rounds from it
         if t_max is not None:

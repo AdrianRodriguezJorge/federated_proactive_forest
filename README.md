@@ -99,7 +99,7 @@ python -m src.interfaces.cli.main --config configs/experiments/exp001_s1_simple.
 ### Opción 3: Uso Programático
 
 ```python
-from src.application.fl_orchestrator import FLEXOrchestrator
+from src.application.orchestrators import FLEXOrchestrator
 
 # Configuración básica
 config = {
@@ -179,18 +179,19 @@ src/
 │   └── ports/                # Interfaces (ports) del dominio
 │
 ├── application/              # 🎯 Casos de uso y orquestación
-│   ├── commands/            # Comandos FL (train, aggregate, etc.)
-│   └── fl_orchestrator.py   # Orquestador principal FL
+│   ├── commands/             # Comandos FL (train, aggregate, etc.)
+│   ├── orchestrators/        # Orquestadores: FLEX, Progressive Windows
+│   └── hyperparam_optimizer.py  # Optimización de hiperparámetros
 │
 ├── infrastructure/           # 🔌 Adaptadores concretos
-│   ├── dataset/             # Adaptadores: NSL-KDD, Iris, CSV
-│   ├── flex/                # Integración FLEX framework
-│   └── serialization/       # Serialización de modelos
+│   ├── dataset/              # Adaptadores: NSL-KDD, Iris, CSV
+│   ├── flex/                 # Integración FLEX framework
+│   └── serialization/        # Serialización de modelos
 │
 └── interfaces/               # 🎨 Interfaces de usuario
-    ├── cli/                 # Interfaz de línea de comandos
-    ├── streamlit/           # Interfaz web moderna
-    └── notebooks/           # Jupyter notebooks
+    ├── cli/                  # Interfaz de línea de comandos
+    ├── streamlit/            # Interfaz web moderna
+    └── notebooks/            # Jupyter notebooks
 ```
 
 ### Componentes Clave

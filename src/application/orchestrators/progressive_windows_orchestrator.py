@@ -84,7 +84,7 @@ class ProgressiveWindowsOrchestrator:
         self.max_rounds = config.get('aggregation', {}).get('max_rounds', 20)
         self.alpha = config.get('aggregation', {}).get('alpha', 0.5)
         self.convergence_threshold = config.get('aggregation', {}).get('convergence_threshold', 0.002)
-        self.lambda_hybrid = config.get('prediction', {}).get('local_weight', 0.5)
+        self.local_weight = config.get('prediction', {}).get('local_weight', 0.5)
 
         # Estado del entrenamiento
         self.client_forests: Dict[str, ProactiveForest] = {}
@@ -117,7 +117,7 @@ class ProgressiveWindowsOrchestrator:
             print(f"   • Ventana (W): {self.window_size} árboles")
             print(f"   • Máx rondas: {self.max_rounds}")
             print(f"   • Alpha: {self.alpha}")
-            print(f"   • Lambda: {self.lambda_hybrid}")
+            print(f"   • Lambda: {self.local_weight}")
             print("=" * 100 + "\n")
 
         # Inicializar resultados
@@ -344,7 +344,7 @@ class ProgressiveWindowsOrchestrator:
                 X=self.dataset_split.X_test,
                 local_trees=local_trees,
                 global_trees=external_global_trees,
-                lambda_param=self.lambda_hybrid
+                local_weight=self.local_weight
             )
 
             results.client_hybrid_predictions[client_id] = hybrid_preds
@@ -651,12 +651,12 @@ class ProgressiveWindowsOrchestrator:
         X: np.ndarray,
         local_trees: List[Any],
         global_trees: List[Any],
-        lambda_param: float = 0.5
+        local_weight: float = 0.5
     ) -> np.ndarray:
         """
         FASE 6: Inferencia híbrida ponderada.
 
-        ŷ = argmax( λ·p_local(c|x) + (1-λ)·p_global(c|x) )
+        ŷ = argmax( local_weight·p_local(c|x) + (1-local_weight)·p_global(c|x) )
         """
         from scipy import stats
 
@@ -668,7 +668,7 @@ class ProgressiveWindowsOrchestrator:
         global_preds = self._get_class_probabilities(global_trees, X, n_classes)
 
         # Combinación ponderada
-        combined = lambda_param * local_preds + (1 - lambda_param) * global_preds
+        combined = local_weight * local_preds + (1 - local_weight) * global_preds
 
         return np.argmax(combined, axis=1)
 

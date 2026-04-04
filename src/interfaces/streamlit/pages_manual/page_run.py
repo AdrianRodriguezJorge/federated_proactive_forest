@@ -143,7 +143,7 @@ def render():
             log_placeholder.code("\n".join(log_lines))
 
         try:
-            from src.application.fl_orchestrator import FLEXOrchestrator
+            from src.application.orchestrators import FLEXOrchestrator
             orch    = FLEXOrchestrator(cfg, step_callback=step_cb)
             # Get dataset split from config
             ds = cfg.get('_dataset_split')
