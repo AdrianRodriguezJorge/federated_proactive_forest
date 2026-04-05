@@ -18,7 +18,7 @@ from .selection_and_diversity import PercentageCorrectDiversity, QStatisticDiver
 from .tree_builder import TreeBuilder
 from .sampling_and_voting import PerformanceWeightingVoter
 from .sampling_and_voting import SimpleSet, BaggingSet, ProbabilitySet
-from .probabilites import FIProbabilityLedger
+from .probabilities import FIProbabilityLedger
 from .criteria_and_splits import resolve_split_selection, resolve_split_criterion
 from .selection_and_diversity import resolve_feature_selection
 

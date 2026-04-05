@@ -1,15 +1,19 @@
+# Core dependencies (must match pyproject.toml)
 numpy>=1.24.0
 pandas>=2.0.0
 scikit-learn>=1.3.0
 PyYAML>=6.0
+
+# UI (optional: pip install -e ".[ui]")
 streamlit>=1.35.0
 plotly>=5.20.0
+
+# Dev (optional: pip install -e ".[dev]")
 pytest>=7.4.0
-flexible-fl
-flex
-flextrees
-tensorly
-setuptools<70
+
+# Optimization
 optuna>=3.5.0
 joblib>=1.3.0
 
+# Additional runtime dependencies
+tensorly>=0.8.0

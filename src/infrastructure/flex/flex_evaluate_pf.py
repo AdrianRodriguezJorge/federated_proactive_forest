@@ -1,5 +1,6 @@
 """FLEX evaluation primitives for Proactive Forest."""
 from typing import Dict, Any, Optional
+import warnings
 import numpy as np
 from sklearn.metrics import accuracy_score, f1_score
 
@@ -66,7 +67,7 @@ def evaluate_global_pf_model(server_flex_model: Dict[str, Any],
 
         return {'accuracy': accuracy, 'macro_f1': macro_f1}
     except Exception as e:
-        print(f"[ERROR] evaluate_global_pf_model: {e}")
+        warnings.warn(f"evaluate_global_pf_model failed: {e}")
         return {'accuracy': 0.0, 'macro_f1': 0.0}
 
 
@@ -131,7 +132,7 @@ def evaluate_global_pf_model_at_clients(client_flex_model: Dict[str, Any]) -> Di
 
         return {'accuracy': accuracy, 'macro_f1': macro_f1}
     except Exception as e:
-        print(f"[ERROR] evaluate_global_pf_model_at_clients: {e}")
+        warnings.warn(f"evaluate_global_pf_model_at_clients failed: {e}")
         return {'accuracy': 0.0, 'macro_f1': 0.0}
 
 
@@ -197,7 +198,7 @@ def evaluate_local_pf_model_at_clients(client_flex_model: Dict[str, Any]) -> Dic
 
         return {'accuracy': accuracy, 'macro_f1': macro_f1}
     except Exception as e:
-        print(f"[ERROR] evaluate_local_pf_model_at_clients: {e}")
+        warnings.warn(f"evaluate_local_pf_model_at_clients failed: {e}")
         return {'accuracy': 0.0, 'macro_f1': 0.0}
 
 

@@ -4,22 +4,14 @@ import time
 import json
 from pathlib import Path
 
-# Importar adaptadores de dataset
-from src.infrastructure.dataset.iris_adapter import IrisAdapter
-from src.infrastructure.dataset.nslkdd_adapter import NslKddAdapter
-from src.infrastructure.dataset.csv_adapter import GenericCsvAdapter
+from src.interfaces.streamlit.pages_manual.page_config import (
+    PROJECT_ROOT, CONFIG_FILE, _load_dataset
+)
 
-# Configuración de persistencia - usar ruta absoluta del proyecto
-PROJECT_ROOT = Path(__file__).resolve().parents[4]  # federated_proactive_forest/
-CONFIG_DIR = PROJECT_ROOT / "config"
-CONFIG_FILE = CONFIG_DIR / "last_config.json"
-
-# Límite de líneas de log para evitar fuga de memoria
 MAX_LOG_LINES = 50
 
 
 def load_config_from_file() -> dict:
-    """Carga la configuración desde un archivo JSON."""
     try:
         if CONFIG_FILE.exists():
             with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
@@ -27,60 +19,6 @@ def load_config_from_file() -> dict:
     except Exception as e:
         st.warning(f"No se pudo cargar la configuración guardada: {e}")
     return {}
-
-
-def create_dataset_adapter(config: dict):
-    """Crea el adaptador de dataset basado en la configuración."""
-    dataset_config = config["dataset"]
-
-    if dataset_config["type"] == "Iris":
-        # Iris se carga desde sklearn, el path se ignora
-        return IrisAdapter(
-            data_path=None,
-            train_test_split_ratio=1 - dataset_config.get("test_size", 0.2),
-            scale=dataset_config.get("scale", True),
-            scaler_type=dataset_config.get("scaler_type", "standard")
-        )
-    elif dataset_config["type"] == "NSL-KDD":
-        return NslKddAdapter(
-            train_path=str(PROJECT_ROOT / "data" / "NSL-KDD_train.csv"),
-            test_path=str(PROJECT_ROOT / "data" / "NSL-KDD_test.csv"),
-            scale=dataset_config.get("scale", True),
-            scaler_type=dataset_config.get("scaler_type", "standard")
-        )
-    elif dataset_config["type"] == "Students Dropout":
-        # Usar GenericCsvAdapter con configuración específica
-        categorical_cols = [
-            "Marital status", "Application mode", "Application order", "Course",
-            "Daytime/evening attendance", "Previous qualification", "Nacionality",
-            "Mother's qualification", "Father's qualification", "Mother's occupation",
-            "Father's occupation", "Displaced", "Educational special needs", "Debtor",
-            "Tuition fees up to date", "Gender", "Scholarship holder", "International",
-            "Curricular units 1st sem (credited)", "Curricular units 1st sem (enrolled)",
-            "Curricular units 1st sem (evaluations)", "Curricular units 1st sem (approved)",
-            "Curricular units 1st sem (without evaluations)", "Curricular units 2nd sem (credited)",
-            "Curricular units 2nd sem (enrolled)", "Curricular units 2nd sem (evaluations)",
-            "Curricular units 2nd sem (approved)", "Curricular units 2nd sem (without evaluations)"
-        ]
-        return GenericCsvAdapter(
-            name="students_dropout",
-            train_path=dataset_config.get("file_path", "data/students_dropout.csv"),
-            target_column="Target",
-            test_size=dataset_config.get("test_size", 0.2),
-            categorical_features=categorical_cols,
-            scale=dataset_config.get("scale", True),
-            scaler_type=dataset_config.get("scaler_type", "standard"),
-            seed=config.get("seed", 42),
-            sep=";"
-        )
-    else:
-        raise ValueError(f"Tipo de dataset no soportado: {dataset_config['type']}")
-
-
-def _load_dataset(config: dict):
-    """Carga el dataset usando el adaptador correspondiente."""
-    adapter = create_dataset_adapter(config)
-    return adapter.load()
 
 
 def render():

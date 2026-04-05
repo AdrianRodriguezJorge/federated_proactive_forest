@@ -4,21 +4,12 @@ Ejecutar: streamlit run src/interfaces/streamlit/app.py
 """
 import sys
 import os
-# Asegurar que el root del proyecto está en el path
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.."))
 if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
 import streamlit as st
-
-import subprocess, sys
-
-try:
-    import pkg_resources
-except ImportError:
-    subprocess.check_call([sys.executable, "-m", "pip", "install", "setuptools"])
-    import pkg_resources
-
+from src.interfaces.streamlit.state.session_state import SessionState
 
 st.set_page_config(
     page_title="Federated Proactive Forest",
@@ -27,34 +18,35 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# ── Navegación manual con selectbox en sidebar ────────────────────────────────
-pages = {
-    "⚙️  Configuración":  "config",
-    "▶️  Ejecutar":        "run",
-    "🏆 Ranking de Árboles": "ranking",
-    "📊 Métricas":         "metrics",
-}
+# ── Initialize session state ─────────────────────────────────────────────────
+SessionState.initialize_defaults()
 
+# ── Navigation ────────────────────────────────────────────────────────────────
 st.sidebar.title("🌲 Federated Proactive Forest")
 st.sidebar.markdown("---")
-page = st.sidebar.radio("Navegación", list(pages.keys()))
 
-# Estado global
-if "fl_config"  not in st.session_state: st.session_state["fl_config"]  = None
-if "fl_results" not in st.session_state: st.session_state["fl_results"] = None
+pages = [
+    "⚙️  Configuración",
+    "▶️  Ejecutar",
+    "🏆 Ranking de Árboles",
+    "📊 Métricas",
+]
 
-# ── Cargar página seleccionada ────────────────────────────────────────────────
-key = pages[page]
+page = st.sidebar.radio("Navegación", pages)
 
-if key == "config":
+# Track current page
+SessionState.set("current_page", page)
+
+# ── Load selected page ───────────────────────────────────────────────────────
+if page == "⚙️  Configuración":
     from src.interfaces.streamlit.pages_manual import page_config
     page_config.render()
-elif key == "run":
+elif page == "▶️  Ejecutar":
     from src.interfaces.streamlit.pages_manual import page_run
     page_run.render()
-elif key == "ranking":
+elif page == "🏆 Ranking de Árboles":
     from src.interfaces.streamlit.pages_manual import page_ranking
     page_ranking.render()
-elif key == "metrics":
+elif page == "📊 Métricas":
     from src.interfaces.streamlit.pages_manual import page_metrics
     page_metrics.render()

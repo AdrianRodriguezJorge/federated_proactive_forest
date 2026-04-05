@@ -141,9 +141,11 @@ class HyperparamOptimizer:
 
         # Apply sampled params to config
         for param_path, value in params.items():
-            # Handle special cases for S6/S7 where weights must sum to 1.0
+            # Handle special cases where weights must sum to 1.0
             if param_path == 'f1_weight':
                 # Set f1_weight and pcd_weight in aggregation
+                # pcd_weight is automatically calculated as 1.0 - f1_weight
+                # Used by S4, S7, and PW strategies
                 config.setdefault('aggregation', {})['f1_weight'] = value
                 config['aggregation']['pcd_weight'] = 1.0 - value
             elif param_path == 'local_weight':
@@ -168,9 +170,6 @@ class HyperparamOptimizer:
             elif param_path == 'max_rounds':
                 # Set max_rounds in aggregation (for PW)
                 config.setdefault('aggregation', {})['max_rounds'] = value
-            elif param_path == 'alpha_pw':
-                # Set alpha for PW strategy
-                config.setdefault('aggregation', {})['alpha'] = value
             elif param_path == 'convergence_threshold':
                 # Set convergence_threshold in aggregation
                 config.setdefault('aggregation', {})['convergence_threshold'] = value

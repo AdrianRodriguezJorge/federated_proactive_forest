@@ -12,7 +12,8 @@ scaler = StandardScaler()
 X_train_scaled = scaler.fit_transform(X_train)
 X_test_scaled = scaler.transform(X_test)
 
-from src.application.orchestrators import FLEXOrchestrator, DatasetSplit
+from src.application.orchestrators import FLEXOrchestrator
+from src.domain.dataset.base_adapter import DatasetSplit
 
 config = {
     'n_clients': 3,
@@ -24,7 +25,7 @@ config = {
         'strategy': 'pw',
         'window_size': 3,
         'max_rounds': 5,
-        'alpha': 0.5,
+        'f1_weight': 0.5,
         'convergence_threshold': 0.002
     },
     'prediction': {'local_weight': 0.5, 'global_weight': 0.5},

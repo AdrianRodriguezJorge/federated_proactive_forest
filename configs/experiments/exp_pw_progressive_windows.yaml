@@ -28,7 +28,7 @@ model:
 
 aggregation:
   strategy: "PW"
-  alpha: 0.5
+  f1_weight: 0.5
   window_size: 5
   max_rounds: 20
   convergence_threshold: 0.002

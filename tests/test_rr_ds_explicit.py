@@ -53,7 +53,7 @@ y_val = y_test[:100]
 strategy = ProgressiveWindowsStrategy(
     window_size=window_size,
     max_rounds=max_rounds,
-    alpha=0.5,
+    f1_weight=0.5,
     convergence_threshold=0.002,
     verbose=True
 )
@@ -65,6 +65,8 @@ print(f"Clientes: {n_clients}")
 print(f"Árboles por cliente: {n_trees_per_client}")
 print(f"Tamaño de ventana: {window_size}")
 print(f"Máximo de rondas: {max_rounds}")
+print(f"F1 Weight (α): 0.5")
+print(f"PCD Weight (β): 0.5")
 print("="*100)
 
 global_trees, selected_ids, all_entries = strategy.aggregate(
@@ -74,7 +76,7 @@ global_trees, selected_ids, all_entries = strategy.aggregate(
     y_val=y_val,
     window_size=window_size,
     max_rounds=max_rounds,
-    alpha=0.5
+    f1_weight=0.5
 )
 
 print("\n" + "="*100)

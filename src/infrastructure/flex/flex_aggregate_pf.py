@@ -47,7 +47,7 @@ def aggregate_trees_from_pf(server_flex_model: Dict[str, Any],
     if strategy_name == 'PW':
         aggregate_kwargs['window_size'] = agg_config.get('window_size', kwargs.get('window_size', 5))
         aggregate_kwargs['max_rounds'] = agg_config.get('max_rounds', kwargs.get('max_rounds', 20))
-        aggregate_kwargs['alpha'] = agg_config.get('alpha', kwargs.get('alpha', 0.5))
+        aggregate_kwargs['f1_weight'] = agg_config.get('f1_weight', kwargs.get('f1_weight', 0.5))
         aggregate_kwargs['convergence_threshold'] = agg_config.get('convergence_threshold', kwargs.get('convergence_threshold', 0.002))
         aggregate_kwargs['local_weight'] = config.get('prediction', {}).get('local_weight', kwargs.get('local_weight', 0.5))
         aggregate_kwargs['verbose'] = config.get('verbose', True)  # Pass verbose flag
@@ -62,7 +62,9 @@ def aggregate_trees_from_pf(server_flex_model: Dict[str, Any],
         aggregate_kwargs['t_max'] = t_max
         if strategy_name == 'S4':
             aggregate_kwargs['f1_weight'] = agg_config.get('f1_weight', kwargs.get('f1_weight', 0.5))
-            aggregate_kwargs['pcd_weight'] = agg_config.get('pcd_weight', kwargs.get('pcd_weight', 0.5))
+            # pcd_weight is automatically calculated as 1.0 - f1_weight
+            f1_weight = aggregate_kwargs['f1_weight']
+            aggregate_kwargs['pcd_weight'] = agg_config.get('pcd_weight', kwargs.get('pcd_weight', 1.0 - f1_weight))
     # S5-S7 specific parameters
     elif strategy_name in ['S5', 'S6', 'S7']:
         aggregate_kwargs['X_val'] = X_val
@@ -71,7 +73,9 @@ def aggregate_trees_from_pf(server_flex_model: Dict[str, Any],
         aggregate_kwargs['t_max'] = t_max
         if strategy_name == 'S7':
             aggregate_kwargs['f1_weight'] = agg_config.get('f1_weight', kwargs.get('f1_weight', 0.5))
-            aggregate_kwargs['pcd_weight'] = agg_config.get('pcd_weight', kwargs.get('pcd_weight', 0.5))
+            # pcd_weight is automatically calculated as 1.0 - f1_weight
+            f1_weight = aggregate_kwargs['f1_weight']
+            aggregate_kwargs['pcd_weight'] = agg_config.get('pcd_weight', kwargs.get('pcd_weight', 1.0 - f1_weight))
     else:
         # S1 or other strategies
         aggregate_kwargs['X_val'] = X_val

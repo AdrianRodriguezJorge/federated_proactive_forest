@@ -411,14 +411,15 @@ class FLEXOrchestrator:
             aggregate_kwargs['t_max'] = t_max
             aggregate_kwargs['window_size'] = self._get_config_value('aggregation', 'window_size', default=5)
             aggregate_kwargs['max_rounds'] = self._get_config_value('aggregation', 'max_rounds', default=20)
-            aggregate_kwargs['alpha'] = self._get_config_value('aggregation', 'alpha', default=0.5)
+            # f1_weight will be set in the combined block below
 
-        if strategy_name == 'S4':
+        # S4, S7, and PW use f1_weight/pcd_weight combination
+        if strategy_name in ['S4', 'S7', 'PW']:
             aggregate_kwargs['f1_weight'] = self._get_config_value('aggregation', 'f1_weight', default=0.5)
-            aggregate_kwargs['pcd_weight'] = self._get_config_value('aggregation', 'pcd_weight', default=0.5)
-        elif strategy_name == 'S7':
-            aggregate_kwargs['f1_weight'] = self._get_config_value('aggregation', 'f1_weight', default=0.5)
-            aggregate_kwargs['pcd_weight'] = self._get_config_value('aggregation', 'pcd_weight', default=0.5)
+            # pcd_weight is automatically calculated as 1.0 - f1_weight in hyperparam_optimizer
+            # but we set it here for backward compatibility
+            f1_weight = aggregate_kwargs['f1_weight']
+            aggregate_kwargs['pcd_weight'] = self._get_config_value('aggregation', 'pcd_weight', default=1.0 - f1_weight)
 
         # Pass argument bundle only once to avoid duplicate keyword arg errors.
         aggregate_trees_from_pf(server_flex_model, **aggregate_kwargs)
@@ -476,7 +477,7 @@ class FLEXOrchestrator:
 
         # Get global predictions in numeric format (class indices)
         global_predictions_raw = global_forest.predict(X_test)
-        
+
         # Convert predictions to numeric format if they are strings
         if len(global_predictions_raw) > 0 and isinstance(global_predictions_raw[0], str):
             class_to_idx = {cn: idx for idx, cn in enumerate(class_names)}
@@ -484,9 +485,6 @@ class FLEXOrchestrator:
         else:
             # Ensure numeric format (could be int or float)
             global_predictions = np.asarray(global_predictions_raw, dtype=np.int64)
-        
-        print(f"[DEBUG] global_predictions type: {type(global_predictions_raw[0]) if len(global_predictions_raw) > 0 else 'N/A'}, shape: {global_predictions.shape}")
-        print(f"[DEBUG] y_test type: {type(y_test[0]) if len(y_test) > 0 else 'N/A'}, shape: {y_test.shape}")
 
         # Evaluate local and global at clients using FLEX primitives
         for client_flex_model in clients_flex_models.values():
@@ -588,8 +586,6 @@ class FLEXOrchestrator:
 
             # Calculate metadata using global test set with proper label conversion
             y_pred_test = pf.predict(self.dataset_split.X_test)
-            print(f"DEBUG _train_local_forests {client_id}: y_pred_test sample={y_pred_test[:5]} type={type(y_pred_test[0]) if len(y_pred_test)>0 else 'N/A'}")
-            print(f"DEBUG _train_local_forests {client_id}: y_test sample={self.dataset_split.y_test[:5]} type={type(self.dataset_split.y_test[0]) if len(self.dataset_split.y_test)>0 else 'N/A'}")
 
             local_report = ForestEvaluator.evaluate(
                 pf,
@@ -611,26 +607,6 @@ class FLEXOrchestrator:
             )
 
         return client_forests, client_metadata
-
-    def run_multiple_rounds(self, num_rounds: int) -> List[FLResults]:
-        """
-        Execute multiple federated learning rounds.
-        
-        Useful for simulating FL convergence over time.
-        
-        Args:
-            num_rounds: Number of rounds to execute
-            
-        Returns:
-            List of FLResults, one per round
-        """
-        results = []
-        for round_num in range(num_rounds):
-            self.step_callback(f"Iniciando ronda {round_num + 1}/{num_rounds}", 0)
-            result = self.run_federated_round()
-            result.num_rounds = round_num + 1
-            results.append(result)
-        return results
 
 
 __all__ = ['FLEXOrchestrator', 'FLResults']

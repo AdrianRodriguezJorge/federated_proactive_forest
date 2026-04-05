@@ -82,7 +82,7 @@ class ProgressiveWindowsOrchestrator:
         self.n_clients = config.get('n_clients', 5)
         self.window_size = config.get('aggregation', {}).get('window_size', 5)
         self.max_rounds = config.get('aggregation', {}).get('max_rounds', 20)
-        self.alpha = config.get('aggregation', {}).get('alpha', 0.5)
+        self.f1_weight = config.get('aggregation', {}).get('f1_weight', 0.5)
         self.convergence_threshold = config.get('aggregation', {}).get('convergence_threshold', 0.002)
         self.local_weight = config.get('prediction', {}).get('local_weight', 0.5)
 
@@ -96,7 +96,7 @@ class ProgressiveWindowsOrchestrator:
         self.strategy = ProgressiveWindowsStrategy(
             window_size=self.window_size,
             max_rounds=self.max_rounds,
-            alpha=self.alpha,
+            f1_weight=self.f1_weight,
             convergence_threshold=self.convergence_threshold,
             verbose=self.verbose
         )
@@ -116,7 +116,8 @@ class ProgressiveWindowsOrchestrator:
             print(f"   • Clientes: {self.n_clients}")
             print(f"   • Ventana (W): {self.window_size} árboles")
             print(f"   • Máx rondas: {self.max_rounds}")
-            print(f"   • Alpha: {self.alpha}")
+            print(f"   • F1 Weight (α): {self.f1_weight}")
+            print(f"   • PCD Weight (β): {1.0 - self.f1_weight:.2f}")
             print(f"   • Lambda: {self.local_weight}")
             print("=" * 100 + "\n")
 
@@ -485,10 +486,12 @@ class ProgressiveWindowsOrchestrator:
                 tree_f1 = tree_f1_scores_list[local_idx] if local_idx < len(tree_f1_scores_list) else meta.get('macro_f1', 0.5)
                 diversity = self._calculate_diversity(tree, self.global_trees)
 
-                # Score dinámico: Score(T) = α·F1(T) + (1-α)·Diversidad(T|G)
+                # Score dinámico: Score(T) = α·F1(T) + β·Diversidad(T|G)
+                # where β = 1 - α (pcd_weight = 1 - f1_weight)
                 # Primera ronda: G vacío → α=1
-                effective_alpha = self.alpha if len(self.global_trees) > 0 else 1.0
-                score = effective_alpha * tree_f1 + (1 - effective_alpha) * diversity
+                effective_f1_weight = self.f1_weight if len(self.global_trees) > 0 else 1.0
+                pcd_weight = 1.0 - effective_f1_weight
+                score = effective_f1_weight * tree_f1 + pcd_weight * diversity
 
                 tree_scores.append((local_idx, tree, score, tree_f1, diversity))
 
@@ -506,10 +509,10 @@ class ProgressiveWindowsOrchestrator:
 
             # Seleccionar mejor árbol
             best_idx, best_tree, best_score, best_f1, best_div = tree_scores_sorted[0]
-
+            pcd_weight_display = 1.0 - self.f1_weight
             if self.verbose:
                 print(f"\n      ✅ SELECCIONADO: T{best_idx}")
-                print(f"         Score: {best_score:.6f} = {self.alpha:.2f}×{best_f1:.6f} + {1-self.alpha:.2f}×{best_div:.6f}")
+                print(f"         Score: {best_score:.6f} = {self.f1_weight:.2f}×{best_f1:.6f} + {pcd_weight_display:.2f}×{best_div:.6f}")
 
             selected_trees.append(best_tree)
             selected_ids[client_id].append(best_idx)

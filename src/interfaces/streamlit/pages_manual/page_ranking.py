@@ -86,6 +86,7 @@ def render():
     # ── Por cliente ───────────────────────────────────────────────────────────
     if is_per_client:
         st.subheader("Detalle por cliente")
+        sel_clients = sorted(df["Cliente"].unique())
         for cid in sel_clients:
             sub = df[df["Cliente"] == cid]
             if sub.empty:

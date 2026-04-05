@@ -86,7 +86,7 @@ class ProgressiveWindowsStrategy(IAggregationStrategy):
     DEFAULT_WINDOW_SIZE = 5  # W: trees per window
     DEFAULT_MAX_ROUNDS = 20  # Maximum rounds (R_MAX)
     DEFAULT_CONVERGENCE_THRESHOLD = 0.002  # Convergence threshold
-    DEFAULT_ALPHA = 0.5  # Balance between F1 and Diversity
+    DEFAULT_F1_WEIGHT = 0.5  # Balance between F1 and Diversity (α)
     DEFAULT_LOCAL_WEIGHT = 0.5  # Hybrid prediction weight (local vs global)
 
     def __init__(
@@ -94,7 +94,7 @@ class ProgressiveWindowsStrategy(IAggregationStrategy):
         window_size: int = DEFAULT_WINDOW_SIZE,
         max_rounds: int = DEFAULT_MAX_ROUNDS,
         convergence_threshold: float = DEFAULT_CONVERGENCE_THRESHOLD,
-        alpha: float = DEFAULT_ALPHA,
+        f1_weight: float = DEFAULT_F1_WEIGHT,
         local_weight: float = DEFAULT_LOCAL_WEIGHT,
         verbose: bool = False
     ):
@@ -105,14 +105,15 @@ class ProgressiveWindowsStrategy(IAggregationStrategy):
             window_size: Number of trees per window (W). Default: 5
             max_rounds: Maximum number of rounds (R_MAX). Default: 20
             convergence_threshold: Convergence threshold for early stopping. Default: 0.002
-            alpha: Weight for F1 vs Diversity in score calculation. Default: 0.5
+            f1_weight: Weight for F1 vs Diversity in score calculation. Default: 0.5
+                      pcd_weight is automatically calculated as 1.0 - f1_weight
             local_weight: Weight for local vs global in hybrid prediction. Default: 0.5
             verbose: Enable verbose logging. Default: False
         """
         self.window_size = window_size
         self.max_rounds = max_rounds
         self.convergence_threshold = convergence_threshold
-        self.alpha = alpha
+        self.f1_weight = f1_weight
         self.local_weight = local_weight
         self.verbose = verbose
 
@@ -151,7 +152,7 @@ class ProgressiveWindowsStrategy(IAggregationStrategy):
                          If provided, overrides the instance default.
         """
         # Override defaults with kwargs
-        self.alpha = kwargs.get('alpha', self.alpha)
+        self.f1_weight = kwargs.get('f1_weight', self.f1_weight)
         self.window_size = kwargs.get('window_size', self.window_size)
         self.max_rounds = kwargs.get('max_rounds', self.max_rounds)
         if local_weight is not None:
@@ -195,8 +196,9 @@ class ProgressiveWindowsStrategy(IAggregationStrategy):
             print(f"   • Número de clientes (k): {n_clients}")
             print(f"   • Tamaño de ventana (W): {self.window_size} árboles")
             print(f"   • Máximo de rondas (R_MAX): {self.max_rounds}")
-            print(f"   • Alpha (α) para Score: {self.alpha}")
-            print(f"   • Fórmula: Score(T) = α·F1(T) + (1-α)·Diversidad(T|G)")
+            print(f"   • F1 Weight (α) para Score: {self.f1_weight}")
+            print(f"   • PCD Weight (β): {1.0 - self.f1_weight:.2f}")
+            print(f"   • Fórmula: Score(T) = α·F1(T) + β·Diversidad(T|G)")
             print("=" * 100 + "\n")
 
         # Main Round Robin loop
@@ -273,10 +275,12 @@ class ProgressiveWindowsStrategy(IAggregationStrategy):
                     # Calculate diversity with respect to current global forest
                     diversity = self._calculate_diversity(tree, self._global_trees)
 
-                    # Dynamic score: Score(T) = α * F1(T) + (1 - α) * Diversity(T|G)
+                    # Dynamic score: Score(T) = α * F1(T) + β * Diversity(T|G)
+                    # where β = 1 - α (pcd_weight = 1 - f1_weight)
                     # First round: G is empty, diversity not informative → α = 1
-                    effective_alpha = self.alpha if len(self._global_trees) > 0 else 1.0
-                    score = effective_alpha * tree_f1 + (1 - effective_alpha) * diversity
+                    effective_f1_weight = self.f1_weight if len(self._global_trees) > 0 else 1.0
+                    pcd_weight = 1.0 - effective_f1_weight
+                    score = effective_f1_weight * tree_f1 + pcd_weight * diversity
 
                     tree_scores.append((global_idx, tree, score, tree_f1, diversity))
 
@@ -316,7 +320,8 @@ class ProgressiveWindowsStrategy(IAggregationStrategy):
                     print(f"\n   ✅ PASO 2: Mejor árbol seleccionado")
                     print(f"   {'─' * 96}")
                     print(f"   • Árbol: T{best_local_idx} (índice local en ventana)")
-                    print(f"   • Score: {best_score:.6f} = {self.alpha:.2f}×{best_f1:.6f} + {1-self.alpha:.2f}×{best_diversity:.6f}")
+                    pcd_weight = 1.0 - self.f1_weight
+                    print(f"   • Score: {best_score:.6f} = {self.f1_weight:.2f}×{best_f1:.6f} + {pcd_weight:.2f}×{best_diversity:.6f}")
                     print(f"   • F1(T): {best_f1:.6f}")
                     print(f"   • Diversidad(T|G): {best_diversity:.6f}")
 
