@@ -138,7 +138,6 @@ dmypy.json
 .DS_Store
 
 # Outputs y resultados
-results/
 outputs/
 *.pkl
 *.joblib

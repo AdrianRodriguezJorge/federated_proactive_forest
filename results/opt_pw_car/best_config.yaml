@@ -1,0 +1,21 @@
+best_params:
+  alpha_pw: 0.55
+  convergence_threshold: 0.0027036160666620013
+  local_weight: 0.30000000000000004
+  max_rounds: 20
+  window_size: 5
+best_trial: 3
+best_value: 0.8374978398529622
+direction: MAXIMIZE
+metadata:
+  dataset: car
+  metric: macro_f1
+  n_classes: 4
+  n_clients: 5
+  n_features: 6
+  n_test_samples: 346
+  n_train_samples: 1382
+  n_trials: 5
+  seed: 42
+  strategy: PW
+n_trials: 5

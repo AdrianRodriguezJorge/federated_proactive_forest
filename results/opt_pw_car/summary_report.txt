@@ -1,0 +1,80 @@
+======================================================================
+OPTIMIZATION SUMMARY REPORT
+======================================================================
+
+Strategy: PW
+Dataset: car
+Metric: macro_f1
+
+----------------------------------------------------------------------
+RESULTS SUMMARY
+----------------------------------------------------------------------
+Total trials: 5
+Completed trials: 5
+Pruned trials: 0
+Failed trials: 0
+
+----------------------------------------------------------------------
+BEST RESULT
+----------------------------------------------------------------------
+Best trial: #3
+Best macro_f1: 0.837498
+
+Best hyperparameters:
+  - window_size: 5
+  - max_rounds: 20
+  - alpha_pw: 0.55
+  - convergence_threshold: 0.0027036160666620013
+  - local_weight: 0.30000000000000004
+
+----------------------------------------------------------------------
+STATISTICS (completed trials)
+----------------------------------------------------------------------
+Mean macro_f1: 0.779893
+Std macro_f1: 0.060278
+Min macro_f1: 0.684144
+Max macro_f1: 0.837498
+Median macro_f1: 0.800424
+
+----------------------------------------------------------------------
+TOP 5 TRIALS
+----------------------------------------------------------------------
+
+Trial #3: 0.837498
+  alpha_pw: 0.55
+  convergence_threshold: 0.0027036160666620013
+  local_weight: 0.30000000000000004
+  max_rounds: 20
+  window_size: 5
+
+Trial #4: 0.815817
+  alpha_pw: 0.30000000000000004
+  convergence_threshold: 0.0023246728489504354
+  local_weight: 0.45
+  max_rounds: 15
+  window_size: 10
+
+Trial #1: 0.800424
+  alpha_pw: 0.9
+  convergence_threshold: 0.003991305878561679
+  local_weight: 0.7000000000000001
+  max_rounds: 10
+  window_size: 5
+
+Trial #2: 0.761583
+  alpha_pw: 0.8500000000000001
+  convergence_threshold: 0.0016305687346221476
+  local_weight: 0.15000000000000002
+  max_rounds: 50
+  window_size: 3
+
+Trial #0: 0.684144
+  alpha_pw: 0.75
+  convergence_threshold: 0.003968793330444372
+  local_weight: 0.15000000000000002
+  max_rounds: 50
+  window_size: 7
+
+======================================================================
+END OF REPORT
+======================================================================

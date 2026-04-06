@@ -1,0 +1,124 @@
+{
+  "dataset": "letter",
+  "strategy": "S6",
+  "best_macro_f1": 0.9269608201376046,
+  "mean_macro_f1": 0.9230018965043602,
+  "std_macro_f1": 0.004044378218558661,
+  "best_params": {
+    "alpha_pf": 0.4,
+    "t_max": 130,
+    "local_weight": 0.2
+  },
+  "all_trials": [
+    {
+      "number": 0,
+      "value": 0.9132980074048249,
+      "datetime_start": "2026-04-04 15:26:15.954616",
+      "datetime_complete": "2026-04-04 15:31:20.252141",
+      "duration": "0 days 00:05:04.297525",
+      "params_alpha_pf": 0.30000000000000004,
+      "params_local_weight": 0.8,
+      "params_t_max": 150,
+      "state": "COMPLETE"
+    },
+    {
+      "number": 1,
+      "value": 0.9214931997703252,
+      "datetime_start": "2026-04-04 15:31:20.254138",
+      "datetime_complete": "2026-04-04 15:34:08.276790",
+      "duration": "0 days 00:02:48.022652",
+      "params_alpha_pf": 0.5,
+      "params_local_weight": 0.1,
+      "params_t_max": 50,
+      "state": "COMPLETE"
+    },
+    {
+      "number": 2,
+      "value": 0.9264273914397403,
+      "datetime_start": "2026-04-04 15:34:08.277793",
+      "datetime_complete": "2026-04-04 15:40:46.124983",
+      "duration": "0 days 00:06:37.847190",
+      "params_alpha_pf": 0.1,
+      "params_local_weight": 0.6000000000000001,
+      "params_t_max": 140,
+      "state": "COMPLETE"
+    },
+    {
+      "number": 3,
+      "value": 0.9199374085498918,
+      "datetime_start": "2026-04-04 15:40:46.126984",
+      "datetime_complete": "2026-04-04 15:46:13.834270",
+      "duration": "0 days 00:05:27.707286",
+      "params_alpha_pf": 0.6,
+      "params_local_weight": 1.0,
+      "params_t_max": 30,
+      "state": "COMPLETE"
+    },
+    {
+      "number": 4,
+      "value": 0.9247775625863803,
+      "datetime_start": "2026-04-04 15:46:13.834270",
+      "datetime_complete": "2026-04-04 15:50:13.311880",
+      "duration": "0 days 00:03:59.477610",
+      "params_alpha_pf": 0.7000000000000001,
+      "params_local_weight": 0.2,
+      "params_t_max": 50,
+      "state": "COMPLETE"
+    },
+    {
+      "number": 5,
+      "value": 0.9228410084727868,
+      "datetime_start": "2026-04-04 15:50:13.311880",
+      "datetime_complete": "2026-04-04 15:56:39.352433",
+      "duration": "0 days 00:06:26.040553",
+      "params_alpha_pf": 0.2,
+      "params_local_weight": 0.5,
+      "params_t_max": 60,
+      "state": "COMPLETE"
+    },
+    {
+      "number": 6,
+      "value": 0.9252673746409903,
+      "datetime_start": "2026-04-04 15:56:39.358263",
+      "datetime_complete": "2026-04-04 16:00:14.752727",
+      "duration": "0 days 00:03:35.394464",
+      "params_alpha_pf": 0.4,
+      "params_local_weight": 0.6000000000000001,
+      "params_t_max": 60,
+      "state": "COMPLETE"
+    },
+    {
+      "number": 7,
+      "value": 0.9252579655511941,
+      "datetime_start": "2026-04-04 16:00:14.752727",
+      "datetime_complete": "2026-04-04 16:06:34.633205",
+      "duration": "0 days 00:06:19.880478",
+      "params_alpha_pf": 0.2,
+      "params_local_weight": 0.4,
+      "params_t_max": 60,
+      "state": "COMPLETE"
+    },
+    {
+      "number": 8,
+      "value": 0.9269608201376046,
+      "datetime_start": "2026-04-04 16:06:34.644555",
+      "datetime_complete": "2026-04-04 16:12:10.349794",
+      "duration": "0 days 00:05:35.705239",
+      "params_alpha_pf": 0.4,
+      "params_local_weight": 0.2,
+      "params_t_max": 130,
+      "state": "COMPLETE"
+    },
+    {
+      "number": 9,
+      "value": 0.9237582264898619,
+      "datetime_start": "2026-04-04 16:12:10.349794",
+      "datetime_complete": "2026-04-04 16:18:53.730898",
+      "duration": "0 days 00:06:43.381104",
+      "params_alpha_pf": 0.5,
+      "params_local_weight": 0.0,
+      "params_t_max": 100,
+      "state": "COMPLETE"
+    }
+  ]
+}

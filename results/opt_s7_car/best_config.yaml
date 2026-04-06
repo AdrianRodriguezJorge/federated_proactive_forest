@@ -1,0 +1,19 @@
+best_params:
+  f1_weight: 0.6000000000000001
+  local_weight: 0.15000000000000002
+  t_max: 50
+best_trial: 1
+best_value: 0.8300717479974447
+direction: MAXIMIZE
+metadata:
+  dataset: car
+  metric: macro_f1
+  n_classes: 4
+  n_clients: 5
+  n_features: 6
+  n_test_samples: 346
+  n_train_samples: 1382
+  n_trials: 3
+  seed: 42
+  strategy: S7
+n_trials: 3

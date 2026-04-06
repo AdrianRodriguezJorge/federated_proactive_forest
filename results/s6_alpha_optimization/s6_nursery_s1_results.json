@@ -1,0 +1,213 @@
+{
+  "dataset": "nursery",
+  "strategy": "S1",
+  "best_macro_f1": 0.9603337623283645,
+  "mean_macro_f1": 0.9524480217035206,
+  "std_macro_f1": 0.006890989908724023,
+  "best_params": {
+    "alpha_pf": 0.6,
+    "local_weight": 0.6000000000000001
+  },
+  "all_trials": [
+    {
+      "number": 0,
+      "value": 0.9566734242485421,
+      "datetime_start": "2026-04-05 21:31:52.696565",
+      "datetime_complete": "2026-04-05 21:32:36.911541",
+      "duration": "0 days 00:00:44.214976",
+      "params_alpha_pf": 0.35,
+      "params_local_weight": 1.0,
+      "state": "COMPLETE"
+    },
+    {
+      "number": 1,
+      "value": 0.9603337623283645,
+      "datetime_start": "2026-04-05 21:32:36.912288",
+      "datetime_complete": "2026-04-05 21:33:19.066756",
+      "duration": "0 days 00:00:42.154468",
+      "params_alpha_pf": 0.6,
+      "params_local_weight": 0.6000000000000001,
+      "state": "COMPLETE"
+    },
+    {
+      "number": 2,
+      "value": 0.9544830301569798,
+      "datetime_start": "2026-04-05 21:33:19.067755",
+      "datetime_complete": "2026-04-05 21:34:31.688037",
+      "duration": "0 days 00:01:12.620282",
+      "params_alpha_pf": 0.2,
+      "params_local_weight": 0.1,
+      "state": "COMPLETE"
+    },
+    {
+      "number": 3,
+      "value": 0.955382935626659,
+      "datetime_start": "2026-04-05 21:34:31.689002",
+      "datetime_complete": "2026-04-05 21:35:24.731613",
+      "duration": "0 days 00:00:53.042611",
+      "params_alpha_pf": 0.1,
+      "params_local_weight": 0.9,
+      "state": "COMPLETE"
+    },
+    {
+      "number": 4,
+      "value": 0.9449939772564873,
+      "datetime_start": "2026-04-05 21:35:24.732703",
+      "datetime_complete": "2026-04-05 21:35:58.089008",
+      "duration": "0 days 00:00:33.356305",
+      "params_alpha_pf": 0.55,
+      "params_local_weight": 0.7000000000000001,
+      "state": "COMPLETE"
+    },
+    {
+      "number": 5,
+      "value": 0.9562849255032142,
+      "datetime_start": "2026-04-05 21:35:58.092021",
+      "datetime_complete": "2026-04-05 21:36:37.615965",
+      "duration": "0 days 00:00:39.523944",
+      "params_alpha_pf": 0.1,
+      "params_local_weight": 1.0,
+      "state": "COMPLETE"
+    },
+    {
+      "number": 6,
+      "value": 0.9572728167013342,
+      "datetime_start": "2026-04-05 21:36:37.617436",
+      "datetime_complete": "2026-04-05 21:37:31.590913",
+      "duration": "0 days 00:00:53.973477",
+      "params_alpha_pf": 0.7000000000000001,
+      "params_local_weight": 0.2,
+      "state": "COMPLETE"
+    },
+    {
+      "number": 7,
+      "value": 0.9578741929573259,
+      "datetime_start": "2026-04-05 21:37:31.592912",
+      "datetime_complete": "2026-04-05 21:38:06.145243",
+      "duration": "0 days 00:00:34.552331",
+      "params_alpha_pf": 0.2,
+      "params_local_weight": 0.2,
+      "state": "COMPLETE"
+    },
+    {
+      "number": 8,
+      "value": 0.9496789616095092,
+      "datetime_start": "2026-04-05 21:38:06.146813",
+      "datetime_complete": "2026-04-05 21:38:40.516601",
+      "duration": "0 days 00:00:34.369788",
+      "params_alpha_pf": 0.30000000000000004,
+      "params_local_weight": 0.5,
+      "state": "COMPLETE"
+    },
+    {
+      "number": 9,
+      "value": 0.94497093862817,
+      "datetime_start": "2026-04-05 21:38:40.521065",
+      "datetime_complete": "2026-04-05 21:40:18.570858",
+      "duration": "0 days 00:01:38.049793",
+      "params_alpha_pf": 0.4,
+      "params_local_weight": 0.30000000000000004,
+      "state": "COMPLETE"
+    },
+    {
+      "number": 10,
+      "value": 0.9353671115734077,
+      "datetime_start": "2026-04-05 21:40:18.571858",
+      "datetime_complete": "2026-04-05 21:41:27.770150",
+      "duration": "0 days 00:01:09.198292",
+      "params_alpha_pf": 0.8,
+      "params_local_weight": 0.5,
+      "state": "COMPLETE"
+    },
+    {
+      "number": 11,
+      "value": 0.9384180340200297,
+      "datetime_start": "2026-04-05 21:41:27.771168",
+      "datetime_complete": "2026-04-05 21:42:52.067707",
+      "duration": "0 days 00:01:24.296539",
+      "params_alpha_pf": 0.55,
+      "params_local_weight": 0.0,
+      "state": "COMPLETE"
+    },
+    {
+      "number": 12,
+      "value": 0.9502847803732843,
+      "datetime_start": "2026-04-05 21:42:52.069758",
+      "datetime_complete": "2026-04-05 21:43:44.214020",
+      "duration": "0 days 00:00:52.144262",
+      "params_alpha_pf": 0.55,
+      "params_local_weight": 0.7000000000000001,
+      "state": "COMPLETE"
+    },
+    {
+      "number": 13,
+      "value": 0.9559842632352014,
+      "datetime_start": "2026-04-05 21:43:44.216391",
+      "datetime_complete": "2026-04-05 21:44:42.950483",
+      "duration": "0 days 00:00:58.734092",
+      "params_alpha_pf": 0.65,
+      "params_local_weight": 0.30000000000000004,
+      "state": "COMPLETE"
+    },
+    {
+      "number": 14,
+      "value": 0.9496789616095092,
+      "datetime_start": "2026-04-05 21:44:42.952500",
+      "datetime_complete": "2026-04-05 21:45:30.683625",
+      "duration": "0 days 00:00:47.731125",
+      "params_alpha_pf": 0.25,
+      "params_local_weight": 0.7000000000000001,
+      "state": "COMPLETE"
+    },
+    {
+      "number": 15,
+      "value": 0.9594282896136835,
+      "datetime_start": "2026-04-05 21:45:30.684652",
+      "datetime_complete": "2026-04-05 21:47:04.154897",
+      "duration": "0 days 00:01:33.470245",
+      "params_alpha_pf": 0.5,
+      "params_local_weight": 0.4,
+      "state": "COMPLETE"
+    },
+    {
+      "number": 16,
+      "value": 0.9556876589270615,
+      "datetime_start": "2026-04-05 21:47:04.157051",
+      "datetime_complete": "2026-04-05 21:48:32.270448",
+      "duration": "0 days 00:01:28.113397",
+      "params_alpha_pf": 0.45000000000000007,
+      "params_local_weight": 0.4,
+      "state": "COMPLETE"
+    },
+    {
+      "number": 17,
+      "value": 0.9522484099349047,
+      "datetime_start": "2026-04-05 21:48:32.272180",
+      "datetime_complete": "2026-04-05 21:49:19.412311",
+      "duration": "0 days 00:00:47.140131",
+      "params_alpha_pf": 0.65,
+      "params_local_weight": 0.6000000000000001,
+      "state": "COMPLETE"
+    },
+    {
+      "number": 18,
+      "value": 0.9547794662295298,
+      "datetime_start": "2026-04-05 21:49:19.413851",
+      "datetime_complete": "2026-04-05 21:50:38.608624",
+      "duration": "0 days 00:01:19.194773",
+      "params_alpha_pf": 0.5,
+      "params_local_weight": 0.8,
+      "state": "COMPLETE"
+    },
+    {
+      "number": 19,
+      "value": 0.9591344935372138,
+      "datetime_start": "2026-04-05 21:50:38.609624",
+      "datetime_complete": "2026-04-05 21:51:48.962395",
+      "duration": "0 days 00:01:10.352771",
+      "params_alpha_pf": 0.75,
+      "params_local_weight": 0.5,
+      "state": "COMPLETE"
+    }
+  ]
+}
