@@ -29,6 +29,10 @@ opt = [
     "joblib>=1.3",
     "tensorly>=0.8",
 ]
+flex = [
+    "flex-framework>=0.1.0",
+    "flex-trees>=0.1.0",
+]
 
 [tool.setuptools.packages.find]
 where = ["."]

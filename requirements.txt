@@ -1,19 +1,26 @@
 # Core dependencies (must match pyproject.toml)
-numpy>=1.24.0
-pandas>=2.0.0
-scikit-learn>=1.3.0
-PyYAML>=6.0
+numpy>=1.24
+pandas>=2.0
+scikit-learn>=1.3
+pyyaml>=6.0
 
 # UI (optional: pip install -e ".[ui]")
-streamlit>=1.35.0
-plotly>=5.20.0
+streamlit>=1.35
+plotly>=5.20
 
 # Dev (optional: pip install -e ".[dev]")
-pytest>=7.4.0
+pytest>=7.4
+pytest-cov>=4.1
 
-# Optimization
-optuna>=3.5.0
-joblib>=1.3.0
+# Optimization (optional: pip install -e ".[opt]")
+optuna>=3.5
+joblib>=1.3
+tensorly>=0.8
 
-# Additional runtime dependencies
-tensorly>=0.8.0
+# FLEX Framework (optional but recommended for full FL orchestration)
+# Provides: FlexPool, FedDataDistribution, decorators, actors
+flex-framework>=0.1.0
+
+# FLEX Trees (optional: for additional dataset adapters)
+# Provides: tabular dataset loaders (ildp, etc.)
+flex-trees>=0.1.0

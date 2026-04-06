@@ -1,58 +1,57 @@
 # 🌲 Federated Proactive Forest
 
-**Federated Proactive Forest** es un sistema avanzado de **aprendizaje federado horizontal** que implementa y compara **7 estrategias de agregación** basadas en **Proactive Forest** (Cepero, 2023). El proyecto combina un marco FL puro (sin dependencias externas de librerías FL) con interfaces interactivas modernas, permitiendo investigar sistemáticamente cómo diferentes criterios de selección y ranking de árboles afectan el rendimiento en entornos distribuidos no-IID.
+**Federated Proactive Forest** is an advanced **horizontal federated learning** system that implements and compares **8 aggregation strategies** based on **Proactive Forest** (Cepero, 2023). The project combines a pure FL framework (no external FL library dependencies) with modern interactive interfaces, enabling systematic investigation of how different tree selection and ranking criteria affect performance in distributed non-IID environments.
 
 [![Python Version](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![DOI](https://img.shields.io/badge/DOI-10.1109/ACCESS.2023.1234567-blue)](https://doi.org/10.1109/ACCESS.2023.1234567)
 
-## 🎯 Características Principales
+## 🎯 Main Features
 
-- ✅ **7 estrategias de agregación** (S1-S7) con criterios variados de selección de árboles
-- ✅ **Aprendizaje Federado Horizontal** puro con N clientes configurables
-- ✅ **Soporte completo para heterogeneidad no-IID** (Dirichlet distributions)
-- ✅ **Interfaz Web moderna** con Streamlit (4 páginas interactivas completas)
-- ✅ **CLI completa** con configuración YAML para experimentación reproducible
-- ✅ **Arquitectura Hexagonal limpia** (Domain → Application → Infrastructure)
-- ✅ **Datasets múltiples**: NSL-KDD, Iris, Students Dropout, y adaptador genérico CSV
-- ✅ **Métricas completas**: Accuracy, F1, Macro-F1, PCD, matrices de confusión
-- ✅ **Visualización de rankings** con selección por cliente y estrategia
-- ✅ **Extensible**: Agregar nuevos datasets y estrategias fácilmente
-- ✅ **Documentación completa** en español e inglés
+- ✅ **8 aggregation strategies** (S1-S7 + Progressive Windows) with varied tree selection criteria
+- ✅ **Horizontal Federated Learning** with configurable N clients
+- ✅ **Complete non-IID heterogeneity support** (Dirichlet distributions)
+- ✅ **Modern Web UI** with Streamlit (4 interactive pages)
+- ✅ **Full CLI** with YAML configuration for reproducible experimentation
+- ✅ **Clean Hexagonal Architecture** (Domain → Application → Infrastructure)
+- ✅ **Multiple datasets**: NSL-KDD, Iris, Students Dropout, and 7 additional CSV datasets
+- ✅ **Complete metrics**: Accuracy, F1, Macro-F1, PCD, confusion matrices
+- ✅ **Ranking visualization** with per-client and strategy-based selection
+- ✅ **Extensible**: Easily add new datasets and strategies
+- ✅ **Hyperparameter optimization** with Optuna integration
+- ✅ **Hybrid prediction** with configurable local/global weights
 
-## 📋 Tabla de Contenidos
+## 📋 Table of Contents
 
-- [Instalación](#-instalación)
-- [Inicio Rápido](#-inicio-rápido)
-- [Datasets Soportados](#-datasets-soportados)
-- [Estrategias de Agregación](#-estrategias-de-agregación)
-- [Arquitectura del Sistema](#-arquitectura-del-sistema)
-- [Interfaz Streamlit](#-interfaz-streamlit)
+- [Installation](#-installation)
+- [Quick Start](#-quick-start)
+- [Supported Datasets](#-supported-datasets)
+- [Aggregation Strategies](#-aggregation-strategies)
+- [System Architecture](#-system-architecture)
+- [Streamlit Interface](#-streamlit-interface)
 - [CLI](#-cli)
-- [Configuración Avanzada](#-configuración-avanzada)
-- [Agregar Nuevos Datasets](#-agregar-nuevos-datasets)
-- [Documentación Técnica](#-documentación-técnica)
-- [Contribuir](#-contribuir)
-- [Licencia](#-licencia)
-- [Citas](#-citas)
+- [Advanced Configuration](#-advanced-configuration)
+- [Adding New Datasets](#-adding-new-datasets)
+- [Contributing](#-contributing)
+- [License](#-license)
+- [Citations](#-citations)
 
-## 🚀 Instalación
+## 🚀 Installation
 
-### Requisitos del Sistema
-- **Python**: 3.8 o superior
-- **RAM**: Mínimo 4GB, recomendado 8GB+ para datasets grandes
-- **Espacio**: 2GB libres para datasets y modelos
-- **SO**: Windows 10+, macOS 10.15+, Ubuntu 18.04+
+### System Requirements
+- **Python**: 3.8 or higher
+- **RAM**: Minimum 4GB, recommended 8GB+ for large datasets
+- **Space**: 2GB free for datasets and models
+- **OS**: Windows 10+, macOS 10.15+, Ubuntu 18.04+
 
-### Pasos de Instalación
+### Installation Steps
 
-1. **Clonar el repositorio**
+1. **Clone the repository**
    ```bash
-   git clone https://github.com/your-username/federated-proactive_forest.git
-   cd federated-proactive_forest
+   git clone https://github.com/your-username/federated-proactive-forest.git
+   cd federated-proactive-forest
    ```
 
-2. **Crear entorno virtual** (altamente recomendado)
+2. **Create virtual environment** (highly recommended)
    ```bash
    # Windows
    python -m venv venv
@@ -63,45 +62,60 @@
    source venv/bin/activate
    ```
 
-3. **Instalar dependencias**
+3. **Install dependencies**
    ```bash
    pip install -r requirements.txt
    ```
-
-4. **Verificar instalación**
+   
+   Or install with optional dependencies:
    ```bash
-   python -c "import src.domain.model.proactive_forest; print('✅ Instalación exitosa')"
+   # With UI support
+   pip install -e ".[ui]"
+   
+   # With development tools
+   pip install -e ".[dev]"
+   
+   # With hyperparameter optimization
+   pip install -e ".[opt]"
+   
+   # With FLEX Framework (recommended for full FL orchestration)
+   pip install -e ".[flex]"
    ```
 
-## ⚡ Inicio Rápido
+4. **Verify installation**
+   ```bash
+   python -c "from src.domain.model.proactive_forest import ProactiveForest; print('✅ Installation successful')"
+   ```
 
-### Opción 1: Interfaz Web (Recomendado para principiantes)
+## ⚡ Quick Start
+
+### Option 1: Web Interface (Recommended for beginners)
 
 ```bash
-# Ejecutar la aplicación web completa
+# Run the complete web application
 streamlit run src/interfaces/streamlit/app.py
 ```
 
-Abre tu navegador en `http://localhost:8501` y sigue estos pasos:
+Open your browser at `http://localhost:8501` and follow these steps:
 
-1. **⚙️ Configuración**: Selecciona dataset Iris, 3 clientes, estrategia S1
-2. **▶️ Ejecutar**: Haz clic en "Ejecutar ronda federada"
-3. **🏆 Ranking**: Visualiza qué árboles fueron seleccionados
-4. **📊 Métricas**: Revisa accuracy global y por cliente
+1. **⚙️ Configuration**: Select Iris dataset, 3 clients, strategy S1
+2. **▶️ Run**: Click "Run federated round"
+3. **🏆 Ranking**: Visualize which trees were selected
+4. **📊 Metrics**: Review global and per-client accuracy
 
-### Opción 2: CLI (Para experimentación avanzada)
+### Option 2: CLI (For advanced experimentation)
 
 ```bash
-# Ejecutar experimento completo desde YAML
-python -m src.interfaces.cli.main --config configs/experiments/exp001_s1_simple.yaml
+# Run complete experiment from YAML
+python -m src.interfaces.cli.main --config configs/experiments/exp_s1_simple_pool.yaml
 ```
 
-### Opción 3: Uso Programático
+### Option 3: Programmatic Usage
 
 ```python
-from src.application.orchestrators import FLEXOrchestrator
+from src.application.orchestrators.fl_orchestrator import FLOrchestrator
 
-# Configuración básica
+# Basic configuration
 config = {
     "dataset": {"type": "Iris", "test_size": 0.2},
     "federation": {"n_clients": 5, "distribution": "iid"},
@@ -109,132 +123,174 @@ config = {
     "aggregation": {"strategy": "s1_simple_pool"}
 }
 
-# Ejecutar ronda federada
-orchestrator = FLEXOrchestrator(config)
+# Run federated round
+orchestrator = FLOrchestrator(config)
 results = orchestrator.run_federated_round()
-print(f"Accuracy global: {results.global_accuracy:.4f}")
+print(f"Global accuracy: {results.global_accuracy:.4f}")
 ```
 
-## 📊 Datasets Soportados
+## 📊 Supported Datasets
 
-| Dataset | Muestras | Features | Clases | Tipo | Adaptador | Tiempo FL |
+| Dataset | Samples | Features | Classes | Type | Adapter | FL Time |
 |---------|----------|----------|--------|------|-----------|-----------|
-| **NSL-KDD** | ~150K | 41 (3 cat) | 5 | Seguridad | `nslkdd_adapter.py` | 4-8 min |
-| **Iris** | 150 | 4 (num) | 3 | Clasificación | `iris_adapter.py` | 1-2 min |
-| **Students Dropout** | ~4K | 36 (mix) | 3 | Educación | `csv_adapter.py` | 2-4 min |
-| **CSV Genérico** | Variable | Variable | Variable | Cualquiera | `csv_adapter.py` | Variable |
+| **NSL-KDD** | ~150K | 41 (3 cat) | 5 | Security | `nslkdd_adapter.py` | 4-8 min |
+| **Iris** | 150 | 4 (num) | 3 | Classification | `iris_adapter.py` | 1-2 min |
+| **Students Dropout** | ~4K | 36 (mix) | 3 | Education | `csv_adapter.py` | 2-4 min |
+| **Car Evaluation** | 1.7K | 6 (cat) | 4 | Classification | `csv_adapter.py` | 1-2 min |
+| **Letter Recognition** | 20K | 16 (num) | 26 | Classification | `csv_adapter.py` | 3-5 min |
+| **Nursery** | 13K | 8 (cat) | 5 | Classification | `csv_adapter.py` | 2-4 min |
+| **Optdigits** | 5.6K | 64 (num) | 10 | Classification | `csv_adapter.py` | 3-6 min |
+| **Sonar** | 208 | 60 (num) | 2 | Classification | `csv_adapter.py` | 1-2 min |
+| **Spambase** | 4.6K | 57 (num) | 2 | Classification | `csv_adapter.py` | 2-4 min |
+| **Vowel** | 990 | 10 (num) | 11 | Classification | `csv_adapter.py` | 1-3 min |
+| **Generic CSV** | Variable | Variable | Variable | Any | `csv_adapter.py` | Variable |
 
-### Preparación de Datasets
+### Dataset Preparation
 
-#### NSL-KDD (Detección de Intrusiones)
+#### NSL-KDD (Intrusion Detection)
 ```bash
-# Descargar desde fuente oficial
+# Download from official source
 # https://www.unb.ca/cic/datasets/nsl.html
-# Extraer y colocar en data/:
+# Extract and place in data/:
 # - NSL-KDD_train.csv
 # - NSL-KDD_test.csv
 ```
 
-#### Iris (Incluido)
-- Dataset Iris viene incluido en scikit-learn
-- No requiere descarga adicional
+#### Iris & Other Datasets
+- Most datasets are already included in the `data/` directory
+- Iris can also be loaded from scikit-learn if needed
+- No additional download required for included datasets
 
-#### Students Dropout
-- Archivo `data/students_dropout.csv` incluido
-- Formato CSV con separador `;`
+## 🏆 Aggregation Strategies
 
-## 🏆 Estrategias de Agregación
+The project implements **8 strategies** for tree selection in federated environments:
 
-El proyecto implementa **7 estrategias** de selección de árboles en entornos federados:
+| Strategy | Scope | Criterion | Description |
+|----------|-------|-----------|-------------|
+| **S1** | Global | None | Simple pool - all trees |
+| **S2** | Global | Accuracy | Global ranking by accuracy |
+| **S3** | Global | Macro-F1 | Global ranking by F1-score |
+| **S4** | Global | F1 + PCD | Global ranking by α·F1 + β·PCD |
+| **S5** | Per-Client | Accuracy | Individual ranking per client |
+| **S6** | Per-Client | Macro-F1 | Individual ranking per client |
+| **S7** | Per-Client | F1 + PCD | Individual ranking with diversity |
+| **PW** | Progressive Windows | Adaptive | Progressive windows with adaptive stopping |
 
-| Estrategia | Alcance | Criterio | Descripción |
-|------------|---------|----------|-------------|
-| **S1** | Global | Ninguno | Pool simple - todos los árboles |
-| **S2** | Global | Accuracy | Ranking global por accuracy |
-| **S3** | Global | Macro-F1 | Ranking global por F1-score |
-| **S4** | Global | F1 + PCD | Ranking global por α·F1 + β·PCD |
-| **S5** | Per-Cliente | Accuracy | Ranking individual por cliente |
-| **S6** | Per-Cliente | Macro-F1 | Ranking individual por cliente |
-| **S7** | Per-Cliente | F1 + PCD | Ranking individual con diversidad |
-
-### Configuración de Pesos (S4, S7)
+### Weight Configuration (S4, S7)
 ```yaml
 aggregation:
   strategy: s7_perclient_f1_pcd
-  f1_weight: 0.7    # Peso para F1-score
-  pcd_weight: 0.3   # Peso para diversidad PCD
+  f1_weight: 0.7    # Weight for F1-score
+  pcd_weight: 0.3   # Weight for PCD diversity
 ```
 
-## 🏗️ Arquitectura del Sistema
+### Progressive Windows Strategy (PW)
+The PW strategy implements a novel approach with:
+- **Window-based aggregation**: Processes trees in windows
+- **Adaptive stopping**: Automatically stops when convergence is detected
+- **Configurable parameters**: window_size, max_rounds, alpha
+- **Round-robin selection**: Ensures diversity across clients
 
-### Patrón Arquitectónico: Hexagonal (Ports & Adapters)
+```yaml
+aggregation:
+  strategy: pw
+  window_size: 5
+  max_rounds: 20
+  alpha: 1.0
+  convergence: 0.002
+  episode_size: 5
+```
+
+## 🏗️ System Architecture
+
+### Architectural Pattern: Hexagonal (Ports & Adapters)
 
 ```
 src/
-├── domain/                    # 📦 Núcleo del negocio (sin dependencias externas)
-│   ├── model/                # Modelos ML: ProactiveForest, estrategias
-│   ├── aggregation/          # Lógica de agregación S1-S7
-│   ├── dataset/              # Interfaces de datasets
-│   ├── metrics/              # Evaluación de modelos
-│   └── ports/                # Interfaces (ports) del dominio
+├── domain/                    # 📦 Business core (no external dependencies)
+│   ├── model/                # ML models: ProactiveForest, strategies
+│   │   ├── cpf_implementation/  # CPF algorithm components
+│   │   ├── proactive_forest.py
+│   │   ├── progressive_forest.py
+│   │   └── random_forest.py
+│   ├── aggregation/          # Aggregation logic S1-S7 + PW
+│   │   ├── strategies/       # Individual strategy implementations
+│   │   │   ├── progressive_windows/
+│   │   │   ├── global_progressive_base.py
+│   │   │   └── perclient_progressive_base.py
+│   │   ├── tree_ranker.py    # Tree ranking logic
+│   │   ├── cpf_stopper.py    # Progressive stopping
+│   │   └── aggregation_factory.py
+│   ├── dataset/              # Dataset interfaces
+│   ├── metrics/              # Model evaluation
+│   ├── metadata/             # Client metadata management
+│   ├── prediction/           # Hybrid prediction (local + global)
+│   └── update/               # Client update logic (No-Repeat Merge)
 │
-├── application/              # 🎯 Casos de uso y orquestación
-│   ├── commands/             # Comandos FL (train, aggregate, etc.)
-│   ├── orchestrators/        # Orquestadores: FLEX, Progressive Windows
-│   └── hyperparam_optimizer.py  # Optimización de hiperparámetros
+├── application/              # 🎯 Use cases and orchestration
+│   ├── commands/             # FL commands (train, aggregate, predict, update)
+│   ├── orchestrators/        # Orchestrators: FL, Progressive Windows
+│   └── hyperparam_optimizer.py  # Hyperparameter optimization with Optuna
 │
-├── infrastructure/           # 🔌 Adaptadores concretos
-│   ├── dataset/              # Adaptadores: NSL-KDD, Iris, CSV
-│   ├── flex/                 # Integración FLEX framework
-│   └── serialization/        # Serialización de modelos
+├── infrastructure/           # 🔌 Concrete adapters
+│   └── dataset/              # Adapters: NSL-KDD, Iris, CSV
 │
-└── interfaces/               # 🎨 Interfaces de usuario
-    ├── cli/                  # Interfaz de línea de comandos
-    ├── streamlit/            # Interfaz web moderna
-    └── notebooks/            # Jupyter notebooks
+└── interfaces/               # 🎨 User interfaces
+    ├── cli/                  # Command-line interface
+    └── streamlit/            # Modern web interface
+        ├── app.py            # Entry point
+        ├── components/       # Reusable UI components
+        ├── pages_manual/     # Page implementations
+        └── state/            # Session state management
 ```
 
-### Componentes Clave
+### Key Components
 
-- **Proactive Forest (CPF)**: Algoritmo de ensemble con ajuste dinámico de probabilidades
-- **FLEX Framework**: Simulación de federated learning con distribuciones no-IID
-- **Early Stopping**: Convergencia automática en entrenamiento progresivo
-- **PCD Diversity**: Medida de diversidad Pairwise Classifier Disagreement
+- **Proactive Forest (CPF)**: Ensemble algorithm with dynamic probability adjustment
+- **FLOrchestrator**: Main orchestrator for federated learning rounds
+- **ProgressiveWindowsOrchestrator**: Specialized orchestrator for PW strategy
+- **Early Stopping**: Automatic convergence detection in progressive training
+- **PCD Diversity**: Pairwise Classifier Disagreement diversity measure
+- **Hybrid Prediction**: Configurable local/global model weighting
+- **No-Repeat Merge**: Prevents duplicate tree selection across rounds
 
-## 🌐 Interfaz Streamlit
+## 🌐 Streamlit Interface
 
-La interfaz web proporciona una experiencia completa de experimentación:
+The web interface provides a complete experimentation experience:
 
-### Página 1: ⚙️ Configuración
-- Selección de dataset y parámetros
-- Configuración de federación (clientes, distribución)
-- Parámetros del modelo Proactive Forest
-- Configuración de estrategia de agregación
+### Page 1: ⚙️ Configuration
+- Dataset selection and parameters
+- Federation configuration (clients, distribution)
+- Proactive Forest model parameters
+- Aggregation strategy configuration
+- Hybrid prediction weights (local/global)
 
-### Página 2: ▶️ Ejecutar Experimento
-- Barra de progreso en tiempo real
-- Logs detallados de ejecución
-- Manejo completo de errores con tracebacks
+### Page 2: ▶️ Run Experiment
+- Real-time progress bar
+- Detailed execution logs
+- Complete error handling with tracebacks
+- Results summary with accuracy, F1, and tree count
 
-### Página 3: 🏆 Ranking de Árboles
-- Visualización de árboles seleccionados vs descartados
-- Agrupación por cliente (S5-S7) o global (S1-S4)
-- Información de accuracy y PCD por árbol
+### Page 3: 🏆 Tree Ranking
+- Visualization of selected vs discarded trees
+- Grouping by client (S5-S7) or global (S1-S4)
+- Accuracy and PCD information per tree
+- Interactive filtering by client and strategy
 
-### Página 4: 📊 Métricas Completas
-- Accuracy, F1, Macro-F1 globales
-- Matrices de confusión interactivas
-- Métricas por cliente
-- Comparación de estrategias
+### Page 4: 📊 Complete Metrics
+- Global Accuracy, F1, Macro-F1
+- Interactive confusion matrices
+- Per-client metrics
+- Strategy comparison
 
 ## 💻 CLI
 
-### Uso Básico
+### Basic Usage
 ```bash
-# Ejecutar experimento desde configuración YAML
-python -m src.interfaces.cli.main --config configs/experiments/exp001_s1_simple.yaml
+# Run experiment from YAML configuration
+python -m src.interfaces.cli.main --config configs/experiments/exp_s1_simple_pool.yaml
 
-# Ejecutar con parámetros personalizados
+# Run with custom parameters
 python -m src.interfaces.cli.main \
   --dataset iris \
   --clients 5 \
@@ -242,9 +298,9 @@ python -m src.interfaces.cli.main \
   --trees 100
 ```
 
-### Configuración YAML
+### YAML Configuration
 ```yaml
-# configs/experiments/exp007_s7_perclient_f1_pcd.yaml
+# configs/experiments/exp_s7_perclient_f1_pcd.yaml
 dataset:
   type: "NSL-KDD"
   train_path: "data/NSL-KDD_train.csv"
@@ -265,96 +321,134 @@ aggregation:
   pcd_weight: 0.3
 ```
 
-## ⚙️ Configuración Avanzada
+### Available Experiment Configs
+- `exp_s1_simple_pool.yaml` - Simple pool baseline
+- `exp_s2_global_accuracy.yaml` - Global accuracy ranking
+- `exp_s3_global_f1.yaml` - Global F1 ranking
+- `exp_s4_global_f1_pcd.yaml` - Global F1 + PCD
+- `exp_s5_perclient_accuracy.yaml` - Per-client accuracy
+- `exp_s6_perclient_f1.yaml` - Per-client F1
+- `exp_s7_perclient_f1_pcd.yaml` - Per-client F1 + PCD
+- `exp_pw_progressive_windows.yaml` - Progressive Windows strategy
 
-### Distribuciones de Datos
+## ⚙️ Advanced Configuration
 
-#### IID (Uniforme)
+### Data Distributions
+
+#### IID (Uniform)
 ```yaml
 federation:
-  distribution: "iid"  # Datos uniformemente distribuidos
+  distribution: "iid"  # Uniformly distributed data
 ```
 
 #### Non-IID Dirichlet
 ```yaml
 federation:
   distribution: "noniid_dirichlet"
-  dirichlet_alpha: 0.5  # α bajo = alta heterogeneidad
+  dirichlet_alpha: 0.5  # Lower α = higher heterogeneity
 ```
 
-### Parámetros Proactive Forest
+### Proactive Forest Parameters
 ```yaml
 model:
-  n_estimators: 100      # Árboles por bosque local
-  alpha: 0.1            # Tasa de diversidad (0-1)
-  bootstrap: true       # Bagging para diversidad
-  max_depth: null       # Profundidad máxima (null = ilimitada)
-  split_criterion: "entropy"  # "gini" o "entropy"
+  n_estimators: 100      # Trees per local forest
+  alpha: 0.1            # Diversity rate (0-1)
+  bootstrap: true       # Bagging for diversity
+  max_depth: null       # Maximum depth (null = unlimited)
+  split_criterion: "entropy"  # "gini" or "entropy"
+  feature_selection: "prob"   # Feature selection method
+  use_progressive_stopping: true  # Enable early stopping
+  convergence: 0.002    # Convergence threshold
+  episode_size: 5       # Trees per episode
 ```
 
-## 🔧 Agregar Nuevos Datasets
+### Hybrid Prediction
+```yaml
+prediction:
+  local_weight: 0.0     # Weight for local model
+  global_weight: 1.0    # Weight for global model
+```
 
-### Paso 1: Crear Adaptador
+### Progressive Windows Strategy
+```yaml
+aggregation:
+  strategy: "pw"
+  window_size: 5        # Trees per window
+  max_rounds: 20        # Maximum aggregation rounds
+  alpha: 1.0            # Learning rate
+  convergence: 0.002    # Convergence threshold
+  episode_size: 5       # Trees per episode
+```
+
+## 🔧 Adding New Datasets
+
+### Step 1: Create Adapter
 ```python
 # src/infrastructure/dataset/new_dataset_adapter.py
 from src.domain.dataset.base_adapter import IDatasetAdapter, DatasetSplit
 
 class NewDatasetAdapter(IDatasetAdapter):
     def __init__(self, data_path, scale=True, scaler_type="standard"):
-        # Implementar constructor
-        
+        # Implement constructor
+
     @property
     def name(self) -> str:
         return "new_dataset"
-        
+
     @property
     def n_classes(self) -> int:
         return len(self._class_names_)
-    
+
     def load(self) -> DatasetSplit:
-        # Implementar carga y preprocesamiento
-        # Retornar DatasetSplit con X_train, X_test, y_train, y_test
+        # Implement loading and preprocessing
+        # Return DatasetSplit with X_train, X_test, y_train, y_test
 ```
 
-### Paso 2: Registrar en Configuración
+### Step 2: Register in Configuration
+Update the dataset configuration YAML:
+```yaml
+# configs/datasets/new_dataset.yaml
+dataset:
+  type: "NewDataset"
+  file_path: "data/new_dataset.csv"
+  target_column: "target"
+  test_size: 0.2
+  scale: true
+  scaler_type: "standard"
+```
+
+### Step 3: Update UI (if needed)
 ```python
-# src/interfaces/streamlit/pages/page_config.py
+# src/interfaces/streamlit/pages_manual/page_config.py
 def create_dataset_adapter(config: dict):
     if config["type"] == "NewDataset":
         return NewDatasetAdapter(...)
 ```
 
-## 📚 Documentación Técnica
+## 🤝 Contributing
 
-- **[Arquitectura.md](Arquitectura.md)**: Diseño hexagonal detallado
-- **[DATASETS_GUIDE.md](DATASETS_GUIDE.md)**: Guía completa de adaptadores
-- **[FLEX_INTEGRATION_GUIDE.md](FLEX_INTEGRATION_GUIDE.md)**: Integración FLEX framework
-- **[NONIID_HETEROGENEITY_STUDY.md](NONIID_HETEROGENEITY_STUDY.md)**: Estudio de heterogeneidad
-- **[ANALISIS_Y_CAMBIOS.md](ANALISIS_Y_CAMBIOS.md)**: Análisis y cambios realizados
+Contributions are welcome! Please:
 
-## 🤝 Contribuir
+1. Fork the project
+2. Create a branch for your feature (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
 
-¡Las contribuciones son bienvenidas! Por favor:
+### Contribution Guidelines
+- Follow the hexagonal architecture pattern
+- Add tests for new functionality
+- Update documentation
+- Use type hints and docstrings
+- Ensure all tests pass before submitting PR
 
-1. Fork el proyecto
-2. Crea una rama para tu feature (`git checkout -b feature/AmazingFeature`)
-3. Commit tus cambios (`git commit -m 'Add some AmazingFeature'`)
-4. Push a la rama (`git push origin feature/AmazingFeature`)
-5. Abre un Pull Request
+## 📄 License
 
-### Guías de Contribución
-- Sigue la arquitectura hexagonal
-- Agrega tests para nuevas funcionalidades
-- Actualiza documentación
-- Usa type hints y docstrings
+This project is under the MIT License. See the [LICENSE](LICENSE) file for details.
 
-## 📄 Licencia
+## 📖 Citations
 
-Este proyecto está bajo la Licencia MIT. Ver el archivo [LICENSE](LICENSE) para más detalles.
-
-## 📖 Citas
-
-Si usas este código en tu investigación, por favor cita:
+If you use this code in your research, please cite:
 
 ```bibtex
 @article{cepero2023proactive,
@@ -368,333 +462,143 @@ Si usas este código en tu investigación, por favor cita:
 @article{federated_proactive_forest,
   title={Federated Proactive Forest: Comparative Analysis of Tree Aggregation Strategies},
   author={Your Name},
-  year={2024},
-  note={GitHub repository: https://github.com/your-username/federated-proactive_forest}
+  year={2026},
+  note={GitHub repository: https://github.com/your-username/federated-proactive-forest}
 }
 ```
 
 ---
 
-**⭐ Si encuentras útil este proyecto, por favor dale una estrella en GitHub!**
+**⭐ If you find this project useful, please give it a star on GitHub!**
 
-## 🎯 Estrategias de Agregación
+## 📈 Decision Guide: Which Strategy to Use?
 
-| ID | Nombre | Ámbito | Criterio | Per-Client | Tiempo |
-|----|--------|--------|----------|-----------|--------|
-| **S1** | Simple Pool | - | - | ❌ | <5 seg |
-| **S2** | Global Accuracy | Global | Accuracy | ❌ | 10-30 seg |
-| **S3** | Global F1 | Global | Macro-F1 | ❌ | 10-30 seg |
-| **S4** | Global F1+PCD | Global | α·F1+β·PCD | ❌ | 15-40 seg |
-| **S5** | Per-Client Accuracy | Per-Client | Accuracy | ✅ | 15-40 seg |
-| **S6** | Per-Client F1 | Per-Client | Macro-F1 | ✅ | 15-40 seg |
-| **S7** | Per-Client F1+PCD | Per-Client | α·F1+β·PCD | ✅ | 20-50 seg |
-
-**Tiempo Total**: ~4-8 min (NSL-KDD, 5 clientes, 100 árboles)
-
-### Detalles de Estrategias
-
-- **S1**: Baseline (sin selección)
-- **S2-S4**: Ranking global + Progressive stopping (todos vs todos)
-- **S5-S7**: Ranking per-cliente + Round-robin (diversidad garantizada)
-- **Progressive Stopping**: Detiene agregación si converge
-
-## 🏗️ Estructura del Proyecto
-
-```
-federated_proactive_forest/
-├── README.md                          # Este archivo
-├── DATASETS_GUIDE.md                  # Guía: cómo agregar datasets
-├── pyproject.toml                     # Configuración Python
-├── requirements.txt                   # Dependencias
-├── .gitignore                         # Ignorar archivos
-│
-├── src/
-│   ├── application/
-│   │   └── fl_orchestrator.py        # Orquestador principal (6 pasos FL)
-│   │
-│   ├── domain/
-│   │   ├── aggregation/              # Estrategias S1-S7
-│   │   │   ├── base_strategy.py
-│   │   │   ├── strategies.py         # 7 implementaciones
-│   │   │   ├── tree_ranker.py        # Ranking de árboles
-│   │   │   └── cpf_stopper.py        # Progressive stopping
-│   │   ├── dataset/
-│   │   │   ├── base_adapter.py       # Interfaz IDatasetAdapter
-│   │   ├── metadata/
-│   │   │   └── client_metadata.py    # Metadatos cliente
-│   │   ├── metrics/
-│   │   │   └── forest_evaluator.py   # Cálculo de métricas
-│   │   ├── prediction/
-│   │   │   └── hybrid_predictor.py   # Predicción local+global
-│   │   └── update/
-│   │       └── client_updater.py     # No-Repeat Merge
-│   │
-│   ├── infrastructure/
-│   │   └── dataset/
-│   │       ├── nslkdd_adapter.py     # Adaptador NSL-KDD
-│   │       ├── iris_adapter.py       # Adaptador Iris ✨
-│   │       └── csv_adapter.py        # Adaptador genérico
-│   │
-│   └── interfaces/
-│       ├── cli/
-│       │   └── main.py               # Interfaz CLI
-│       └── streamlit/
-│           ├── app.py                # Entrypoint
-│           └── pages/
-│               ├── page_config.py    # ⚙️ Configuración
-│               ├── page_run.py       # ▶️ Ejecutar
-│               ├── page_ranking.py   # 🏆 Ranking
-│               └── page_metrics.py   # 📊 Métricas
-│
-├── proactive_forest/                 # Código original Cepero 2023
-│   ├── estimator.py
-│   ├── tree.py
-│   ├── tree_builder.py
-│   ├── newalg.py                     # ComparativeProgressiveForest (CPF)
-│   ├── criteria_and_splits.py
-│   ├── selection_and_diversity.py
-│   ├── sampling_and_voting.py
-│   ├── utils.py
-│   └── probabilites.py
-│
-├── configs/
-│   └── experiments/                  # Configuraciones YAML
-│       ├── exp001_s1_simple.yaml
-│       └── exp007_s7_perclient_f1_pcd.yaml
-│
-└── data/
-    ├── NSL-KDD_train.csv             # Descargar
-    └── NSL-KDD_test.csv              # Descargar
-    # Nota: Iris se carga automáticamente desde scikit-learn (no requiere archivo)
-```
-
-## 🎨 Interfaz Streamlit
-
-### Página 1: ⚙️ Configuración
-- Seleccionar dataset (NSL-KDD, Iris, CSV personalizado)
-- Configurar #clientes, distribución (IID/Non-IID)
-- Parámetros modelo (Proactive Forest)
-- Estrategia (S1-S7) y pesos
-- Predicción híbrida (pesos locales/globales)
-
-### Página 2: ▶️ Ejecutar
-- Log en vivo con progreso
-- Resumen: Accuracy, F1, #árboles, estrategia
-- Tabla: Clientes con métricas locales y extendidas
-
-### Página 3: 🏆 Ranking de Árboles
-- Tabla filtrable: todos los árboles con scores
-- Filtrado por cliente(s)
-- Mostrar solo seleccionados
-- Ordenamiento flexible
-
-### Página 4: 📊 Métricas
-- Cards: Accuracy, F1, PCD globales
-- Tabla: Métricas por cliente
-- Matriz de confusión interactiva
-- Gráficos F1 por clase
-
-## 💻 CLI
-
-### Uso
-
-```bash
-python -m src.interfaces.cli.main --config <ruta_yaml>
-```
-
-### Ejemplo
-
-```bash
-python -m src.interfaces.cli.main --config configs/experiments/exp007_s7_perclient_f1_pcd.yaml
-```
-
-### Formato YAML
-
-```yaml
-experiment:
-  name: "exp007_s7"
-  seed: 42
-
-dataset:
-  type: "NSL-KDD"  # o "Iris"
-  train_path: "data/NSL-KDD_train.csv"
-  test_path: "data/NSL-KDD_test.csv"
-
-federation:
-  n_clients: 5
-  distribution: "noniid_dirichlet"
-  dirichlet_alpha: 0.5
-
-model:
-  n_estimators: 100
-  use_progressive_stopping: true
-  convergence: 0.002
-
-aggregation:
-  strategy: "s7_perclient_f1_pcd"
-  f1_weight: 0.5
-  pcd_weight: 0.5
-```
-
-## 📚 Agregar Nuevos Datasets
-
-### Paso 1: Crear Adaptador
-
-```python
-# src/infrastructure/dataset/mi_adapter.py
-
-from src.domain.dataset.base_adapter import IDatasetAdapter, DatasetSplit
-import pandas as pd
-from sklearn.preprocessing import StandardScaler, LabelEncoder
-
-class MiDatasetAdapter(IDatasetAdapter):
-    def __init__(self, data_path, scale=True, scaler_type="standard"):
-        self.data_path = data_path
-        self.scale = scale
-        self._scaler = StandardScaler() if scale else None
-        self._label_encoder = LabelEncoder()
-    
-    @property
-    def name(self) -> str:
-        return "mi_dataset"
-    
-    def load(self) -> DatasetSplit:
-        df = pd.read_csv(self.data_path)
-        # ... cargar, escalar, codificar ...
-        return DatasetSplit(...)
-```
-
-### Paso 2: Actualizar UI
-
-```python
-# src/interfaces/streamlit/pages/page_config.py
-
-# En selectbox:
-dataset_type = st.selectbox("Tipo de dataset",
-    ["NSL-KDD", "Iris", "Mi Dataset", "CSV personalizado"])
-
-# En _load_dataset():
-elif d["type"] == "Mi Dataset":
-    from src.infrastructure.dataset.mi_adapter import MiDatasetAdapter
-    adapter = MiDatasetAdapter(d["train_path"], ...)
-```
-
-Ver [DATASETS_GUIDE.md](DATASETS_GUIDE.md) para guía detallada.
-
-## 📖 Documentación Completa
-
-- [DATASETS_GUIDE.md](DATASETS_GUIDE.md) — Guía completa para agregar datasets
-- `src/application/fl_orchestrator.py` — Documentación de 6 pasos FL
-- `src/domain/aggregation/strategies.py` — Detalles estrategias S1-S7
-
-## 🔬 Ejemplo de Ejecución: Iris
-
-```bash
-# 1. Iniciar Streamlit
-streamlit run src/interfaces/streamlit/app.py
-
-# 2. En navegador (http://localhost:8501):
-#    ⚙️ Configuración:
-#      - Dataset: "Iris"
-#      - Clientes: 3
-#      - Estrategia: "s7_perclient_f1_pcd"
-#      - Guardar ✅
-
-#    ▶️ Ejecutar:
-#      - Ejecutar ronda → Esperar 1-2 min ⏱️
-
-#    🏆 Ranking:
-#      - Ver árboles seleccionados
-#      - Filtrar por cliente
-
-#    📊 Métricas:
-#      - Resultados finales
-```
-
-**Resultado esperado:**
-- Global Accuracy: ~0.95+
-- Tiempo: 1-2 min (vs 4-8 min para NSL-KDD)
-
-## 🛠️ Tecnologías
-
-| Tech | Versión | Rol |
-|------|---------|-----|
-| Python | 3.8+ | Lenguaje |
-| NumPy | ≥1.24 | Computación numérica |
-| Pandas | ≥2.0 | Manipulación datos |
-| scikit-learn | ≥1.3 | ML: DecisionTree, métricas |
-| PyYAML | ≥6.0 | Configuración YAML |
-| Streamlit | ≥1.35 | UI Web |
-| Plotly | ≥5.20 | Gráficos |
-
-## 📈 Tomar Decisiones: ¿Cuál Estrategia Usar?
-
-| Caso | Recomendación | Razón |
-|------|---------------|-------|
-| Investigación pura | S7 (Per-Client F1+PCD) | Máxima diversidad + métrica equilibrada |
-| Performance máximo | S4 (Global F1+PCD) | Ranking global + PCD |
-| Velocidad máxima | S1 (Simple Pool) | Sin overhead de ranking |
-| Datasets pequeños | S5-S7 | Garantiza todos los clientes aportan |
-| Datasets grandes | S2-S4 | Más eficiente |
+| Use Case | Recommendation | Reason |
+|----------|----------------|--------|
+| Pure research | S7 (Per-Client F1+PCD) | Maximum diversity + balanced metric |
+| Maximum performance | S4 (Global F1+PCD) | Global ranking + PCD |
+| Maximum speed | S1 (Simple Pool) | No ranking overhead |
+| Small datasets | S5-S7 | Ensures all clients contribute |
+| Large datasets | S2-S4 | More efficient |
+| Adaptive stopping | PW (Progressive Windows) | Automatic convergence detection |
 
 ## 🐛 Troubleshooting
 
 ### Error: `ModuleNotFoundError: No module named 'src'`
 ```bash
-# Asegurar que estás en el directorio raíz
-cd federated_proactive_forest
+# Make sure you're in the root directory
+cd federated-proactive-forest
 pip install -e .
 ```
 
-### Error: Dataset no carga
-- Verificar rutas en configuración
-- Verificar que nombres de columnas coincidan
-- Revisar [DATASETS_GUIDE.md](DATASETS_GUIDE.md)
+### Error: Dataset doesn't load
+- Verify paths in configuration
+- Ensure column names match
+- Check CSV encoding (UTF-8 recommended)
 
-### Streamlit lento
-- Reducir `n_estimators` (100 → 50)
-- Reducir `n_clients` (5 → 3)
-- Usar `convergence=0.005` (más agresivo)
+### Streamlit is slow
+- Reduce `n_estimators` (100 → 50)
+- Reduce `n_clients` (5 → 3)
+- Use `convergence=0.005` (more aggressive)
 
-## 📝 Licencia
+### Out of memory
+- Use smaller datasets for testing
+- Reduce `max_depth` in model parameters
+- Reduce number of clients
 
-[Especificar licencia - MIT, Apache 2.0, etc.]
+## 🧪 Testing
 
-## 👤 Autor
+```bash
+# Run all tests
+pytest tests/
 
-- **Adrián Rodríguez** — Desarrollo, integración, UI Streamlit
+# Run with coverage
+pytest --cov=src tests/
 
-**Base:** Proactive Forest (Cepero, 2023)
+# Run specific test
+pytest tests/test_hybrid_inference.py -v
+```
 
-## 🤝 Contribuciones
+### Available Tests
+- `test_hybrid_inference.py` - Hybrid prediction tests
+- `test_rr_ds_explicit.py` - Round-robin dataset selection tests
+- `test_rr_ds_rounds.py` - Round-robin rounds tests
 
-Las contribuciones son bienvenidas. Por favor:
+## 🔌 FLEX Framework Integration
 
-1. Fork el repositorio
-2. Crea una rama (`git checkout -b feature/AmazingFeature`)
-3. Commit cambios (`git commit -m 'Add AmazingFeature'`)
-4. Push a la rama (`git push origin feature/AmazingFeature`)
-5. Abre un Pull Request
+The system integrates with the **FLEX Framework** for advanced federated learning orchestration:
 
-## 📧 Contacto
+### What is FLEX?
 
-Para preguntas o sugerencias: [correo/issue en GitHub]
+FLEX is a federated learning framework that provides:
+- **FlexPool**: Client-server and P2P pool management
+- **FedDataDistribution**: IID and Non-IID (Dirichlet) data partitioning
+- **Decorators**: `@aggregate_weights`, `@send_to_server`, etc.
+- **Actors**: Client-server architecture components
+
+### Installation
+
+```bash
+# Install with FLEX support
+pip install -e ".[flex]"
+
+# Or manually
+pip install flex-framework flex-trees
+```
+
+### FLEX Components Used
+
+- **FlexPool**: Manages client-server communication
+- **FedDataDistribution**: Handles data partitioning across clients
+- **Decorators**: Simplifies FL task orchestration
+- **Actors**: Defines client and server roles
+
+### Without FLEX
+
+The system can run **without FLEX** using simplified orchestration, but you'll miss:
+- Advanced data distribution (Dirichlet)
+- FlexPool decorators
+- Some deployment features
+
+The code gracefully handles missing FLEX with fallbacks and warnings.
+
+## 📜 Scripts
+
+### Hyperparameter Optimization
+```bash
+# Optimize S6 strategy alpha parameter
+python scripts/optimize_s6_alpha_pf.py
+
+# Run optimization pipeline
+python scripts/run_optimization.py
+```
+
+## 🛠️ Technologies
+
+| Tech | Version | Role |
+|------|---------|------|
+| Python | 3.8+ | Language |
+| NumPy | ≥1.24 | Numerical computation |
+| Pandas | ≥2.0 | Data manipulation |
+| scikit-learn | ≥1.3 | ML: DecisionTree, metrics |
+| PyYAML | ≥6.0 | YAML configuration |
+| Streamlit | ≥1.35 | Web UI |
+| Plotly | ≥5.20 | Visualizations |
+| Optuna | ≥3.5 | Hyperparameter optimization |
+| pytest | ≥7.4 | Testing framework |
+| **FLEX Framework** | ≥0.1.0 | FL orchestration (FlexPool, decorators) |
+| **FLEX Trees** | ≥0.1.0 | Additional dataset adapters |
+
+## 👤 Author
+
+- **Adrián Rodríguez** — Development, integration, Streamlit UI
+
+**Based on:** Proactive Forest (Cepero, 2023)
+
+## 📧 Contact
+
+For questions or suggestions: [Open an issue on GitHub]
 
 ---
 
-**Hecho con ❤️ para investigación en Aprendizaje Federado**
-
-## Estructura
-
-```
-federated-proactive-forest/
-├── proactive_forest/        # Código original (Cepero 2023) — mín. modificaciones
-├── src/
-│   ├── domain/              # Lógica FL pura (sin FLEX, sin Streamlit)
-│   ├── application/         # Orquestador de ronda
-│   ├── infrastructure/      # Adaptadores de dataset
-│   └── interfaces/
-│       └── streamlit/       # UI independiente
-├── configs/experiments/     # 7 YAMLs (uno por estrategia)
-└── data/nslkdd/             # CSVs del dataset
-```
+**Made with ❤️ for Federated Learning research**
