@@ -64,7 +64,20 @@ def render():
 
     st.divider()
 
-    if st.button("🚀 Ejecutar ronda federada", type="primary"):
+    # ── Re-run confirmation ───────────────────────────────────────────────────
+    has_previous_results = st.session_state.get("fl_results") is not None
+    run_button = st.button("🚀 Ejecutar ronda federada", type="primary")
+
+    if has_previous_results and run_button:
+        st.warning("⚠️ **Ya existen resultados de una ronda anterior.** Ejecutar de nuevo los sobrescribirá.")
+        confirm = st.checkbox("Confirmar: sobrescribir resultados anteriores")
+        if not confirm:
+            st.info("Ejecución cancelada.")
+            run_button = False
+    elif not has_previous_results and run_button:
+        confirm = True  # First run, no confirmation needed
+
+    if run_button and (confirm or not has_previous_results):
         progress  = st.progress(0, text="Inicializando...")
         status    = st.empty()
         log_placeholder = st.empty()  # Para el log acumulativo
@@ -97,6 +110,15 @@ def render():
             c2.metric("Macro-F1 global",  f"{results.global_macro_f1:.4f}")
             c3.metric("Árboles global",   results.n_trees_global)
             c4.metric("Estrategia",       results.strategy_id)
+
+            # PW-specific: show convergence round
+            if results.strategy_id == "PW" and results.convergence_round is not None:
+                st.info(
+                    f"🛑 **Convergencia PW alcanzada en ronda {results.convergence_round}** "
+                    f"(de {results.num_rounds} máx.). "
+                    f"Pesos híbridos: local={results.hybrid_weights.get('local_weight', 0.5):.2f}, "
+                    f"global={results.hybrid_weights.get('global_weight', 0.5):.2f}"
+                )
 
             # Tabla rápida de clientes
             st.subheader("Resumen por cliente")

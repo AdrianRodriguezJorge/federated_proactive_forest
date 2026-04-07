@@ -49,10 +49,22 @@ class GenericCsvAdapter(IDatasetAdapter):
 
         feat_cols = [c for c in train_df.columns if c != self.target_column]
 
-        if self.categorical_features:
+        # Auto-detect string/object columns in BOTH train and test sets
+        detected_cat = []
+        for col in feat_cols:
+            if col not in self.categorical_features:
+                is_obj_train = train_df[col].dtype == "object" or train_df[col].dtype.name == "category"
+                is_obj_test = test_df[col].dtype == "object" or test_df[col].dtype.name == "category"
+                if is_obj_train or is_obj_test:
+                    detected_cat.append(col)
+
+        # Combine explicit + detected categorical columns
+        all_cat_cols = list(dict.fromkeys(self.categorical_features + detected_cat))  # preserve order, no dupes
+
+        if all_cat_cols:
             enc = OrdinalEncoder(handle_unknown="use_encoded_value", unknown_value=-1)
-            train_df[self.categorical_features] = enc.fit_transform(train_df[self.categorical_features])
-            test_df[self.categorical_features]  = enc.transform(test_df[self.categorical_features])
+            train_df[all_cat_cols] = enc.fit_transform(train_df[all_cat_cols])
+            test_df[all_cat_cols]  = enc.transform(test_df[all_cat_cols])
 
         le = LabelEncoder()
         all_y = np.concatenate([train_df[self.target_column].values, test_df[self.target_column].values])

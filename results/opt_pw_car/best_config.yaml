@@ -1,5 +1,5 @@
 best_params:
-  alpha_pw: 0.55
+  f1_weight: 0.55
   convergence_threshold: 0.0027036160666620013
   local_weight: 0.30000000000000004
   max_rounds: 20

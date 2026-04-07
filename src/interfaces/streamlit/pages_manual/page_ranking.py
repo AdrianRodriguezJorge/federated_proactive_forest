@@ -3,15 +3,6 @@ import streamlit as st
 import pandas as pd
 
 
-# Paleta de colores para clientes (hasta 20)
-_COLORS = [
-    "#AED6F1", "#A9DFBF", "#F9E79F", "#F5CBA7", "#D7BDE2",
-    "#FADBD8", "#D5F5E3", "#FCF3CF", "#D6EAF8", "#E8DAEF",
-    "#FDEBD0", "#D1F2EB", "#FDFEFE", "#EBF5FB", "#FEF9E7",
-    "#F9EBEA", "#EAF2FF", "#E8F8F5", "#FDF2E9", "#F4ECF7",
-]
-
-
 def render():
     st.header("🏆 Ranking de Árboles")
 
@@ -26,12 +17,16 @@ def render():
     n_sel     = sum(1 for e in results.all_tree_entries
                     if e.tree_local_id in results.selected_ids.get(e.client_id, []))
 
-    st.info(
+    info_text = (
         f"**Estrategia:** `{sid}` &nbsp;|&nbsp; "
         f"**Total árboles candidatos:** {n_total} &nbsp;|&nbsp; "
         f"**Seleccionados para bosque global:** {n_sel} &nbsp;|&nbsp; "
         f"**Descartados por Progressive:** {n_total - n_sel}"
     )
+    # PW-specific convergence info
+    if sid == "PW" and results.convergence_round is not None:
+        info_text += f"<br>**Convergencia:** ronda {results.convergence_round}"
+    st.info(info_text)
 
     # ── Leyenda ───────────────────────────────────────────────────────────────
     c1, c2 = st.columns(2)

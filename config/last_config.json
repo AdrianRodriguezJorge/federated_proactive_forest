@@ -1,16 +1,17 @@
 {
   "dataset": {
-    "type": "Students Dropout",
-    "file_path": "data/students_dropout.csv",
-    "train_path": "data/students_dropout.csv",
+    "type": "Nursery",
+    "file_path": "data/nursery.csv",
+    "train_path": "",
     "test_path": "",
-    "target_column": "Target",
+    "target_column": "class",
     "test_size": 0.2,
     "scale": true,
-    "scaler_type": "standard"
+    "scaler_type": "standard",
+    "sep": ","
   },
   "federation": {
-    "n_clients": 2,
+    "n_clients": 3,
     "distribution": "iid",
     "dirichlet_alpha": 0.5
   },
@@ -24,18 +25,18 @@
     "episode_size": 5
   },
   "aggregation": {
-    "strategy": "pw",
-    "f1_weight": 0.7,
-    "pcd_weight": 0.3,
+    "strategy": "s7_perclient_f1_pcd",
+    "t_max": 100,
+    "f1_weight": 0.6,
+    "pcd_weight": 0.4,
     "convergence": 0.002,
     "episode_size": 5,
     "window_size": 5,
-    "max_rounds": 20,
-    "alpha": 1.0
+    "max_rounds": 20
   },
   "prediction": {
-    "local_weight": 0.0,
-    "global_weight": 1.0
+    "local_weight": 0.5,
+    "global_weight": 0.5
   },
   "verbose": false,
   "seed": 42
