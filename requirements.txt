@@ -17,10 +17,10 @@ optuna>=3.5
 joblib>=1.3
 tensorly>=0.8
 
-# FLEX Framework (optional but recommended for full FL orchestration)
+# FLEX Framework (optional - for full FL orchestration)
 # Provides: FlexPool, FedDataDistribution, decorators, actors
-flex-framework>=0.1.0
-
-# FLEX Trees (optional: for additional dataset adapters)
-# Provides: tabular dataset loaders (ildp, etc.)
-flex-trees>=0.1.0
+# Install manually if needed: pip install flex-framework flex-trees
+flexible-fl
+flex
+flextrees
+setuptools<70
