@@ -184,17 +184,33 @@ class FLEXOrchestrator:
             dataset_split: DatasetSplit with X_train, y_train, X_test, y_test
             seed: Random seed for reproducibility
         """
-        self.dataset_split = dataset_split
-        
         try:
             from flex.data import Dataset
         except ImportError:
             raise ImportError("FLEX not installed. Run: pip install flex-framework")
 
+        # Create Server Validation Split (10%)
+        # Ensure we have at least some samples for val
+        if len(dataset_split.X_train) > 10:
+            from sklearn.model_selection import train_test_split
+            X_train_fed, X_server_val, y_train_fed, y_server_val = train_test_split(
+                dataset_split.X_train, dataset_split.y_train, 
+                test_size=0.10, random_state=seed
+            )
+        else:
+            X_train_fed, y_train_fed = dataset_split.X_train, dataset_split.y_train
+            X_server_val, y_server_val = dataset_split.X_train, dataset_split.y_train
+
+        dataset_split.X_val = X_server_val
+        dataset_split.y_val = y_server_val
+        dataset_split.X_train = X_train_fed  # The clients will not see the validation data
+        dataset_split.y_train = y_train_fed
+        self.dataset_split = dataset_split
+
         # Create FLEX Dataset
         centralized_dataset = Dataset.from_array(
-            X_array=dataset_split.X_train,
-            y_array=dataset_split.y_train
+            X_array=X_train_fed,
+            y_array=y_train_fed
         )
 
         # Setup distribution based on configuration
@@ -390,24 +406,26 @@ class FLEXOrchestrator:
         t_max = self._get_config_value('aggregation', 't_max', default=n_estimators)  # T_MAX por defecto = n_estimators
 
         # Get validation data for Progressive Forest (S2-S7) and PW
-        X_test, y_test = self.dataset_split.X_test, self.dataset_split.y_test
+        # Now using the SERVER VALIDATION set instead of the global test set.
+        X_val_server = self.dataset_split.X_val if self.dataset_split.X_val is not None else self.dataset_split.X_test
+        y_val_server = self.dataset_split.y_val if self.dataset_split.y_val is not None else self.dataset_split.y_test
 
         # Build kwargs based on strategy type
         aggregate_kwargs = {}
         if strategy_name in ['S2', 'S3', 'S4']:
-            aggregate_kwargs['X_val'] = X_test
-            aggregate_kwargs['y_val'] = y_test
+            aggregate_kwargs['X_val'] = X_val_server
+            aggregate_kwargs['y_val'] = y_val_server
             aggregate_kwargs['max_trees'] = n_estimators
             aggregate_kwargs['t_max'] = t_max
         elif strategy_name in ['S5', 'S6', 'S7']:
-            aggregate_kwargs['X_val'] = X_test
-            aggregate_kwargs['y_val'] = y_test
+            aggregate_kwargs['X_val'] = X_val_server
+            aggregate_kwargs['y_val'] = y_val_server
             aggregate_kwargs['max_trees_per_client'] = n_estimators
             aggregate_kwargs['t_max'] = t_max
         elif strategy_name == 'PW':
             # Progressive Windows uses different parameters
-            aggregate_kwargs['X_val'] = X_test
-            aggregate_kwargs['y_val'] = y_test
+            aggregate_kwargs['X_val'] = X_val_server
+            aggregate_kwargs['y_val'] = y_val_server
             aggregate_kwargs['t_max'] = t_max
             aggregate_kwargs['window_size'] = self._get_config_value('aggregation', 'window_size', default=5)
             aggregate_kwargs['max_rounds'] = self._get_config_value('aggregation', 'max_rounds', default=20)
@@ -570,27 +588,50 @@ class FLEXOrchestrator:
 
         n_estimators = self._get_config_value('model', 'n_estimators') or self._get_config_value('n_estimators', default=100)
         alpha_pf = self._get_config_value('model', 'alpha') or self._get_config_value('alpha_pf', default=0.1)
+        seed = self.config.get('seed', 42)
 
         for client_id, (X_client, y_client) in self.client_partitions.items():
-            if len(X_client) < 5:
-                continue
+            if len(X_client) < 10:
+                X_train_local, X_val_local = X_client, X_client
+                y_train_local, y_val_local = y_client, y_client
+            else:
+                from sklearn.model_selection import train_test_split
+                X_train_local, X_val_local, y_train_local, y_val_local = train_test_split(
+                    X_client, y_client, test_size=0.2, random_state=seed
+                )
 
-            # Train ProactiveForest with 100% of client's data (no validation split)
+            # Train ProactiveForest on local train split
             pf = ProactiveForest(
                 n_estimators=n_estimators,
                 alpha=alpha_pf,
                 verbose=self._get_config_value('verbose', default=False),
                 class_names=self.dataset_split.class_names
             )
-            pf.fit(X_client, y_client)
+            pf.fit(X_train_local, y_train_local)
 
-            # Calculate metadata using global test set with proper label conversion
-            y_pred_test = pf.predict(self.dataset_split.X_test)
+            # Evaluate each tree individually on local validation set (Real Tree Ranking)
+            tree_metrics = []
+            from sklearn.metrics import accuracy_score, f1_score
+            for tree in pf.get_trees():
+                # Internal prediction using indices for tree-level evaluation
+                y_pred_tree_raw = [tree.predict(x) for x in X_val_local]
+                
+                # Convert list to array and manage strings if necessary
+                if len(y_pred_tree_raw) > 0 and isinstance(y_pred_tree_raw[0], str):
+                    class_to_idx = {cn: idx for idx, cn in enumerate(self.dataset_split.class_names)}
+                    y_pred_tree = np.array([class_to_idx.get(pred, 0) for pred in y_pred_tree_raw])
+                else:
+                    y_pred_tree = np.asarray(y_pred_tree_raw, dtype=np.int64)
 
+                acc_t = float(accuracy_score(y_val_local, y_pred_tree))
+                f1_t = float(f1_score(y_val_local, y_pred_tree, average='macro', zero_division=0))
+                tree_metrics.append({'accuracy': acc_t, 'macro_f1': f1_t})
+
+            # Forest-level metrics for this client (on local validation)
             local_report = ForestEvaluator.evaluate(
                 pf,
-                self.dataset_split.X_test,
-                self.dataset_split.y_test,
+                X_val_local,
+                y_val_local,
                 self.dataset_split.class_names
             )
             acc = float(local_report.accuracy)
@@ -604,6 +645,7 @@ class FLEXOrchestrator:
                 accuracy=acc,
                 macro_f1=f1,
                 pcd=pcd,
+                tree_metrics=tree_metrics
             )
 
         return client_forests, client_metadata

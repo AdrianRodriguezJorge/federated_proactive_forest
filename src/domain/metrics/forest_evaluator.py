@@ -3,7 +3,7 @@ Cálculo de todas las métricas para el panel Streamlit.
 Usa el ProactiveForestClassifier original directamente.
 """
 from dataclasses import dataclass, field
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 import numpy as np
 from sklearn.metrics import (accuracy_score, confusion_matrix,
                               precision_score, recall_score, f1_score, classification_report)
@@ -22,6 +22,8 @@ class ForestReport:
     pcd: float
     forest_size: int
     class_names: List[str]
+    accuracy_ci: Tuple[float, float] = (0.0, 0.0)
+    macro_f1_ci: Tuple[float, float] = (0.0, 0.0)
 
     @property
     def report(self) -> str:
@@ -71,10 +73,14 @@ class ForestEvaluator:
         per_rec  = recall_score(y, y_pred, labels=labels, average=None, zero_division=0)
 
         # PCD usando el método nativo del bosque
+        # Fallback a 0.0 si el encoder interno no está inicializado o hay un error
         try:
             pcd = float(forest.diversity_measure(X, y, diversity='pcd'))
-        except Exception:
+        except (AttributeError, TypeError, ValueError):
             pcd = 0.0
+
+        accuracy_ci = ForestEvaluator._compute_bootstrap_ci(y, y_pred, lambda yt, yp: accuracy_score(yt, yp))
+        macro_f1_ci = ForestEvaluator._compute_bootstrap_ci(y, y_pred, lambda yt, yp: f1_score(yt, yp, average='macro', zero_division=0))
 
         return ForestReport(
             accuracy=float(accuracy_score(y, y_pred)),
@@ -88,7 +94,23 @@ class ForestEvaluator:
             pcd=pcd,
             forest_size=len(forest.get_trees()),
             class_names=class_names,
+            accuracy_ci=accuracy_ci,
+            macro_f1_ci=macro_f1_ci,
         )
+
+    @staticmethod
+    def _compute_bootstrap_ci(y_true, y_pred, metric_func, n_bootstrap=1000, alpha=0.05):
+        """Helper to compute bootstrap confidence intervals."""
+        rng = np.random.RandomState(42)
+        scores = []
+        for _ in range(n_bootstrap):
+            indices = rng.choice(len(y_true), size=len(y_true), replace=True)
+            y_true_bs = y_true[indices]
+            y_pred_bs = y_pred[indices]
+            scores.append(metric_func(y_true_bs, y_pred_bs))
+        lower = np.percentile(scores, 100 * alpha / 2)
+        upper = np.percentile(scores, 100 * (1 - alpha / 2))
+        return (float(lower), float(upper))
 
     @staticmethod
     def evaluate_from_predictions(y_pred: np.ndarray, y_true: np.ndarray,
@@ -114,6 +136,9 @@ class ForestEvaluator:
         per_prec = precision_score(y_true, y_pred, labels=labels, average=None, zero_division=0)
         per_rec  = recall_score(y_true, y_pred, labels=labels, average=None, zero_division=0)
 
+        accuracy_ci = ForestEvaluator._compute_bootstrap_ci(y_true, y_pred, lambda yt, yp: accuracy_score(yt, yp))
+        macro_f1_ci = ForestEvaluator._compute_bootstrap_ci(y_true, y_pred, lambda yt, yp: f1_score(yt, yp, average='macro', zero_division=0))
+
         return ForestReport(
             accuracy=float(accuracy_score(y_true, y_pred)),
             macro_f1=float(f1_score(y_true, y_pred, average='macro', zero_division=0)),
@@ -126,4 +151,6 @@ class ForestEvaluator:
             pcd=pcd,
             forest_size=forest_size,
             class_names=class_names,
+            accuracy_ci=accuracy_ci,
+            macro_f1_ci=macro_f1_ci,
         )

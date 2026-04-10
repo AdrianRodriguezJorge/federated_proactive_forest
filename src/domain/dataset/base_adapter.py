@@ -14,6 +14,8 @@ class DatasetSplit:
     feature_names: List[str]
     class_names: List[str]
     dataset_name: str
+    X_val: np.ndarray = None
+    y_val: np.ndarray = None
 
 
 class IDatasetAdapter(ABC):

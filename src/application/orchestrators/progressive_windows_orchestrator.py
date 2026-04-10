@@ -142,11 +142,15 @@ class ProgressiveWindowsOrchestrator:
                 print("=" * 100)
                 print(f"📊 Bosque global actual: {len(self.global_trees)} árboles")
 
+                # Get validation set (Server Validation preferentially)
+                X_val_server = self.dataset_split.X_val if self.dataset_split.X_val is not None else self.dataset_split.X_test
+                y_val_server = self.dataset_split.y_val if self.dataset_split.y_val is not None else self.dataset_split.y_test
+
                 if len(self.global_trees) > 0:
                     current_acc = self._evaluate_forest_accuracy(
-                        self.global_trees, self.dataset_split.X_test, self.dataset_split.y_test
+                        self.global_trees, X_val_server, y_val_server
                     )
-                    print(f"📈 Accuracy actual: {current_acc:.6f}")
+                    print(f"📈 Accuracy actual (val): {current_acc:.6f}")
                 else:
                     print(f"📈 Accuracy actual: N/A (bosque vacío)")
 
@@ -174,8 +178,8 @@ class ProgressiveWindowsOrchestrator:
                 window_trees, window_metrics = self._train_window(
                     client_id=client_id,
                     window_index=round_num,
-                    X_train=self.dataset_split.X_train,
-                    y_train=self.dataset_split.y_train
+                    X_train=self.client_partitions[client_id][0],
+                    y_train=self.client_partitions[client_id][1]
                 )
 
                 client_windows[client_id] = window_trees
@@ -239,12 +243,16 @@ class ProgressiveWindowsOrchestrator:
                 print(f"🛑 FASE 4: CRITERIO DE PARADA (PROGRESSIVE GLOBAL)")
                 print(f"{'─' * 100}")
 
+            # Get validation set (Server Validation preferentially)
+            X_val_server = self.dataset_split.X_val if self.dataset_split.X_val is not None else self.dataset_split.X_test
+            y_val_server = self.dataset_split.y_val if self.dataset_split.y_val is not None else self.dataset_split.y_test
+
             # Evaluar bosque global
             current_accuracy = self._evaluate_forest_accuracy(
-                self.global_trees, self.dataset_split.X_test, self.dataset_split.y_test
+                self.global_trees, X_val_server, y_val_server
             )
             current_f1 = self._evaluate_forest_f1(
-                self.global_trees, self.dataset_split.X_test, self.dataset_split.y_test
+                self.global_trees, X_val_server, y_val_server
             )
 
             round_accuracies.append(current_accuracy)
@@ -308,7 +316,7 @@ class ProgressiveWindowsOrchestrator:
             print(f"🔄 FASE 5-6: ACTUALIZACIÓN E INFERENCIA HÍBRIDA")
             print(f"{'=' * 100}")
 
-        # Calcular métricas finales
+        # Calcular métricas globales (bosque centralizado)
         results.global_accuracy = self._evaluate_forest_accuracy(
             self.global_trees, self.dataset_split.X_test, self.dataset_split.y_test
         )
@@ -321,8 +329,6 @@ class ProgressiveWindowsOrchestrator:
         results.global_predictions = self._predict_forest(
             self.global_trees, self.dataset_split.X_test
         )
-
-        # Inferencia híbrida por cliente (FASE 6)
         results.client_hybrid_predictions = {}
         results.client_hybrid_forest_sizes = {}
 
@@ -356,6 +362,11 @@ class ProgressiveWindowsOrchestrator:
             client_f1 = f1_score(self.dataset_split.y_test, hybrid_preds, average='macro', zero_division=0)
             results.client_accuracies[client_id] = client_acc
             results.client_f1_scores[client_id] = client_f1
+
+        # Clean up per-client forests after they are no longer needed
+        self.client_forests.clear()
+        import gc
+        gc.collect()
 
         if self.verbose:
             print(f"\n📊 RESULTADOS FINALES:")
@@ -392,6 +403,18 @@ class ProgressiveWindowsOrchestrator:
         n_estimators = self.window_size
         alpha_pf = self.config.get('alpha_pf', 0.1)
 
+        # Create Server-side validation context from self.dataset_split
+        # but the client must only use THEIR training data and split it locally.
+        seed = self.config.get('seed', 42)
+        if len(X_train) < 10:
+            X_tr_local, X_val_local = X_train, X_train
+            y_tr_local, y_val_local = y_train, y_train
+        else:
+            from sklearn.model_selection import train_test_split
+            X_tr_local, X_val_local, y_tr_local, y_val_local = train_test_split(
+                X_train, y_train, test_size=0.2, random_state=seed
+            )
+
         pf = ProactiveForest(
             n_estimators=n_estimators,
             alpha=alpha_pf,
@@ -399,9 +422,8 @@ class ProgressiveWindowsOrchestrator:
             class_names=self.dataset_split.class_names
         )
 
-        # Entrenar con datos del cliente (en implementación real, cada cliente tiene sus propios datos)
-        # Aquí usamos todo X_train para simplificar
-        pf.fit(X_train, y_train)
+        # Entrenar con datos del cliente divididos localmente
+        pf.fit(X_tr_local, y_tr_local)
 
         # Guardar bosque del cliente
         self.client_forests[client_id] = pf
@@ -409,8 +431,8 @@ class ProgressiveWindowsOrchestrator:
         # Obtener árboles de esta ventana
         window_trees = pf.get_trees()
 
-        # Calcular métricas de la ventana
-        y_pred_raw = pf.predict(self.dataset_split.X_test)
+        # Calcular métricas de la ventana (Ranking real a nivel de árbol sobre Val local)
+        y_pred_raw = pf.predict(X_val_local)
 
         # Convertir predicciones a índices numéricos (pueden ser strings o números)
         if len(y_pred_raw) > 0 and isinstance(y_pred_raw[0], str):
@@ -419,17 +441,17 @@ class ProgressiveWindowsOrchestrator:
         else:
             y_pred = np.asarray(y_pred_raw, dtype=np.int64)
 
-        accuracy = accuracy_score(self.dataset_split.y_test, y_pred)
-        macro_f1 = f1_score(self.dataset_split.y_test, y_pred, average='macro', zero_division=0)
+        accuracy = accuracy_score(y_val_local, y_pred)
+        macro_f1 = f1_score(y_val_local, y_pred, average='macro', zero_division=0)
 
         # Calcular PCD (diversidad) de la ventana
         pcd = self._calculate_window_pcd(window_trees)
 
-        # Calcular F1 por árbol (para el score dinámico)
+        # Calcular F1 por árbol (para el score dinámico) sobre VAL LOCAL
         tree_f1_scores = []
         for tree in window_trees:
-            tree_preds = self._predict_tree(tree, self.dataset_split.X_test)
-            tree_f1 = f1_score(self.dataset_split.y_test, tree_preds, average='macro', zero_division=0)
+            tree_preds = self._predict_tree(tree, X_val_local)
+            tree_f1 = f1_score(y_val_local, tree_preds, average='macro', zero_division=0)
             tree_f1_scores.append(tree_f1)
 
         metrics = {
@@ -554,8 +576,10 @@ class ProgressiveWindowsOrchestrator:
             size_diff = abs(nodes1 - nodes2) / max(nodes1, nodes2, 1)
 
             return min(1.0, (depth_diff + size_diff) / 2)
-        except Exception:
-            return 0.5
+        except Exception as e:
+            import logging
+            logging.exception("Error in _calculate_pcd_between_trees")
+            raise
 
     def _get_tree_depth(self, tree_structure: Any) -> int:
         """Obtener profundidad de un árbol."""
@@ -610,8 +634,10 @@ class ProgressiveWindowsOrchestrator:
         predictions = self._predict_forest(trees, X)
         try:
             return float(f1_score(y, predictions, average='macro', zero_division=0))
-        except Exception:
-            return 0.0
+        except Exception as e:
+            import logging
+            logging.exception("Error in _evaluate_forest_f1")
+            raise
 
     def _predict_forest(self, trees: List[Any], X: np.ndarray) -> np.ndarray:
         """Predecir con un bosque usando votación mayoritaria."""
@@ -628,8 +654,10 @@ class ProgressiveWindowsOrchestrator:
             for i in range(n_samples):
                 try:
                     all_predictions[i, j] = tree.predict(X[i])
-                except Exception:
-                    all_predictions[i, j] = 0
+                except Exception as e:
+                    import logging
+                    logging.exception("Error in _predict_forest")
+                    raise
 
         mode_result = stats.mode(all_predictions, axis=1, keepdims=False)
         return mode_result.mode
@@ -645,8 +673,10 @@ class ProgressiveWindowsOrchestrator:
                 if isinstance(pred, str):
                     pred = self.dataset_split.class_names.index(pred) if pred in self.dataset_split.class_names else 0
                 predictions[i] = pred
-            except Exception:
-                predictions[i] = 0
+            except Exception as e:
+                import logging
+                logging.exception("Error in _predict_tree")
+                raise
         return predictions
 
     def _hybrid_predict(
@@ -693,8 +723,10 @@ class ProgressiveWindowsOrchestrator:
             for i in range(n_samples):
                 try:
                     all_predictions[i, j] = tree.predict(X[i])
-                except Exception:
-                    all_predictions[i, j] = 0
+                except Exception as e:
+                    import logging
+                    logging.exception("Error in _get_class_probabilities")
+                    raise
 
         # Contar votos por clase
         class_counts = np.zeros((n_samples, n_classes))

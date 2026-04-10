@@ -47,13 +47,23 @@ class TreeRanker:
         entries = []
         for cid, trees in client_trees.items():
             meta = client_metadata[cid]
+            # Extraer tree_metrics si existen (lista de dicts con 'accuracy' y 'macro_f1')
+            tree_metrics = getattr(meta, 'tree_metrics', [])
+
             for local_id, tree in enumerate(trees):
+                # Usar métrica individual si está disponible, si no usar la del bosque completo (fallback)
+                tree_acc = tree_metrics[local_id]['accuracy'] if local_id < len(tree_metrics) else meta.accuracy
+                tree_f1 = tree_metrics[local_id]['macro_f1'] if local_id < len(tree_metrics) else meta.macro_f1
+                
+                # Para PCD, actualmente se sigue heredando del bosque/cliente 
+                # (S4/S7 lo calculan después sobre la diversidad del pool acumulado)
+
                 entries.append(TreeEntry(
                     tree=tree,
                     client_id=cid,
                     tree_local_id=local_id,
-                    accuracy=meta.accuracy,
-                    macro_f1=meta.macro_f1,
+                    accuracy=tree_acc,
+                    macro_f1=tree_f1,
                     pcd=meta.pcd,
                 ))
         return entries

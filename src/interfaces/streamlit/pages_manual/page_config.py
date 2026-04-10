@@ -123,8 +123,10 @@ def load_config_from_file() -> dict:
         if CONFIG_FILE.exists():
             with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
                 return json.load(f)
-    except Exception:
-        pass
+    except Exception as e:
+        import logging
+        logging.warning(f"Could not load config from {CONFIG_FILE}: {e}")
+        return {}
     return {}
 
 
@@ -308,7 +310,9 @@ def render():
                         st.info(f"🔍 Columnas categóricas detectadas automáticamente: {len(detected_cat)}")
                     else:
                         st.info("🔍 No se detectaron columnas categóricas automáticamente.")
-                except Exception:
+                except Exception as e:
+                    import logging
+                    logging.debug(f"Auto-detection of categorical columns failed: {e}")
                     pass
     else:
         if dataset_type not in ("Iris", "NSL-KDD"):

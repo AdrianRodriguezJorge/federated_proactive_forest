@@ -99,7 +99,9 @@ class OptimizationResultsLogger:
             saved_files['study_pickle'] = str(study_path)
             print(f"📦 Study object guardado a: {study_path}")
         except Exception as e:
-            print(f"⚠️  No se pudo guardar study object: {e}")
+            import logging
+            logging.exception("Error saving study object")
+            raise
 
         return saved_files
 

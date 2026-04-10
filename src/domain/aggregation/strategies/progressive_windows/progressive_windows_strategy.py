@@ -444,8 +444,10 @@ class ProgressiveWindowsStrategy(IAggregationStrategy):
             size_diff = abs(nodes1 - nodes2) / max(nodes1, nodes2, 1)
 
             return min(1.0, (depth_diff + size_diff) / 2)
-        except Exception:
-            return 0.5
+        except Exception as e:
+            import logging
+            logging.exception("Error in _calculate_pcd_between_trees")
+            raise
 
     def _get_tree_depth(self, tree_structure: Any) -> int:
         """Get the depth of a tree from its structure."""
@@ -485,8 +487,10 @@ class ProgressiveWindowsStrategy(IAggregationStrategy):
             for i in range(n_samples):
                 try:
                     all_predictions[i, j] = tree.predict(X[i])
-                except Exception:
-                    all_predictions[i, j] = 0
+                except Exception as e:
+                    import logging
+                    logging.exception("Error in _evaluate_forest_accuracy")
+                    raise
 
         mode_result = stats.mode(all_predictions, axis=1, keepdims=False)
         predictions = mode_result.mode
@@ -510,16 +514,20 @@ class ProgressiveWindowsStrategy(IAggregationStrategy):
             for i in range(n_samples):
                 try:
                     all_predictions[i, j] = tree.predict(X[i])
-                except Exception:
-                    all_predictions[i, j] = 0
+                except Exception as e:
+                    import logging
+                    logging.exception("Error in _evaluate_forest_f1 prediction")
+                    raise
 
         mode_result = stats.mode(all_predictions, axis=1, keepdims=False)
         predictions = mode_result.mode
 
         try:
             return float(f1_score(y, predictions, average='macro', zero_division=0))
-        except Exception:
-            return 0.0
+        except Exception as e:
+            import logging
+            logging.exception("Error in _evaluate_forest_f1 scoring")
+            raise
 
     def get_global_trees(self) -> List[Any]:
         """Return current global forest trees."""
