@@ -41,47 +41,25 @@ class HybridPredictor:
                 return
             w_per_tree = weight / len(trees)
             
-            # Map class names to indices once outside the loops
-            # If label_svc is present, we use it for more robust mapping
-            if self.label_svc:
-                # We'll use the service's internal mapping if possible
-                # SimpleLabelService uses _encoder
-                class_to_idx = {str(name): i for name, i in self.label_svc._encoder.items()}
-            else:
-                class_to_idx = {str(name): i for i, name in enumerate(self.class_names)}
+            # No manual mapping needed, we use LabelService.transform for robustness
+
             
             for tree in trees:
-                # Use batch prediction which returns array of predictions
-                preds = tree.predict(X)
+                # Use batch prediction which returns array of predictions (labels)
+                preds_raw = tree.predict(X)
 
-                # Normalize preds to integer indices
-                # Trees store integer class indices in leaves (from np.argmax)
-                # The tree.predict returns dtype=object array containing numpy integers
-                
-                # Check if predictions are strings/objects that need mapping
-                if preds.dtype.kind in {'U', 'S'} or (preds.dtype == 'O' and isinstance(preds.flat[0] if len(preds) > 0 else None, str)):
-                    # String predictions - need to map to indices
-                    mapped_preds = []
-                    for p in preds:
-                        p_str = str(p)
-                        idx = class_to_idx.get(p_str, -1)
-                        # Handle potential float-as-string issues (e.g., "1.0" -> "1")
-                        if idx == -1 and "." in p_str:
-                            try:
-                                p_int_str = str(int(float(p_str)))
-                                idx = class_to_idx.get(p_int_str, -1)
-                            except ValueError:
-                                pass
-                        mapped_preds.append(idx)
-                    preds = np.array(mapped_preds, dtype=np.int64)
+                # Map labels to unified indices using LabelService if available
+                if self.label_svc:
+                    preds = self.label_svc.transform(preds_raw)
                 else:
-                    # Predictions are already numeric (numpy integers in object array)
-                    # Convert to proper int64 array
+                    # Fallback if no service: try to convert to numeric directly
                     try:
-                        preds = np.array([int(p) for p in preds], dtype=np.int64)
+                        preds = np.asarray(preds_raw, dtype=np.int64)
                     except (ValueError, TypeError):
-                        # Fallback: try direct conversion
-                        preds = np.asarray(preds, dtype=np.int64)
+                        # If strings and no service, we might have issues, but this shouldn't happen in our current architecture
+                        preds = np.zeros(n_samples, dtype=np.int64)
+
+
 
                 # Validate indices
                 valid_mask = (preds >= 0) & (preds < self.n_classes)

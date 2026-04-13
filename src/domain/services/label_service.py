@@ -45,34 +45,16 @@ class SimpleLabelService(ILabelService):
         self._decoder = {i: label for i, label in enumerate(self._classes)}
 
     def transform(self, labels: Any) -> np.ndarray:
-        """Transform labels to numeric indices.
-        
-        Handles both string labels (e.g., 'hAd') and integer indices (e.g., 0, 1, 2).
-        If labels are already integers within the valid range, returns them as-is.
-        """
+        """Transform labels to numeric indices using the fitted encoder."""
         if isinstance(labels, (list, np.ndarray)):
             labels_list = list(labels) if isinstance(labels, np.ndarray) else labels
         else:
             labels_list = [labels]
         
-        # Check if first element is already an integer
-        if len(labels_list) > 0:
-            first_elem = labels_list[0]
-            # If it's already an integer (or numpy integer)
-            if isinstance(first_elem, (int, np.integer)):
-                # Validate it's within range
-                if isinstance(first_elem, (int, np.integer)):
-                    # Already encoded, just validate and return
-                    result = np.array([int(x) for x in labels_list], dtype=np.int64)
-                    # Optional: validate range
-                    if np.any(result < 0) or np.any(result >= len(self._classes)):
-                        # Invalid indices, try to handle gracefully
-                        import warnings
-                        warnings.warn(f"Label indices out of range: {result[:5]}")
-                    return result
-        
-        # Otherwise, treat as string labels and encode
+        # Use encoder to map all labels (strings or integers) to unified indices
         return np.array([self._encoder.get(label, 0) for label in labels_list])
+
+
 
     def inverse_transform(self, indices: np.ndarray) -> np.ndarray:
         if isinstance(indices, (list, np.ndarray)):

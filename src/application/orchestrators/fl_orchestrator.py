@@ -567,14 +567,14 @@ class FLEXOrchestrator:
             evaluate_global_pf_model_at_clients(client_flex_model)
             evaluate_local_pf_model_at_clients(client_flex_model)
 
+        # Standardize labels to indices for evaluation
+        y_test_numeric = self.label_svc.transform(y_test)
+
         global_report = ForestEvaluator.evaluate(
-            global_forest, X_test, y_test, class_names, metrics_svc=self.metrics_svc
+            global_forest, X_test, y_test_numeric, class_names, metrics_svc=self.metrics_svc
         )
         self.logger.info("Global model accuracy: %.4f, F1: %.4f", global_report.accuracy, global_report.macro_f1)
 
-        # Ensure y_test is in numeric format if preds are numeric (indices)
-        # We'll use this for the final accuracy_score inside results
-        y_test_numeric = self.label_svc.transform(y_test)
 
         # Perform hybrid prediction on clients using local and global trees
         # IMPORTANT: Avoid duplicates - each client should not use global trees that came from itself
@@ -730,10 +730,11 @@ class FLEXOrchestrator:
             local_report = ForestEvaluator.evaluate(
                 pf,
                 X_val_local,
-                y_val_local,
+                y_val_local_eval,
                 self.dataset_split.class_names,
                 metrics_svc=self.metrics_svc
             )
+
             acc = float(local_report.accuracy)
             f1 = float(local_report.macro_f1)
             pcd = float(local_report.pcd) if local_report.pcd is not None else 0.0
