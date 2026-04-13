@@ -14,10 +14,15 @@ Features:
 from __future__ import annotations
 import numpy as np
 import warnings
+import logging
+import os
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional, Tuple, TYPE_CHECKING
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score, f1_score
+from src.infrastructure.metrics.sklearn_metrics_service import SklearnMetricsService
+from src.infrastructure.metrics.diversity_service import PredictionBasedDiversityService
+from src.domain.services.label_service import SimpleLabelService
+
 
 # TYPE_CHECKING imports avoid runtime dependency while providing type hints
 if TYPE_CHECKING:
@@ -133,6 +138,40 @@ class FLEXOrchestrator:
         self._communication_rounds = 0
         self._data_transferred = 0.0
 
+        # Services
+        self.metrics_svc = SklearnMetricsService()
+        self.diversity_svc = PredictionBasedDiversityService()
+        self.label_svc = SimpleLabelService()
+
+        # Setup persistent logging
+        self._setup_logging()
+
+    def _setup_logging(self):
+        """Setup logging to both file and console."""
+        log_dir = 'logs'
+        if not os.path.exists(log_dir):
+            os.makedirs(log_dir)
+        
+        log_file = os.path.join(log_dir, 'federated_debug.log')
+        
+        # Configure logger
+        self.logger = logging.getLogger("FLEXOrchestrator")
+        self.logger.setLevel(logging.DEBUG)
+        
+        # Avoid duplicate handlers
+        if not self.logger.handlers:
+            # File handler
+            fh = logging.FileHandler(log_file)
+            fh.setLevel(logging.DEBUG)
+            
+            # Formatter
+            formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+            fh.setFormatter(formatter)
+            
+            self.logger.addHandler(fh)
+            
+        self.logger.info("FLEXOrchestrator initialized with strategy: %s", self._get_strategy_name())
+
     @classmethod
     def from_config(cls, config: dict, step_callback: Optional[Callable] = None) -> "FLEXOrchestrator":
         """Create orchestrator from configuration dict."""
@@ -189,23 +228,32 @@ class FLEXOrchestrator:
         except ImportError:
             raise ImportError("FLEX not installed. Run: pip install flex-framework")
 
-        # Create Server Validation Split (10%)
+        # Create Server Validation Split (5% instead of 10% to preserve client data)
         # Ensure we have at least some samples for val
-        if len(dataset_split.X_train) > 10:
+        if len(dataset_split.X_train) > 20:
             from sklearn.model_selection import train_test_split
-            X_train_fed, X_server_val, y_train_fed, y_server_val = train_test_split(
-                dataset_split.X_train, dataset_split.y_train, 
-                test_size=0.10, random_state=seed
-            )
+            try:
+                X_train_fed, X_server_val, y_train_fed, y_server_val = train_test_split(
+                    dataset_split.X_train, dataset_split.y_train, 
+                    test_size=0.05, random_state=seed, stratify=dataset_split.y_train
+                )
+            except ValueError:
+                X_train_fed, X_server_val, y_train_fed, y_server_val = train_test_split(
+                    dataset_split.X_train, dataset_split.y_train, 
+                    test_size=0.05, random_state=seed
+                )
         else:
             X_train_fed, y_train_fed = dataset_split.X_train, dataset_split.y_train
             X_server_val, y_server_val = dataset_split.X_train, dataset_split.y_train
 
         dataset_split.X_val = X_server_val
         dataset_split.y_val = y_server_val
-        dataset_split.X_train = X_train_fed  # The clients will not see the validation data
+        dataset_split.X_train = X_train_fed  
         dataset_split.y_train = y_train_fed
         self.dataset_split = dataset_split
+        
+        # Fit label service once with all possible labels
+        self.label_svc.fit(dataset_split.get_all_labels())
 
         # Create FLEX Dataset
         centralized_dataset = Dataset.from_array(
@@ -379,6 +427,12 @@ class FLEXOrchestrator:
             'trees': [],
         }
 
+        # Perform aggregation
+        metrics_svc = SklearnMetricsService()
+        
+        # Deploy model config to server model (FLEX)
+        deploy_server_config_pf(server_flex_model, self.config)
+
         clients_flex_models = {}
         for cid, pf in client_forests.items():
             clients_flex_models[cid] = {
@@ -429,6 +483,7 @@ class FLEXOrchestrator:
             aggregate_kwargs['t_max'] = t_max
             aggregate_kwargs['window_size'] = self._get_config_value('aggregation', 'window_size', default=5)
             aggregate_kwargs['max_rounds'] = self._get_config_value('aggregation', 'max_rounds', default=20)
+            aggregate_kwargs['class_names'] = self.dataset_split.class_names
             # f1_weight will be set in the combined block below
 
         # S4, S7, and PW use f1_weight/pcd_weight combination
@@ -439,7 +494,11 @@ class FLEXOrchestrator:
             f1_weight = aggregate_kwargs['f1_weight']
             aggregate_kwargs['pcd_weight'] = self._get_config_value('aggregation', 'pcd_weight', default=1.0 - f1_weight)
 
-        # Pass argument bundle only once to avoid duplicate keyword arg errors.
+        # Perform aggregation
+        # Execute aggregation primitive (S1-S7 or PW)
+        aggregate_kwargs['metrics_service'] = self.metrics_svc
+        aggregate_kwargs['diversity_service'] = self.diversity_svc
+        
         aggregate_trees_from_pf(server_flex_model, **aggregate_kwargs)
 
         set_aggregated_trees_pf(server_flex_model)
@@ -504,12 +563,18 @@ class FLEXOrchestrator:
             # Ensure numeric format (could be int or float)
             global_predictions = np.asarray(global_predictions_raw, dtype=np.int64)
 
-        # Evaluate local and global at clients using FLEX primitives
         for client_flex_model in clients_flex_models.values():
             evaluate_global_pf_model_at_clients(client_flex_model)
             evaluate_local_pf_model_at_clients(client_flex_model)
 
-        global_report = ForestEvaluator.evaluate(global_forest, X_test, y_test, class_names)
+        global_report = ForestEvaluator.evaluate(
+            global_forest, X_test, y_test, class_names, metrics_svc=self.metrics_svc
+        )
+        self.logger.info("Global model accuracy: %.4f, F1: %.4f", global_report.accuracy, global_report.macro_f1)
+
+        # Ensure y_test is in numeric format if preds are numeric (indices)
+        # We'll use this for the final accuracy_score inside results
+        y_test_numeric = self.label_svc.transform(y_test)
 
         # Perform hybrid prediction on clients using local and global trees
         # IMPORTANT: Avoid duplicates - each client should not use global trees that came from itself
@@ -527,7 +592,13 @@ class FLEXOrchestrator:
         
         n_classes = len(class_names)
         from src.domain.prediction.hybrid_predictor import HybridPredictor
-        predictor = HybridPredictor(local_weight=local_weight, global_weight=global_weight, n_classes=n_classes, class_names=class_names)
+        predictor = HybridPredictor(
+            local_weight=local_weight, 
+            global_weight=global_weight, 
+            n_classes=n_classes, 
+            class_names=class_names,
+            label_service=self.label_svc
+        )
         client_hybrid_forest_sizes = {}
         
         # Build a mapping: global_index -> client_id (to know which client each global tree came from)
@@ -535,15 +606,24 @@ class FLEXOrchestrator:
         
         for cid, pf in client_forests.items():
             local_trees = pf.get_trees()
-            # Get only global trees that did NOT come from this client (avoid duplicates)
+            # FIX: Use all_tree_entries to guarantee correct mapping
+            # all_tree_entries contains ONLY the selected global trees in correct order
             external_global_trees = [
-                tree for tree, source_cid in zip(global_trees, global_tree_sources) 
-                if source_cid != cid
+                entry.tree for entry in all_tree_entries 
+                if entry.client_id != cid
             ]
+            
             hybrid_preds = predictor.predict(X_test, local_trees, external_global_trees)
             client_hybrid_predictions[cid] = hybrid_preds
+            
             # Forest size = local trees + external global trees (no duplicates)
             client_hybrid_forest_sizes[cid] = len(local_trees) + len(external_global_trees)
+            
+            # Log debug stats
+            stats = predictor.get_debug_stats()
+            self.logger.debug("Client %s Hybrid Stats: Local trees: %d, External Global: %d", 
+                             cid, len(local_trees), len(external_global_trees))
+            self.logger.debug("Client %s Vote distribution: %s", cid, stats)
 
         self.step_callback("Ronda completada", 100)
 
@@ -569,7 +649,7 @@ class FLEXOrchestrator:
             num_rounds=1,
             communication_cost=self._data_transferred,
             client_hybrid_predictions=client_hybrid_predictions,
-            y_test=y_test,
+            y_test=y_test_numeric, # Return numeric y_test for consistency with hybrid_preds
             class_names=class_names,
             client_hybrid_forest_sizes=client_hybrid_forest_sizes,
             convergence_round=convergence_round,
@@ -591,14 +671,25 @@ class FLEXOrchestrator:
         seed = self.config.get('seed', 42)
 
         for client_id, (X_client, y_client) in self.client_partitions.items():
-            if len(X_client) < 10:
-                X_train_local, X_val_local = X_client, X_client
-                y_train_local, y_val_local = y_client, y_client
-            else:
-                from sklearn.model_selection import train_test_split
+            # FIX: No longer using 'if len(X_client) < 10' to duplication. Always split.
+            try:
+                # Try stratified split first
                 X_train_local, X_val_local, y_train_local, y_val_local = train_test_split(
-                    X_client, y_client, test_size=0.2, random_state=seed
+                    X_client, y_client, test_size=0.2, random_state=seed, stratify=y_client
                 )
+            except (ValueError, TypeError):
+                # Fallback to simple split if stratification is impossible or dataset is too small
+                try:
+                    X_train_local, X_val_local, y_train_local, y_val_local = train_test_split(
+                        X_client, y_client, test_size=0.2, random_state=seed
+                    )
+                except ValueError:
+                    # Extreme fallback: if only 1 sample exists, use it for both but with a warning 
+                    # (this is rare in FL but prevents crashes)
+                    import warnings
+                    warnings.warn(f"Client {client_id} has insufficient data for split. Data leakage will occur.")
+                    X_train_local, X_val_local = X_client, X_client
+                    y_train_local, y_val_local = y_client, y_client
 
             # Train ProactiveForest on local train split
             pf = ProactiveForest(
@@ -607,32 +698,41 @@ class FLEXOrchestrator:
                 verbose=self._get_config_value('verbose', default=False),
                 class_names=self.dataset_split.class_names
             )
-            pf.fit(X_train_local, y_train_local)
+            pf.fit(X_train_local, y_train_local, X_val=X_val_local, y_val=y_val_local)
 
             # Evaluate each tree individually on local validation set (Real Tree Ranking)
             tree_metrics = []
-            from sklearn.metrics import accuracy_score, f1_score
-            for tree in pf.get_trees():
-                # Internal prediction using indices for tree-level evaluation
-                y_pred_tree_raw = [tree.predict(x) for x in X_val_local]
-                
-                # Convert list to array and manage strings if necessary
-                if len(y_pred_tree_raw) > 0 and isinstance(y_pred_tree_raw[0], str):
-                    class_to_idx = {cn: idx for idx, cn in enumerate(self.dataset_split.class_names)}
-                    y_pred_tree = np.array([class_to_idx.get(pred, 0) for pred in y_pred_tree_raw])
-                else:
-                    y_pred_tree = np.asarray(y_pred_tree_raw, dtype=np.int64)
 
-                acc_t = float(accuracy_score(y_val_local, y_pred_tree))
-                f1_t = float(f1_score(y_val_local, y_pred_tree, average='macro', zero_division=0))
-                tree_metrics.append({'accuracy': acc_t, 'macro_f1': f1_t})
+            # Ensure y_val_local is numeric for comparison
+            y_val_local_eval = self.label_svc.transform(y_val_local)
+            
+            # Get all trees from the fitted forest
+            local_trees = pf.get_trees()
+            
+            # Batch prediction: Iterate trees but optimize inside
+            for tree in local_trees:
+                # Vectorized tree predict
+                y_pred_tree_raw = tree.predict(X_val_local)
+                
+                # Transform labels (centralized)
+                y_pred_tree = self.label_svc.transform(y_pred_tree_raw)
+
+                # Accuracy and F1 (optimized by reducing repetitive work if possible)
+                acc_t = self.metrics_svc.accuracy_score(y_val_local_eval, y_pred_tree)
+                f1_t = self.metrics_svc.f1_score(y_val_local_eval, y_pred_tree, average='macro')
+                
+                tree_metrics.append({
+                    'accuracy': float(acc_t), 
+                    'macro_f1': float(f1_t)
+                })
 
             # Forest-level metrics for this client (on local validation)
             local_report = ForestEvaluator.evaluate(
                 pf,
                 X_val_local,
                 y_val_local,
-                self.dataset_split.class_names
+                self.dataset_split.class_names,
+                metrics_svc=self.metrics_svc
             )
             acc = float(local_report.accuracy)
             f1 = float(local_report.macro_f1)

@@ -1,4 +1,4 @@
-﻿from typing import Dict, List, Any, Tuple, Optional
+from typing import Dict, List, Any, Tuple, Optional
 import numpy as np
 from ..base_strategy import IAggregationStrategy
 from ..tree_ranker import TreeRanker
@@ -45,6 +45,8 @@ class S1SimplePoolStrategy(IAggregationStrategy):
         # Limit trees if max_trees is specified
         if max_trees is not None and len(global_trees) > max_trees:
             global_trees = global_trees[:max_trees]
+            selected_entries = all_entries[:max_trees] # Keep only the first max_trees entries
+            
             # Recalculate selected_indices based on truncated global_trees
             selected_indices = {cid: [] for cid in client_trees.keys()}
             entry_idx = 0
@@ -53,5 +55,7 @@ class S1SimplePoolStrategy(IAggregationStrategy):
                     if entry_idx < len(global_trees):
                         selected_indices[client_id].append(entry_idx)
                     entry_idx += 1
+            
+            return global_trees, selected_indices, selected_entries
 
         return global_trees, selected_indices, all_entries

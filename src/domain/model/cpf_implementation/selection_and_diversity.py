@@ -16,41 +16,67 @@ class PercentageCorrectDiversity(DiversityMeasure):
     PCD: Porcentaje de instancias donde entre 10% y 90% de los predictores aciertan.
     """
     def get_measure(self, predictors, X, y):
-        tally = 0
+        if not predictors:
+            return 0.0
+        
         n_instances = X.shape[0]
-        for i in range(n_instances):
-            instance, target = X[i], y[i]
-            n_corrects = sum(1 for p in predictors if p.predict(instance) == target)
-            if 0.1 * len(predictors) <= n_corrects <= 0.9 * len(predictors):
-                tally += 1
+        n_predictors = len(predictors)
+        
+        # Vectorized prediction: Get all predictions for all instances at once
+        # Shape: (n_predictors, n_instances)
+        all_preds = np.array([p.predict(X) for p in predictors])
+        
+        # Compare with true labels (broadcasting)
+        # Shape: (n_predictors, n_instances)
+        correct_mask = (all_preds == y)
+        
+        # Count correct predictors per instance
+        # Shape: (n_instances,)
+        n_corrects = np.sum(correct_mask, axis=0)
+        
+        # Apply PCD thresholds
+        lower_bound = 0.1 * n_predictors
+        upper_bound = 0.9 * n_predictors
+        
+        tally = np.sum((n_corrects >= lower_bound) & (n_corrects <= upper_bound))
+        
         return tally / n_instances
 
 
 class QStatisticDiversity(DiversityMeasure):
     def get_measure(self, predictors, X, y):
+        if not predictors or len(predictors) < 2:
+            return 0.0
+            
         n_instances = X.shape[0]
         n_predictors = len(predictors)
+        
+        # Matrix of successes: S[i, k] = 1 if predictor i is correct for instance k
+        # Shape: (n_predictors, n_instances)
+        successes = np.array([(p.predict(X) == y).astype(int) for p in predictors])
+        failures = 1 - successes
+        
         q_total = 0
         for i in range(0, n_predictors - 1):
             for j in range(i + 1, n_predictors):
-                n = np.zeros((2, 2))
-                for k in range(n_instances):
-                    i_pred = predictors[i].predict(X[k])
-                    j_pred = predictors[j].predict(X[k])
-                    true_y = y[k]
-                    if i_pred == true_y:
-                        n[1][1] += 1 if j_pred == true_y else 0
-                        n[1][0] += 1 if j_pred != true_y else 0
-                    else:
-                        n[0][1] += 1 if j_pred == true_y else 0
-                        n[0][0] += 1 if j_pred != true_y else 0
-                for k in range(2):
-                    for l in range(2):
-                        if n[k][l] == 0:
-                            n[k][l] += 1
-                same = n[1][1] * n[0][0]
-                diff = n[1][0] * n[0][1]
+                # Calculate counts for the 2x2 table using dot products (vectorized over instances)
+                n11 = np.sum(successes[i] * successes[j])
+                n00 = np.sum(failures[i] * failures[j])
+                n10 = np.sum(successes[i] * failures[j])
+                n01 = np.sum(failures[i] * successes[j])
+                
+                # Laplace smoothing (from original code: if 0, add 1)
+                # It's better to add a small epsilon or only if zero, 
+                # but we follow the original logic for consistency.
+                n11 = n11 if n11 > 0 else 1
+                n00 = n00 if n00 > 0 else 1
+                n10 = n10 if n10 > 0 else 1
+                n01 = n01 if n01 > 0 else 1
+                
+                same = n11 * n00
+                diff = n10 * n01
                 q_total += (same - diff) / (same + diff)
+                
         return 2 * q_total / (n_predictors * (n_predictors - 1))
 
 

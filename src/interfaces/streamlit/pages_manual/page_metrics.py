@@ -1,7 +1,6 @@
 """Página 4 — Métricas completas por cliente o modelo global."""
 import streamlit as st
 import pandas as pd
-import numpy as np
 
 
 def render():

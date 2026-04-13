@@ -6,11 +6,11 @@ using CPF algorithm with early stopping based on validation data.
 from abc import ABC, abstractmethod
 from typing import Dict, List, Any, Tuple, Optional
 import numpy as np
-from sklearn.metrics import accuracy_score, f1_score
-from scipy import stats
-
 from ..tree_ranker import TreeRanker, RankingCriterion, TreeEntry
+from ...prediction.voting import calculate_mode
+
 from ...model.cpf_implementation.estimator import ProactiveForestClassifier
+from src.domain.metrics.metrics_service import IMetricsService, IDiversityService
 
 
 class GlobalProgressiveStrategy(ABC):
@@ -32,6 +32,12 @@ class GlobalProgressiveStrategy(ABC):
     CONVERGENCE = 0.002
     INITIAL_EPISODE = 5
     T_MAX = 100
+    
+    def __init__(self, 
+                 metrics_service: Optional[IMetricsService] = None,
+                 diversity_service: Optional[IDiversityService] = None):
+        self.metrics_svc = metrics_service
+        self.diversity_svc = diversity_service
     
     @property
     @abstractmethod
@@ -70,13 +76,15 @@ class GlobalProgressiveStrategy(ABC):
             - selected_entries: TreeEntry list in selection order
         """
         # Build entries for all trees
-        entries = TreeRanker.build_entries(client_trees, client_metadata)
+        diversity_svc = self.diversity_svc or kwargs.get('diversity_service')
+        entries = TreeRanker.build_entries(client_trees, client_metadata, X_val=X_val, diversity_service=diversity_svc)
         
         # Get ranking criterion (may use kwargs for F1+PCD)
         criterion = self._get_ranking_criterion(**kwargs)
         ranker = TreeRanker(criterion=criterion, 
                            f1_weight=kwargs.get('f1_weight', 0.5),
-                           pcd_weight=kwargs.get('pcd_weight', 0.5))
+                           pcd_weight=kwargs.get('pcd_weight', 0.5),
+                           diversity_service=diversity_svc)
         ranked_entries = ranker.rank(entries)
         
         # If no validation data, return all ranked trees (no PF early stopping)
@@ -153,28 +161,33 @@ class GlobalProgressiveStrategy(ABC):
 
             # Evaluate ensemble accuracy on validation set
             predictions = self._predict_ensemble(selected_entries, X_val)
-            acc = accuracy_score(y_val, predictions)
+            
+            # Use injected metrics service or fallback to kwargs
+            metrics_svc = self.metrics_svc or kwargs.get('metrics_service')
+            if metrics_svc:
+                acc = metrics_svc.accuracy_score(y_val, predictions)
+            else:
+                # Minimal fallback if not injected
+                acc = np.mean(predictions == y_val)
+                
             episode_accuracies.append(acc)
 
             # Check convergence after first episode
             if len(episode_accuracies) >= 2:
-                # Episode accuracy = range (max - min) of accuracies so far
-                episode_accuracy = max(episode_accuracies) - min(episode_accuracies)
+                # Calculate marginal improvement
+                current_acc = episode_accuracies[-1]
+                previous_acc = episode_accuracies[-2]
+                improvement = current_acc - previous_acc
 
-                if previous_episode_accuracy is not None:
-                    episode_accuracy_dif = episode_accuracy - previous_episode_accuracy
-
-                # Convergence: small change or small range
-                if episode_accuracy_dif < self.CONVERGENCE or episode_accuracy < self.CONVERGENCE:
+                # Convergence: small change
+                if improvement < self.CONVERGENCE:
                     stop_counter += 1
                     EPISODE = max(1, EPISODE - 1)
-                    if stop_counter == 2:
+                    if stop_counter >= 2:
                         break
                 else:
                     stop_counter = 0
                     EPISODE += 1
-
-                previous_episode_accuracy = episode_accuracy
 
         return [e.tree for e in selected_entries], selected_entries
     
@@ -194,16 +207,13 @@ class GlobalProgressiveStrategy(ABC):
         n_samples = X.shape[0]
         n_trees = len(selected_entries)
         
-        # Collect predictions from all trees (each tree predicts one sample at a time)
-        all_predictions = np.zeros((n_samples, n_trees), dtype=int)
+        # Collect predictions from all trees using vectorized predict(X) method
+        all_predictions = np.zeros((X.shape[0], n_trees), dtype=int)
         for j, entry in enumerate(selected_entries):
-            for i in range(n_samples):
-                all_predictions[i, j] = entry.tree.predict(X[i])
+            all_predictions[:, j] = entry.tree.predict(X)
         
         # Majority voting per sample
-        from scipy import stats
-        mode_result = stats.mode(all_predictions, axis=1, keepdims=False)
-        return mode_result.mode
+        return calculate_mode(all_predictions, axis=1)
 
 
 class S2GlobalAccuracyStrategy(GlobalProgressiveStrategy):

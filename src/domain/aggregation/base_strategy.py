@@ -1,10 +1,16 @@
-"""Strategy Pattern — 7 implementaciones concretas."""
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Tuple, Optional
 import numpy as np
+from src.domain.metrics.metrics_service import IMetricsService, IDiversityService
 
 
 class IAggregationStrategy(ABC):
+    def __init__(self, 
+                 metrics_service: Optional[IMetricsService] = None,
+                 diversity_service: Optional[IDiversityService] = None):
+        self.metrics_svc = metrics_service
+        self.diversity_svc = diversity_service
+
     @abstractmethod
     def aggregate(
         self,

@@ -5,9 +5,7 @@ from pathlib import Path
 
 from typing import List
 
-from src.infrastructure.dataset.iris_adapter import IrisAdapter
-from src.infrastructure.dataset.nslkdd_adapter import NslKddAdapter
-from src.infrastructure.dataset.csv_adapter import GenericCsvAdapter
+from src.infrastructure.dataset.dataset_factory import DatasetFactory
 
 PROJECT_ROOT = Path(__file__).resolve().parents[4]
 CONFIG_DIR = PROJECT_ROOT / "config"
@@ -155,41 +153,8 @@ def _load_dataset_cached(cfg_hash: str, cfg_json: str):
 
 
 def _load_dataset_uncached(cfg):
-    """Instancia el adaptador correcto según la config."""
-    d = cfg["dataset"]
-    dtype = d["type"]
-
-    if dtype == "Iris":
-        adapter = IrisAdapter(
-            data_path=None,
-            train_test_split_ratio=1 - d.get("test_size", 0.2),
-            scale=d.get("scale", True),
-            scaler_type=d.get("scaler_type", "standard"),
-        )
-    elif dtype == "NSL-KDD":
-        adapter = NslKddAdapter(
-            train_path=str(PROJECT_ROOT / "data" / "NSL-KDD_train.csv"),
-            test_path=str(PROJECT_ROOT / "data" / "NSL-KDD_test.csv"),
-            scale=d.get("scale", True),
-            scaler_type=d.get("scaler_type", "standard"),
-        )
-    else:
-        preset = DATASET_PRESETS.get(dtype, {})
-        # Use categorical_columns directly from preset (single source of truth)
-        categorical_cols = preset.get("categorical_columns", [])
-
-        adapter = GenericCsvAdapter(
-            name=dtype.lower().replace(" ", "_"),
-            train_path=str(PROJECT_ROOT / d.get("file_path", "")),
-            target_column=d.get("target_column", "class"),
-            test_size=d.get("test_size", 0.2),
-            categorical_features=categorical_cols,
-            scale=d.get("scale", True),
-            scaler_type=d.get("scaler_type", "standard"),
-            seed=cfg.get("seed", 42),
-            sep=d.get("sep", ","),
-        )
-    return adapter.load()
+    """Instancia el adaptador correcto según la config usando la factoría central."""
+    return DatasetFactory.load_from_config(cfg["dataset"], project_root=PROJECT_ROOT)
 
 
 def _load_dataset(cfg):

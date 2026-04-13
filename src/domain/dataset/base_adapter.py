@@ -16,6 +16,13 @@ class DatasetSplit:
     dataset_name: str
     X_val: np.ndarray = None
     y_val: np.ndarray = None
+    
+    def get_all_labels(self) -> np.ndarray:
+        """Returns all unique labels present in the dataset (train, test, and validation)."""
+        labels = [self.y_train, self.y_test]
+        if self.y_val is not None:
+            labels.append(self.y_val)
+        return np.unique(np.concatenate(labels))
 
 
 class IDatasetAdapter(ABC):

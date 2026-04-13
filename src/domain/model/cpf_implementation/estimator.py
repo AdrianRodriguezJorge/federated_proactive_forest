@@ -8,13 +8,9 @@ Modificaciones mínimas respecto al original para soporte FL:
   - Todo lo demás es idéntico al código original de Cepero (2023).
 """
 import numpy as np
-from sklearn.base import BaseEstimator, ClassifierMixin
-from sklearn.preprocessing import LabelEncoder
-from sklearn.utils import check_X_y, check_array
-from sklearn.exceptions import NotFittedError
-from sklearn.metrics import accuracy_score
 from . import utils
 from .selection_and_diversity import PercentageCorrectDiversity, QStatisticDiversity
+
 from .tree_builder import TreeBuilder
 from .sampling_and_voting import PerformanceWeightingVoter
 from .sampling_and_voting import SimpleSet, BaggingSet, ProbabilitySet
@@ -23,7 +19,7 @@ from .criteria_and_splits import resolve_split_selection, resolve_split_criterio
 from .selection_and_diversity import resolve_feature_selection
 
 
-class DecisionTreeClassifier(BaseEstimator, ClassifierMixin):
+class DecisionTreeClassifier:
     """Árbol de decisión individual con selección de características personalizables."""
 
     def __init__(self, max_depth=None, split_chooser='best', split_criterion='gini',
@@ -71,9 +67,18 @@ class DecisionTreeClassifier(BaseEstimator, ClassifierMixin):
             raise ValueError('The feature selection criteria can not be None.')
 
     def fit(self, X, y):
-        X, y = check_X_y(X, y, dtype=None)
-        self._encoder = LabelEncoder()
-        y = self._encoder.fit_transform(y)
+        X = np.asarray(X)
+        y = np.asarray(y)
+        if hasattr(self, '_encoder') and hasattr(self._encoder, 'classes_'):
+            # If already using an encoder (e.g. from parent forest), assume y is encoded
+            pass
+        else:
+            # Dummy encoder logic if standalone
+            unique_classes = np.unique(y)
+            self._encoder_dict = {val: idx for idx, val in enumerate(unique_classes)}
+            self._decoder_dict = {idx: val for idx, val in enumerate(unique_classes)}
+            y = np.array([self._encoder_dict[val] for val in y])
+            
         self._n_instances, self._n_features = X.shape
         self._n_classes = utils.count_classes(y)
         self._tree_builder = TreeBuilder(split_criterion=self._split_criterion,
@@ -90,11 +95,13 @@ class DecisionTreeClassifier(BaseEstimator, ClassifierMixin):
     def predict(self, X, check_input=True):
         if check_input:
             X = self._validate_predict(X, check_input=check_input)
-        sample_size, _ = X.shape
-        result = np.zeros(sample_size, dtype=int)
-        for i in range(sample_size):
-            result[i] = self._tree.predict(X[i])
-        return self._encoder.inverse_transform(result)
+        
+        # Performance optimization: list comprehension is faster than manual loops over np.zeros
+        result = np.array([self._tree.predict(x) for x in X])
+            
+        if hasattr(self, '_decoder_dict'):
+            return np.array([self._decoder_dict[val] for val in result])
+        return result
 
     def predict_proba(self, X, check_input=True):
         if check_input:
@@ -107,9 +114,9 @@ class DecisionTreeClassifier(BaseEstimator, ClassifierMixin):
 
     def _validate_predict(self, X, check_input):
         if self._tree is None:
-            raise NotFittedError("Estimator not fitted, call `fit` before exploiting the model.")
+            raise RuntimeError("Estimator not fitted, call `fit` before exploiting the model.")
         if check_input:
-            X = check_array(X, dtype=None)
+            X = np.asarray(X)
         n_features = X.shape[1]
         if self._n_features != n_features:
             raise ValueError("Number of features of the model must match the input. "
@@ -118,13 +125,13 @@ class DecisionTreeClassifier(BaseEstimator, ClassifierMixin):
         return X
 
 
-class DecisionForestClassifier(BaseEstimator, ClassifierMixin):
+class DecisionForestClassifier:
     """Bosque de árboles con bagging y votación por rendimiento."""
 
     def __init__(self, n_estimators=100, bootstrap=True, max_depth=None,
                  split_chooser='best', split_criterion='gini', min_samples_leaf=1,
                  feature_selection='log', feature_prob=None, min_gain_split=0,
-                 min_samples_split=2, EPISODE=5):
+                 min_samples_split=2, EPISODE=5, random_state=None):
         self._trees = []
         self._n_features = None
         self._n_instances = None
@@ -133,6 +140,7 @@ class DecisionForestClassifier(BaseEstimator, ClassifierMixin):
         self._encoder = None
         self._bootstrap = bootstrap
         self.EPISODE = EPISODE
+        self.random_state = random_state
 
         if n_estimators is None or n_estimators > 0:
             self._n_estimators = n_estimators
@@ -181,12 +189,23 @@ class DecisionForestClassifier(BaseEstimator, ClassifierMixin):
         return self._bootstrap
 
     def fit(self, X, y):
-        X, y = check_X_y(X, y, dtype=None)
-        self._encoder = LabelEncoder()
-        y = self._encoder.fit_transform(y)
+        X = np.asarray(X)
+        y = np.asarray(y)
+        
+        # Pure Python basic label encoder
+        self.classes_ = np.unique(y)
+        self._encoder_dict = {val: idx for idx, val in enumerate(self.classes_)}
+        self._decoder_dict = {idx: val for idx, val in enumerate(self.classes_)}
+        y = np.array([self._encoder_dict[val] for val in y])
+        
         self._n_instances, self._n_features = X.shape
         self._n_classes = utils.count_classes(y)
         self._trees = []
+
+        if self.random_state is not None:
+            np.random.seed(self.random_state)
+            import random
+            random.seed(self.random_state)
 
         set_generator = BaggingSet(self._n_instances) if self._bootstrap else SimpleSet(self._n_instances)
         self._tree_builder = TreeBuilder(split_criterion=self._split_criterion,
@@ -203,8 +222,8 @@ class DecisionForestClassifier(BaseEstimator, ClassifierMixin):
             if self._bootstrap:
                 validation_ids = set_generator.oob_ids()
                 if validation_ids:
-                    new_tree.weight = accuracy_score(y[validation_ids],
-                                                     self._predict_on_tree(X[validation_ids], new_tree))
+                    preds = self._predict_on_tree(X[validation_ids], new_tree)
+                    new_tree.weight = float(np.mean(y[validation_ids] == preds))
             self._trees.append(new_tree)
             set_generator.clear()
         return self
@@ -213,25 +232,24 @@ class DecisionForestClassifier(BaseEstimator, ClassifierMixin):
         if check_input:
             X = self._validate(X, check_input=check_input)
         voter = PerformanceWeightingVoter(self._trees, self._n_classes)
-        sample_size, _ = X.shape
-        result = np.zeros(sample_size, dtype=int)
-        for i in range(sample_size):
-            result[i] = voter.predict(X[i])
+        
+        # Performance optimization: list comprehension is faster for large datasets
+        result = np.array([voter.predict(x) for x in X])
 
-        if self._encoder is None:
+        if not hasattr(self, '_decoder_dict'):
             return result
 
-        # Evitar ValueError si el modelo devuelve etiquetas fuera del rango (p.ej. cuando hay 1 clase)
-        max_label = len(self._encoder.classes_) - 1
+        # Evitar ValueError si el modelo devuelve etiquetas fuera del rango
+        max_label = len(self.classes_) - 1
         if np.any(result < 0) or np.any(result > max_label):
             result = np.clip(result, 0, max_label)
 
         try:
-            return self._encoder.inverse_transform(result)
-        except ValueError as e:
-            # Por seguridad, reentrenar con clases completas de encoder si falla
+            return np.array([self._decoder_dict[val] for val in result])
+        except KeyError:
+            # Por seguridad, limitar
             safe_result = np.clip(result, 0, max_label)
-            return self._encoder.inverse_transform(safe_result)
+            return np.array([self._decoder_dict[val] for val in safe_result])
 
     def predict_proba(self, X, indexs, check_input=True):
         if check_input:
@@ -254,8 +272,11 @@ class DecisionForestClassifier(BaseEstimator, ClassifierMixin):
         return np.mean([tree.weight for tree in self._trees])
 
     def diversity_measure(self, X, y, diversity='pcd'):
-        X, y = check_X_y(X, y, dtype=None)
-        y = self._encoder.transform(y)
+        X = np.asarray(X)
+        y = np.asarray(y)
+        # Handle string labels
+        if hasattr(self, '_encoder_dict'):
+            y = np.array([self._encoder_dict.get(val, 0) for val in y])
         if diversity == 'pcd':
             metric = PercentageCorrectDiversity()
         elif diversity == 'qstat':
@@ -265,10 +286,10 @@ class DecisionForestClassifier(BaseEstimator, ClassifierMixin):
         return metric.get_measure(self._trees, X, y)
 
     def _validate(self, X, check_input):
-        if self._trees is None:
-            raise NotFittedError("Estimator not fitted, call `fit` before exploiting the model.")
+        if self._trees is None or len(self._trees) == 0:
+            raise RuntimeError("Estimator not fitted, call `fit` before exploiting the model.")
         if check_input:
-            X = check_array(X, dtype=None)
+            X = np.asarray(X)
         n_features = X.shape[1]
         if self._n_features != n_features:
             raise ValueError("Number of features of the model must match the input. "
@@ -279,11 +300,9 @@ class DecisionForestClassifier(BaseEstimator, ClassifierMixin):
     def _predict_on_tree(self, X, tree, check_input=True):
         if check_input:
             X = self._validate(X, check_input=check_input)
-        sample_size, _ = X.shape
-        result = np.zeros(sample_size, dtype=int)
-        for i in range(sample_size):
-            result[i] = tree.predict(X[i])
-        return result
+        
+        # Performance optimization
+        return np.array([tree.predict(x) for x in X])
 
     def clean_trees(self):
         self._trees = []
@@ -305,7 +324,7 @@ class DecisionForestClassifier(BaseEstimator, ClassifierMixin):
         return {
             'n_features': self._n_features,
             'n_classes': self._n_classes,
-            'encoder_classes': self._encoder.classes_.tolist() if self._encoder else None,
+            'encoder_classes': self.classes_.tolist() if hasattr(self, 'classes_') else None,
         }
 
 
@@ -319,7 +338,7 @@ class ProactiveForestClassifier(DecisionForestClassifier):
     def __init__(self, n_estimators=100, bootstrap=True, max_depth=None,
                  split_chooser='best', split_criterion='entropy', min_samples_leaf=1,
                  feature_selection='prob', feature_prob=None, min_gain_split=0,
-                 min_samples_split=2, alpha=0.1):
+                 min_samples_split=2, alpha=0.1, random_state=None):
         if 0 < alpha <= 1:
             self.alpha = alpha
         else:
@@ -328,18 +347,28 @@ class ProactiveForestClassifier(DecisionForestClassifier):
                          split_chooser=split_chooser, split_criterion=split_criterion,
                          min_samples_leaf=min_samples_leaf, feature_selection=feature_selection,
                          feature_prob=feature_prob, min_gain_split=min_gain_split,
-                         min_samples_split=min_samples_split)
+                         min_samples_split=min_samples_split, random_state=random_state)
 
     def fit(self, X, y):
-        X, y = check_X_y(X, y, dtype=None)
-        if self._encoder is None:
-            self._encoder = LabelEncoder()
-            y = self._encoder.fit_transform(y)
+        X = np.asarray(X)
+        y = np.asarray(y)
+        if not hasattr(self, '_encoder_dict'):
+            # Pure Python basic label encoder
+            self.classes_ = np.unique(y)
+            self._encoder_dict = {val: idx for idx, val in enumerate(self.classes_)}
+            self._decoder_dict = {idx: val for idx, val in enumerate(self.classes_)}
+            y = np.array([self._encoder_dict[val] for val in y])
         else:
-            y = self._encoder.transform(y)
+            y = np.array([self._encoder_dict.get(val, 0) for val in y])
+            
         self._n_instances, self._n_features = X.shape
-        self._n_classes = utils.count_classes(y)
+        self._n_classes = len(self.classes_)
         self._trees = []
+
+        if self.random_state is not None:
+            np.random.seed(self.random_state)
+            import random
+            random.seed(self.random_state)
 
         set_generator = BaggingSet(self._n_instances) if self._bootstrap else SimpleSet(self._n_instances)
         ledger = FIProbabilityLedger(probabilities=self._feature_prob,
@@ -358,8 +387,8 @@ class ProactiveForestClassifier(DecisionForestClassifier):
             if self._bootstrap:
                 validation_ids = set_generator.oob_ids()
                 if validation_ids:
-                    new_tree.weight = accuracy_score(y[validation_ids],
-                                                     self._predict_on_tree(X[validation_ids], new_tree))
+                    preds = self._predict_on_tree(X[validation_ids], new_tree)
+                    new_tree.weight = float(np.mean(y[validation_ids] == preds))
             self._trees.append(new_tree)
             set_generator.clear()
             rate = i / self._n_estimators
@@ -372,27 +401,37 @@ class ProactiveForestClassifier(DecisionForestClassifier):
         Construye un episodio de EPISODE árboles para CPF.
         verbose=False suprime los print() originales (se usa en producción FL).
         """
+        X = np.asarray(X)
+        Xt = np.asarray(Xt)
+        y = np.asarray(y)
+        yt = np.asarray(yt)
         self._n_instances, self._n_features = X.shape
 
-        if self._encoder is None:
-            self._encoder = LabelEncoder()
+        if not hasattr(self, '_encoder_dict'):
             all_labels = np.unique(np.concatenate([y, yt]))
-            self._encoder.fit(all_labels)
+            self.classes_ = all_labels
+            self._encoder_dict = {val: idx for idx, val in enumerate(self.classes_)}
+            self._decoder_dict = {idx: val for idx, val in enumerate(self.classes_)}
         else:
-            all_labels = np.unique(np.concatenate([self._encoder.classes_, y, yt]))
-            if not np.array_equal(np.sort(all_labels), np.sort(self._encoder.classes_)):
-                self._encoder = LabelEncoder()
-                self._encoder.fit(all_labels)
+            # Check if we need to update encoder with new labels (unlikely in FL but possible)
+            all_labels = np.unique(np.concatenate([self.classes_, y, yt]))
+            if len(all_labels) > len(self.classes_):
+                self.classes_ = all_labels
+                self._encoder_dict = {val: idx for idx, val in enumerate(self.classes_)}
+                self._decoder_dict = {idx: val for idx, val in enumerate(self.classes_)}
 
-        y = self._encoder.transform(y)
-        yt = self._encoder.transform(yt)
+        y = np.array([self._encoder_dict.get(val, 0) for val in y])
+        yt = np.array([self._encoder_dict.get(val, 0) for val in yt])
 
-        self._n_classes = len(self._encoder.classes_)
+        self._n_classes = len(self.classes_)
         self.set_generator = ProbabilitySet(self._n_instances)
         self._m_progressive_accuracy = []
 
         if len(self._trees) >= self.n_estimators:
             self._trees = []
+
+        if self.random_state is not None:
+            np.random.seed(self.random_state)
 
         self.ledger = FIProbabilityLedger(probabilities=self._feature_prob,
                                           n_features=self._n_features, alpha=self.alpha)
@@ -413,7 +452,8 @@ class ProactiveForestClassifier(DecisionForestClassifier):
             ids = self.set_generator.training_ids(prob)
             new_tree = self._tree_builder.build_tree(X[ids], y[ids], self._n_classes)
             self._trees.append(new_tree)
-            acc = accuracy_score(yt, self._predict_on_tree(Xt, new_tree))
+            preds = self._predict_on_tree(Xt, new_tree)
+            acc = float(np.mean(yt == preds))
             self._m_progressive_accuracy.append(acc)
             rate = i / self._n_estimators
             self.ledger.update_probabilities(new_tree, rate=rate)

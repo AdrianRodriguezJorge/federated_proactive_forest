@@ -1,6 +1,6 @@
 """Centralized session state management for Streamlit app."""
 import streamlit as st
-from typing import Any, Dict, Optional
+from typing import Any
 
 
 class SessionState:

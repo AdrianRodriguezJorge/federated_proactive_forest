@@ -5,8 +5,12 @@ Usa el ProactiveForestClassifier original directamente.
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Tuple
 import numpy as np
-from sklearn.metrics import (accuracy_score, confusion_matrix,
-                              precision_score, recall_score, f1_score, classification_report)
+from sklearn.metrics import (
+    classification_report, f1_score, precision_score, 
+    recall_score, confusion_matrix, accuracy_score
+)
+from .metrics_service import IMetricsService
+
 
 
 @dataclass
@@ -51,7 +55,14 @@ class ForestEvaluator:
 
     @staticmethod
     def evaluate(forest, X: np.ndarray, y: np.ndarray,
-                 class_names: List[str]) -> ForestReport:
+                 class_names: List[str], 
+                 metrics_svc: IMetricsService = None) -> ForestReport:
+        
+        # If no metrics service provided, we can't perform high-level evaluation
+        # (Alternatively, we could have a default implementation here, but injection is better)
+        if metrics_svc is None:
+            raise ValueError("An implementation of IMetricsService must be provided for evaluation.")
+
         y_pred = forest.predict(X)
 
         # Convert to numpy array to handle pandas Series with non-default index
@@ -68,29 +79,29 @@ class ForestEvaluator:
         
         labels = class_names  # Usar nombres de clases como labels
 
-        per_f1   = f1_score(y, y_pred, labels=labels, average=None, zero_division=0)
-        per_prec = precision_score(y, y_pred, labels=labels, average=None, zero_division=0)
-        per_rec  = recall_score(y, y_pred, labels=labels, average=None, zero_division=0)
+        per_f1   = metrics_svc.f1_score(y, y_pred, average=None)
+        per_prec = metrics_svc.precision_score(y, y_pred, average=None)
+        per_rec  = metrics_svc.recall_score(y, y_pred, average=None)
 
+        
         # PCD usando el método nativo del bosque
-        # Fallback a 0.0 si el encoder interno no está inicializado o hay un error
         try:
             pcd = float(forest.diversity_measure(X, y, diversity='pcd'))
         except (AttributeError, TypeError, ValueError):
             pcd = 0.0
 
-        accuracy_ci = ForestEvaluator._compute_bootstrap_ci(y, y_pred, lambda yt, yp: accuracy_score(yt, yp))
-        macro_f1_ci = ForestEvaluator._compute_bootstrap_ci(y, y_pred, lambda yt, yp: f1_score(yt, yp, average='macro', zero_division=0))
+        accuracy_ci = ForestEvaluator._compute_bootstrap_ci(y, y_pred, lambda yt, yp: metrics_svc.accuracy_score(yt, yp))
+        macro_f1_ci = ForestEvaluator._compute_bootstrap_ci(y, y_pred, lambda yt, yp: metrics_svc.f1_score(yt, yp, average='macro'))
 
         return ForestReport(
-            accuracy=float(accuracy_score(y, y_pred)),
-            macro_f1=float(f1_score(y, y_pred, average='macro', zero_division=0)),
-            macro_precision=float(precision_score(y, y_pred, average='macro', zero_division=0)),
-            macro_recall=float(recall_score(y, y_pred, average='macro', zero_division=0)),
+            accuracy=metrics_svc.accuracy_score(y, y_pred),
+            macro_f1=metrics_svc.f1_score(y, y_pred, average='macro'),
+            macro_precision=metrics_svc.precision_score(y, y_pred, average='macro'),
+            macro_recall=metrics_svc.recall_score(y, y_pred, average='macro'),
             per_class_f1={cn: float(v) for cn, v in zip(class_names, per_f1)},
             per_class_prec={cn: float(v) for cn, v in zip(class_names, per_prec)},
             per_class_recall={cn: float(v) for cn, v in zip(class_names, per_rec)},
-            confusion_matrix=confusion_matrix(y, y_pred, labels=labels),
+            confusion_matrix=metrics_svc.confusion_matrix(y, y_pred, labels=labels),
             pcd=pcd,
             forest_size=len(forest.get_trees()),
             class_names=class_names,

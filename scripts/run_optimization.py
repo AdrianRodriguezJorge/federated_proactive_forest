@@ -43,8 +43,7 @@ from sklearn.preprocessing import LabelEncoder, OrdinalEncoder
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 
-from src.application.hyperparam_optimizer import HyperparamOptimizer
-from src.infrastructure.persistence.results_logger import OptimizationResultsLogger
+from src.infrastructure.dataset.dataset_factory import DatasetFactory
 from src.domain.dataset.base_adapter import DatasetSplit
 
 
@@ -52,169 +51,8 @@ from src.domain.dataset.base_adapter import DatasetSplit
 # Dataset Loading Functions
 # ============================================================================
 
-def load_car_dataset(test_size=0.2, seed=42):
-    """Load Car Evaluation dataset."""
-    project_root = Path(__file__).parent.parent
-    data_path = project_root / 'data' / 'car.csv'
-
-    if not data_path.exists():
-        raise FileNotFoundError(f"Car dataset not found at: {data_path}")
-
-    df = pd.read_csv(data_path)
-
-    # Encode categorical features
-    feature_columns = [col for col in df.columns if col != 'class']
-    target_column = 'class'
-
-    encoder = OrdinalEncoder()
-    X_encoded = encoder.fit_transform(df[feature_columns])
-
-    le = LabelEncoder()
-    y_encoded = le.fit_transform(df[target_column])
-    class_names = list(le.classes_)
-
-    # Train/test split
-    X_train, X_test, y_train, y_test = train_test_split(
-        X_encoded, y_encoded, test_size=test_size, random_state=seed, stratify=y_encoded
-    )
-
-    # Scale features
-    scaler = StandardScaler()
-    X_train = scaler.fit_transform(X_train)
-    X_test = scaler.transform(X_test)
-
-    return DatasetSplit(
-        X_train=X_train,
-        y_train=y_train,
-        X_test=X_test,
-        y_test=y_test,
-        feature_names=feature_columns,
-        class_names=class_names,
-        dataset_name='car'
-    )
-
-
-def load_iris_dataset(test_size=0.2, seed=42):
-    """Load Iris dataset."""
-    from sklearn.datasets import load_iris
-
-    data = load_iris()
-    X = data.data
-    y = data.target
-    class_names = list(data.target_names)
-
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=test_size, random_state=seed, stratify=y
-    )
-
-    scaler = StandardScaler()
-    X_train = scaler.fit_transform(X_train)
-    X_test = scaler.transform(X_test)
-
-    return DatasetSplit(
-        X_train=X_train,
-        y_train=y_train,
-        X_test=X_test,
-        y_test=y_test,
-        feature_names=list(data.feature_names),
-        class_names=class_names,
-        dataset_name='iris'
-    )
-
-
-def load_letter_dataset(test_size=0.2, seed=42):
-    """Load Letter Recognition dataset."""
-    project_root = Path(__file__).parent.parent
-    data_path = project_root / 'data' / 'letter.csv'
-
-    if not data_path.exists():
-        raise FileNotFoundError(f"Letter dataset not found at: {data_path}")
-
-    df = pd.read_csv(data_path)
-
-    feature_columns = [col for col in df.columns if col != 'class']
-    target_column = 'class'
-
-    X = df[feature_columns].values
-    le = LabelEncoder()
-    y = le.fit_transform(df[target_column])
-    class_names = list(le.classes_)
-
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=test_size, random_state=seed, stratify=y
-    )
-
-    scaler = StandardScaler()
-    X_train = scaler.fit_transform(X_train)
-    X_test = scaler.transform(X_test)
-
-    return DatasetSplit(
-        X_train=X_train,
-        y_train=y_train,
-        X_test=X_test,
-        y_test=y_test,
-        feature_names=feature_columns,
-        class_names=class_names,
-        dataset_name='letter'
-    )
-
-
-def load_students_dataset(test_size=0.2, seed=42):
-    """Load Students Dropout dataset."""
-    project_root = Path(__file__).parent.parent
-    data_path = project_root / 'data' / 'students_dropout.csv'
-
-    if not data_path.exists():
-        raise FileNotFoundError(f"Students Dropout dataset not found at: {data_path}")
-
-    df = pd.read_csv(data_path, sep=';')
-
-    # Categorical columns to encode
-    categorical_cols = [
-        "Marital status", "Application mode", "Application order", "Course",
-        "Daytime/evening attendance", "Previous qualification", "Nacionality",
-        "Mother's qualification", "Father's qualification", "Mother's occupation",
-        "Father's occupation", "Displaced", "Educational special needs", "Debtor",
-        "Tuition fees up to date", "Gender", "Scholarship holder", "International",
-        "Curricular units 1st sem (credited)", "Curricular units 1st sem (enrolled)",
-        "Curricular units 1st sem (evaluations)", "Curricular units 1st sem (approved)",
-        "Curricular units 1st sem (without evaluations)", "Curricular units 2nd sem (credited)",
-        "Curricular units 2nd sem (enrolled)", "Curricular units 2nd sem (evaluations)",
-        "Curricular units 2nd sem (approved)", "Curricular units 2nd sem (without evaluations)"
-    ]
-
-    # Separate features and target
-    target_column = 'Target'
-    feature_columns = [col for col in df.columns if col != target_column]
-
-    # Encode categorical features
-    for col in categorical_cols:
-        if col in df.columns:
-            le_col = LabelEncoder()
-            df[col] = le_col.fit_transform(df[col].astype(str))
-
-    X = df[feature_columns].values
-    le = LabelEncoder()
-    y = le.fit_transform(df[target_column])
-    class_names = list(le.classes_)
-
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=test_size, random_state=seed, stratify=y
-    )
-
-    scaler = StandardScaler()
-    X_train = scaler.fit_transform(X_train)
-    X_test = scaler.transform(X_test)
-
-    return DatasetSplit(
-        X_train=X_train,
-        y_train=y_train,
-        X_test=X_test,
-        y_test=y_test,
-        feature_names=feature_columns,
-        class_names=class_names,
-        dataset_name='students_dropout'
-    )
+# Redundant dataset loading functions removed.
+# All datasets are now handled by DatasetFactory.load_from_config()
 
 
 # ============================================================================
@@ -387,19 +225,26 @@ Examples:
     # Set seed
     np.random.seed(args.seed)
 
-    # Load dataset
+    # Load dataset using factory
     print(f"\n{'='*60}")
     print(f"📊 CARGANDO DATASET: {args.dataset.upper()}")
     print(f"{'='*60}")
 
-    dataset_loaders = {
-        'car': load_car_dataset,
-        'iris': load_iris_dataset,
-        'letter': load_letter_dataset,
-        'students': load_students_dataset,
+    ds_config = {
+        "type": args.dataset.capitalize() if args.dataset != "students" else "Students Dropout",
+        "test_size": 0.2,
+        "scale": True,
+        "scaler_type": "standard",
+        "seed": args.seed
     }
+    
+    # Custom mapping for folder structure consistency
+    if args.dataset == "students":
+        ds_config["file_path"] = "data/students_dropout.csv"
+    else:
+        ds_config["file_path"] = f"data/{args.dataset}.csv"
 
-    dataset_split = dataset_loaders[args.dataset](test_size=0.2, seed=args.seed)
+    dataset_split = DatasetFactory.load_from_config(ds_config, project_root=Path(ROOT))
 
     print(f"   Dataset: {dataset_split.dataset_name}")
     print(f"   Train samples: {dataset_split.X_train.shape[0]}")

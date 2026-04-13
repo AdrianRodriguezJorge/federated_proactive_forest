@@ -1,7 +1,7 @@
 from typing import List, Any
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier
-from .base_forest import ABCForest
+from src.domain.model.base_forest import ABCForest
 
 class RandomForestWrapper(ABCForest):
     """

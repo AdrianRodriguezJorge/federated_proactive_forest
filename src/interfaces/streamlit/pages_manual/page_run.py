@@ -2,10 +2,8 @@
 import streamlit as st
 import time
 import json
-from pathlib import Path
-
 from src.interfaces.streamlit.pages_manual.page_config import (
-    PROJECT_ROOT, CONFIG_FILE, _load_dataset
+    CONFIG_FILE, _load_dataset
 )
 
 MAX_LOG_LINES = 50

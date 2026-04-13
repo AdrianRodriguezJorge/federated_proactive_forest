@@ -38,7 +38,11 @@ def aggregate_trees_from_pf(server_flex_model: Dict[str, Any],
     strategy_name = server_flex_model.get('config', {}).get('strategy', 'S1')
     config = server_flex_model.get('config', {})
     agg_config = config.get('aggregation', {})
-    strategy = AggregationFactory.create_strategy(strategy_name)
+    metrics_svc = kwargs.get('metrics_service')
+    diversity_svc = kwargs.get('diversity_service')
+    strategy = AggregationFactory.create_strategy(strategy_name, 
+                                                 metrics_service=metrics_svc,
+                                                 diversity_service=diversity_svc)
 
     # Build aggregate_kwargs based on strategy type, merging with server_flex_model kwargs
     aggregate_kwargs = {}
@@ -89,6 +93,8 @@ def aggregate_trees_from_pf(server_flex_model: Dict[str, Any],
         X_val=X_val,
         y_val=y_val,
         t_max=t_max,
+        metrics_service=metrics_svc,
+        diversity_service=diversity_svc,
         **{k: v for k, v in aggregate_kwargs.items() if k not in ['X_val', 'y_val', 't_max']}
     )
 

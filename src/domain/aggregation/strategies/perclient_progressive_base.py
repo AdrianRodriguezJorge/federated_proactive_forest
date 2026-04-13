@@ -6,11 +6,11 @@ using round-robin scheduling with Progressive Forest early stopping.
 from abc import ABC, abstractmethod
 from typing import Dict, List, Any, Tuple, Optional
 import numpy as np
-from sklearn.metrics import accuracy_score
-from scipy import stats
-
 from ..tree_ranker import TreeRanker, RankingCriterion, TreeEntry
+from ...prediction.voting import calculate_mode
 from ...model.cpf_implementation.estimator import ProactiveForestClassifier
+from src.domain.metrics.metrics_service import IMetricsService, IDiversityService
+
 
 
 class PerClientProgressiveStrategy(ABC):
@@ -20,24 +20,19 @@ class PerClientProgressiveStrategy(ABC):
     Each client's trees are ranked independently, then incorporated via round-robin.
     
     Aggregation stops by:
-    1. Convergence (CPF early stopping - 2 consecutive episodes with delta < 0.002)
+    1. Convergence (CPF early stopping - 2 consecutive episodes with improvement < CONVERGENCE)
     2. T_MAX trees reached (límite máximo de árboles en el modelo global)
     3. All trees from all clients have been added
-    
-    IMPORTANT: EPISODE = n_clients (W en la tesis), ya que en cada iteración
-    se agrega el mejor árbol de CADA cliente (round-robin).
-    
-    When one client runs out of trees, continue with remaining clients until
-    stopping criteria is met.
-
-    Parameters:
-    - CONVERGENCE: 0.002 (umbral de convergencia)
-    - INITIAL_EPISODE: n_clients (W en la tesis, se calcula dinámicamente)
-    - T_MAX: 100 (límite máximo de árboles, mismo que n_estimators en clientes)
     """
 
     CONVERGENCE = 0.002
     T_MAX = 100
+
+    def __init__(self, 
+                 metrics_service: Optional[IMetricsService] = None,
+                 diversity_service: Optional[IDiversityService] = None):
+        self.metrics_svc = metrics_service
+        self.diversity_svc = diversity_service
     
     @property
     @abstractmethod
@@ -89,22 +84,22 @@ class PerClientProgressiveStrategy(ABC):
         # Step 1: Rank trees within each client independently
         client_ranked_entries: Dict[str, List[TreeEntry]] = {}
         criterion = self._get_ranking_criterion(**kwargs)
+        diversity_svc = self.diversity_svc or kwargs.get('diversity_service')
         ranker = TreeRanker(criterion=criterion,
                            f1_weight=kwargs.get('f1_weight', 0.5),
-                           pcd_weight=kwargs.get('pcd_weight', 0.5))
+                           pcd_weight=kwargs.get('pcd_weight', 0.5),
+                           diversity_service=diversity_svc)
         
         for client_id, trees in client_trees.items():
             meta = client_metadata[client_id]
-            entries = []
-            for local_idx, tree in enumerate(trees):
-                entries.append(TreeEntry(
-                    tree=tree,
-                    client_id=client_id,
-                    tree_local_id=local_idx,
-                    accuracy=meta.accuracy,
-                    macro_f1=meta.macro_f1,
-                    pcd=meta.pcd,
-                ))
+            # Use TreeRanker's unified logic to build entries with individual tree metrics if available
+            entries = TreeRanker.build_entries(
+                {client_id: trees}, 
+                {client_id: meta},
+                X_val=X_val,
+                diversity_service=diversity_svc
+            )
+
             
             # Rank within client
             ranked = ranker.rank(entries)
@@ -218,6 +213,10 @@ class PerClientProgressiveStrategy(ABC):
 
         # Use provided t_max or default to class constant
         T_MAX = t_max if t_max is not None else self.T_MAX
+        
+        # Prediction cache: cache predictions for each unique tree
+        # key: tree object (or id), value: np.ndarray of predictions
+        prediction_cache: Dict[int, np.ndarray] = {}
 
         # Progressive selection: stop by convergence, T_MAX, or all trees added
         while models_built < min(len(round_robin_entries), T_MAX):
@@ -233,41 +232,49 @@ class PerClientProgressiveStrategy(ABC):
             models_built = len(selected_entries)
 
             # Evaluate ensemble accuracy on validation set
-            predictions = self._predict_ensemble(selected_entries, X_val)
-            acc = accuracy_score(y_val, predictions)
+            predictions = self._predict_ensemble(selected_entries, X_val, cache=prediction_cache)
+            
+            # Use injected metrics service or fallback to kwargs
+            metrics_svc = self.metrics_svc or kwargs.get('metrics_service')
+            if metrics_svc:
+                acc = metrics_svc.accuracy_score(y_val, predictions)
+            else:
+                # Minimal fallback if not injected
+                acc = np.mean(predictions == y_val)
+                
             episode_accuracies.append(acc)
 
             # Check convergence after first episode
             if len(episode_accuracies) >= 2:
-                # Episode accuracy = range (max - min) of accuracies so far
-                episode_accuracy = max(episode_accuracies) - min(episode_accuracies)
+                # Calculate marginal improvement (current - previous)
+                current_acc = episode_accuracies[-1]
+                previous_acc = episode_accuracies[-2]
+                improvement = current_acc - previous_acc
 
-                if previous_episode_accuracy is not None:
-                    episode_accuracy_dif = episode_accuracy - previous_episode_accuracy
-
-                # Convergence: small change or small range
-                if episode_accuracy_dif < self.CONVERGENCE or episode_accuracy < self.CONVERGENCE:
+                # Convergence: improvement is smaller than threshold (CONVERGENCE)
+                if improvement < self.CONVERGENCE:
                     stop_counter += 1
+                    # Slightly reduce EPISODE size to refine the selection (standard CPF)
                     EPISODE = max(1, EPISODE - 1)
                     if self.verbose if hasattr(self, 'verbose') else False:
-                        print(f"  [Agregación] Convergencia detectada (stop_counter={stop_counter})")
-                    if stop_counter == 2:
+                        print(f"  [Agregación] Convergencia detectada (mejora={improvement:.5f}, stop_counter={stop_counter})")
+                    if stop_counter >= 2:
                         break
                 else:
                     stop_counter = 0
                     if self.verbose if hasattr(self, 'verbose') else False:
-                        print(f"  [Agregación] No converge, próximo episodio={EPISODE}")
-
-                previous_episode_accuracy = episode_accuracy
+                        print(f"  [Agregación] Mejora detectada ({improvement:.5f}), próximo episodio={EPISODE}")
 
         return [e.tree for e in selected_entries], selected_entries
     
-    def _predict_ensemble(self, selected_entries: List[TreeEntry], X: np.ndarray) -> np.ndarray:
+    def _predict_ensemble(self, selected_entries: List[TreeEntry], X: np.ndarray, 
+                         cache: Optional[Dict[int, np.ndarray]] = None) -> np.ndarray:
         """Make predictions using simple majority voting from selected trees.
         
         Args:
             selected_entries: List of selected tree entries
             X: Feature matrix (n_samples, n_features)
+            cache: Optional cache of predictions per tree
             
         Returns:
             Array of predicted class labels
@@ -278,16 +285,21 @@ class PerClientProgressiveStrategy(ABC):
         n_samples = X.shape[0]
         n_trees = len(selected_entries)
         
-        # Collect predictions from all trees (each tree predicts one sample at a time)
+        # Collect predictions from all trees using batch inference and optional caching
         all_predictions = np.zeros((n_samples, n_trees), dtype=int)
         for j, entry in enumerate(selected_entries):
-            for i in range(n_samples):
-                all_predictions[i, j] = entry.tree.predict(X[i])
+            tree_id = id(entry.tree)
+            if cache is not None and tree_id in cache:
+                all_predictions[:, j] = cache[tree_id]
+            else:
+                # Use the vectorized predict(X) method
+                preds = entry.tree.predict(X)
+                all_predictions[:, j] = preds
+                if cache is not None:
+                    cache[tree_id] = preds
         
-        # Majority voting per sample
-        from scipy import stats
-        mode_result = stats.mode(all_predictions, axis=1, keepdims=False)
-        return mode_result.mode
+        # Majority voting per sample using pure Python/Numpy implementation
+        return calculate_mode(all_predictions, axis=1)
 
 
 class S5PerClientAccuracyStrategy(PerClientProgressiveStrategy):

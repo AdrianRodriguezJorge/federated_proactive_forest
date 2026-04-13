@@ -1,7 +1,6 @@
 from typing import List, Any, Optional
 import numpy as np
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import LabelEncoder
+
 from .base_forest import ABCForest
 from .cpf_implementation.estimator import ProactiveForestClassifier
 from .progressive_forest import ComparativeProgressiveForest
@@ -33,22 +32,28 @@ class ProactiveForest(ABCForest):
             n_estimators=n_estimators,
             alpha=alpha,
             bootstrap=True,
-            split_criterion='entropy'
+            split_criterion='entropy',
+            random_state=random_state
         )
-        self._cpf = None
+        self._cpf: Optional[ComparativeProgressiveForest] = None
 
         # Set encoder if class_names provided
         if class_names is not None and len(class_names) > 0:
-            self._classifier._encoder = LabelEncoder()
-            self._classifier._encoder.classes_ = np.array(class_names)
+            self.class_names = class_names
+            self._classifier.classes_ = np.array(class_names)
+            self._classifier._encoder_dict = {val: idx for idx, val in enumerate(class_names)}
+            self._classifier._decoder_dict = {idx: val for idx, val in enumerate(class_names)}
 
-    def fit(self, X: np.ndarray, y: np.ndarray) -> None:
+
+    def fit(self, X: np.ndarray, y: np.ndarray, X_val: Optional[np.ndarray] = None, y_val: Optional[np.ndarray] = None) -> None:
         """
         Train the Proactive Forest using CPF algorithm with early stopping.
         
         Args:
             X: Training features
             y: Training labels
+            X_val: Optional validation features for early stopping
+            y_val: Optional validation labels for early stopping
         """
         y_arr = np.asarray(y)
 
@@ -61,30 +66,54 @@ class ProactiveForest(ABCForest):
             y_labels = y_arr
 
         # Configure encoder on the classifier for consistent global class mapping.
-        if self._classifier._encoder is None:
-            self._classifier._encoder = LabelEncoder()
+        if not hasattr(self._classifier, '_encoder_dict'):
             if self.class_names is not None and len(self.class_names) > 0:
-                self._classifier._encoder.classes_ = np.array(self.class_names)
+                self._classifier.classes_ = np.array(self.class_names)
+                self._classifier._encoder_dict = {val: idx for idx, val in enumerate(self.class_names)}
+                self._classifier._decoder_dict = {idx: val for idx, val in enumerate(self.class_names)}
             else:
-                self._classifier._encoder.fit(y_labels)
-        else:
-            if self.class_names is not None and len(self.class_names) > 0:
-                self._classifier._encoder.classes_ = np.array(self.class_names)
+                self._classifier.classes_ = np.unique(y_labels)
+                self._classifier._encoder_dict = {val: idx for idx, val in enumerate(self._classifier.classes_)}
+                self._classifier._decoder_dict = {idx: val for idx, val in enumerate(self._classifier.classes_)}
+        
+        self._classifier._n_classes = len(self._classifier.classes_)
 
-        self._classifier._n_classes = len(self._classifier._encoder.classes_)
-
-        # Split for early stopping (80-20)
-        if len(X) > 30:
-            X_train, X_val, y_train, y_val = train_test_split(
-                X, y_labels, test_size=0.2, random_state=self.random_state
-            )
+        # Setup training and validation sets
+        if X_val is None or y_val is None:
+            # FIX: If no validation set is provided, we perform a manual split (90/10)
+            # to avoid DATA LEAKAGE during early stopping.
+            n_samples = len(X)
+            if n_samples >= 10:
+                indices = np.arange(n_samples)
+                rng = np.random.default_rng(self.random_state)
+                rng.shuffle(indices)
+                
+                split_idx = int(0.9 * n_samples)
+                train_idx, val_idx = indices[:split_idx], indices[split_idx:]
+                
+                X_train, X_val = X[train_idx], X[val_idx]
+                y_train, y_val = y_labels[train_idx], y_labels[val_idx]
+                y_val_labels = y_val
+            else:
+                # Warning: dataset too small for real split, fallback to overlap with warning
+                import warnings
+                warnings.warn("Dataset too small for internal validation split. Data leakage may occur in early stopping.")
+                X_train, X_val, y_train, y_val_labels = X, X, y_labels, y_labels
         else:
-            X_train, X_val = X, X
-            y_train, y_val = y_labels, y_labels
+            X_train = X
+            y_train = y_labels
+            # Process y_val the same way we process y
+            y_val_arr = np.asarray(y_val)
+            if self.class_names is not None and np.issubdtype(y_val_arr.dtype, np.integer):
+                if np.any((y_val_arr < 0) | (y_val_arr >= len(self.class_names))):
+                    raise ValueError("y_val contains index values outside class_names range")
+                y_val_labels = np.array([self.class_names[int(v)] for v in y_val_arr], dtype=object)
+            else:
+                y_val_labels = y_val_arr
 
         # Use Comparative Progressive Forest with early stopping
         self._cpf = ComparativeProgressiveForest(self._classifier, verbose=self.verbose)
-        self._cpf.fit(X_train, y_train, X_val, y_val)
+        self._cpf.fit(X_train, y_train, X_val, y_val_labels)
         self._is_fitted = True
 
     def predict(self, X: np.ndarray) -> np.ndarray:
@@ -92,16 +121,12 @@ class ProactiveForest(ABCForest):
         if not self._is_fitted or self._cpf is None:
             raise ValueError("Forest not fitted yet. Call fit() first.")
 
-        # El clasificador interno puede devolver directamente etiquetas ya decodificadas
+        # El clasificador interno devuelve directamente etiquetas decodificadas o enteros
         y_pred = self._cpf.return_forest().predict(X)
 
-        # Si el resultado está en formato entero y hay un encoder disponible, decodificar
-        if self._classifier._encoder is not None:
-            if isinstance(y_pred, np.ndarray) and np.issubdtype(y_pred.dtype, np.integer):
-                y_pred = self._classifier._encoder.inverse_transform(y_pred)
-            elif isinstance(y_pred, (list, np.ndarray)) and len(y_pred) > 0 and isinstance(y_pred[0], (int, np.integer)):
-                y_pred = self._classifier._encoder.inverse_transform(np.array(y_pred, dtype=int))
-            # Si ya son strings, el resultado está listo y no requiere inverse_transform
+        if isinstance(y_pred, np.ndarray) and np.issubdtype(y_pred.dtype, np.integer):
+            if hasattr(self._classifier, '_decoder_dict'):
+                y_pred = np.array([self._classifier._decoder_dict[val] for val in y_pred])
 
         return np.array(y_pred)
 
@@ -137,8 +162,9 @@ class ProactiveForest(ABCForest):
         dummy_classifier._n_features = n_features
         dummy_classifier._n_classes = n_classes
         if class_names:
-            dummy_classifier._encoder = LabelEncoder()
-            dummy_classifier._encoder.classes_ = np.array(class_names)
+            dummy_classifier.classes_ = np.array(class_names)
+            dummy_classifier._encoder_dict = {val: idx for idx, val in enumerate(class_names)}
+            dummy_classifier._decoder_dict = {idx: val for idx, val in enumerate(class_names)}
         dummy_classifier.set_trees(trees)
 
         # Mark as fitted

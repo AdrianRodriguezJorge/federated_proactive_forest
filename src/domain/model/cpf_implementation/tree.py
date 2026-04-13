@@ -49,6 +49,33 @@ class DecisionTree:
         return 0
 
     def predict(self, x):
+        x = np.asarray(x)
+        if x.ndim == 1:
+            return self._predict_single(x)
+            
+        predictions = np.zeros(x.shape[0], dtype=object)
+        indices = np.arange(x.shape[0])
+        
+        def push_samples(node_id, idx):
+            if len(idx) == 0:
+                return
+            node = self._nodes[node_id]
+            if isinstance(node, DecisionLeaf):
+                predictions[idx] = node.result
+            else:
+                # We dynamically check the condition matching result_branch
+                if isinstance(node, DecisionForkNumerical):
+                    left_mask = x[idx, node.feature_id] <= node.value
+                else: # Categorical
+                    left_mask = x[idx, node.feature_id] == node.value
+                
+                push_samples(node.left_branch, idx[left_mask])
+                push_samples(node.right_branch, idx[~left_mask])
+                
+        push_samples(self.root(), indices)
+        return predictions
+
+    def _predict_single(self, x):
         current_node = self.root()
         leaf_found = False
         prediction = None

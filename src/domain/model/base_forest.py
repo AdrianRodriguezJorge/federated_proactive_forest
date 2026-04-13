@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import List, Any
 import numpy as np
-from sklearn.base import BaseEstimator
 
 class ABCForest(ABC):
     """

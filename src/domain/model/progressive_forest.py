@@ -13,7 +13,7 @@ Uso:
 """
 from typing import Any
 import numpy as np
-from sklearn.utils import check_X_y
+
 
 
 class ComparativeProgressiveForest:
@@ -46,8 +46,10 @@ class ComparativeProgressiveForest:
         :param yt: Etiquetas de validación.
         :return: self
         """
-        X, y = check_X_y(X, y, dtype=None)
-        Xt, yt = check_X_y(Xt, yt, dtype=None)
+        X = np.asarray(X)
+        y = np.asarray(y)
+        Xt = np.asarray(Xt)
+        yt = np.asarray(yt)
         models_built = 0
         stop_counter = 0
         previous_episode_accuracy = None

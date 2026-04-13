@@ -13,33 +13,97 @@ class HybridPredictor:
     """
 
     def __init__(self, local_weight: float = 0.4, global_weight: float = 0.6,
-                 n_classes: int = 2, class_names: List[str] = None):
+                 n_classes: int = 2, class_names: List[str] = None,
+                 label_service: Any = None):
         assert abs(local_weight + global_weight - 1.0) < 1e-6, \
             "local_weight + global_weight debe ser 1.0"
         self.lw = local_weight
         self.gw = global_weight
         self.n_classes = n_classes
         self.class_names = class_names or [str(i) for i in range(n_classes)]
+        self.label_svc = label_service
 
     def predict(self, X: np.ndarray,
                 local_trees: List[Any],
                 global_trees: List[Any]) -> np.ndarray:
         n_samples = X.shape[0]
+        # Probabilities matrix for each sample and class
         combined = np.zeros((n_samples, self.n_classes))
+        
+        # Track votes for debugging
+        self._last_votes = {
+            'local': np.zeros((n_samples, self.n_classes)),
+            'global': np.zeros((n_samples, self.n_classes))
+        }
 
-        def accumulate(trees, weight):
+        def accumulate_vectorized(trees, weight, source_key):
             if not trees:
                 return
             w_per_tree = weight / len(trees)
+            
+            # Map class names to indices once outside the loops
+            # If label_svc is present, we use it for more robust mapping
+            if self.label_svc:
+                # We'll use the service's internal mapping if possible
+                # SimpleLabelService uses _encoder
+                class_to_idx = {str(name): i for name, i in self.label_svc._encoder.items()}
+            else:
+                class_to_idx = {str(name): i for i, name in enumerate(self.class_names)}
+            
             for tree in trees:
-                for i in range(n_samples):
-                    pred = tree.predict(X[i])
-                    if isinstance(pred, str):
-                        pred_idx = self.class_names.index(pred)
-                    else:
-                        pred_idx = int(pred)
-                    combined[i, pred_idx] += w_per_tree
+                # Use batch prediction which returns array of predictions
+                preds = tree.predict(X)
+                
+                # Normalize preds to integer indices
+                if preds.dtype.kind in {'U', 'S', 'O'}:  # Unicode, String, or Object
+                    # Convert labels to strings and then to indices
+                    mapped_preds = []
+                    for p in preds:
+                        p_str = str(p)
+                        idx = class_to_idx.get(p_str, -1)
+                        # Handle potential float-as-string issues (e.g., "1.0" -> "1")
+                        if idx == -1 and "." in p_str:
+                            try:
+                                p_int_str = str(int(float(p_str)))
+                                idx = class_to_idx.get(p_int_str, -1)
+                            except ValueError:
+                                pass
+                        mapped_preds.append(idx)
+                    preds = np.array(mapped_preds)
+                else:
+                    # If they are already numeric, assume they are indices
+                    # but check if they are within range
+                    preds = np.asarray(preds, dtype=int)
+                
+                # Validate indices
+                valid_mask = (preds >= 0) & (preds < self.n_classes)
+                
+                # Report mapping failures if any
+                num_invalid = np.sum(~valid_mask)
+                if num_invalid > 0:
+                    import logging
+                    logger = logging.getLogger("HybridPredictor")
+                    logger.warning(f"Found {num_invalid} invalid predictions in tree from source {source_key}. "
+                                   f"Sample of invalid values: {preds[~valid_mask][:5]}")
+                
+                # Vectorized accumulation
+                for c in range(self.n_classes):
+                    mask = (preds == c) & valid_mask
+                    combined[mask, c] += w_per_tree
+                    self._last_votes[source_key][mask, c] += w_per_tree
 
-        accumulate(local_trees, self.lw)
-        accumulate(global_trees, self.gw)
+        accumulate_vectorized(local_trees, self.lw, 'local')
+        accumulate_vectorized(global_trees, self.gw, 'global')
         return np.argmax(combined, axis=1)
+
+    def get_debug_stats(self) -> dict:
+        """Return statistics about the last prediction call."""
+        if not hasattr(self, '_last_votes'):
+            return {}
+        
+        return {
+            'local_vote_sum': self._last_votes['local'].sum(axis=0).tolist(),
+            'global_vote_sum': self._last_votes['global'].sum(axis=0).tolist(),
+            'n_classes': self.n_classes,
+            'class_names': self.class_names
+        }
