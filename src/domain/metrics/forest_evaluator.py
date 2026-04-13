@@ -73,9 +73,30 @@ class ForestEvaluator:
 
         # Ensure y and y_pred are strings for consistency
         if len(y) > 0 and isinstance(y[0], (int, np.integer)):
-            y = np.array([class_names[i] for i in y])
+            # Validate indices are within range before converting
+            y_arr = np.asarray(y, dtype=np.int64)
+            if np.any((y_arr < 0) | (y_arr >= len(class_names))):
+                import warnings
+                invalid_mask = (y_arr < 0) | (y_arr >= len(class_names))
+                warnings.warn(
+                    f"y contains {np.sum(invalid_mask)} indices out of range [0, {len(class_names)}). "
+                    f"Clipping to valid range."
+                )
+                y_arr = np.clip(y_arr, 0, len(class_names) - 1)
+            y = np.array([class_names[i] for i in y_arr])
+        
         if len(y_pred) > 0 and isinstance(y_pred[0], (int, np.integer)):
-            y_pred = np.array([class_names[i] for i in y_pred])
+            # Validate indices are within range before converting
+            y_pred_arr = np.asarray(y_pred, dtype=np.int64)
+            if np.any((y_pred_arr < 0) | (y_pred_arr >= len(class_names))):
+                import warnings
+                invalid_mask = (y_pred_arr < 0) | (y_pred_arr >= len(class_names))
+                warnings.warn(
+                    f"y_pred contains {np.sum(invalid_mask)} indices out of range [0, {len(class_names)}). "
+                    f"Clipping to valid range."
+                )
+                y_pred_arr = np.clip(y_pred_arr, 0, len(class_names) - 1)
+            y_pred = np.array([class_names[i] for i in y_pred_arr])
         
         labels = class_names  # Usar nombres de clases como labels
 
@@ -137,9 +158,30 @@ class ForestEvaluator:
 
         # Ensure y and y_pred are strings for consistency
         if len(y_true) > 0 and isinstance(y_true[0], (int, np.integer)):
-            y_true = np.array([class_names[i] for i in y_true])
+            # Validate indices are within range before converting
+            y_true_arr = np.asarray(y_true, dtype=np.int64)
+            if np.any((y_true_arr < 0) | (y_true_arr >= len(class_names))):
+                import warnings
+                invalid_mask = (y_true_arr < 0) | (y_true_arr >= len(class_names))
+                warnings.warn(
+                    f"y_true contains {np.sum(invalid_mask)} indices out of range [0, {len(class_names)}). "
+                    f"Clipping to valid range."
+                )
+                y_true_arr = np.clip(y_true_arr, 0, len(class_names) - 1)
+            y_true = np.array([class_names[i] for i in y_true_arr])
+        
         if len(y_pred) > 0 and isinstance(y_pred[0], (int, np.integer)):
-            y_pred = np.array([class_names[i] for i in y_pred])
+            # Validate indices are within range before converting
+            y_pred_arr = np.asarray(y_pred, dtype=np.int64)
+            if np.any((y_pred_arr < 0) | (y_pred_arr >= len(class_names))):
+                import warnings
+                invalid_mask = (y_pred_arr < 0) | (y_pred_arr >= len(class_names))
+                warnings.warn(
+                    f"y_pred contains {np.sum(invalid_mask)} indices out of range [0, {len(class_names)}). "
+                    f"Clipping to valid range."
+                )
+                y_pred_arr = np.clip(y_pred_arr, 0, len(class_names) - 1)
+            y_pred = np.array([class_names[i] for i in y_pred_arr])
         
         labels = class_names
 

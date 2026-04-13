@@ -53,10 +53,14 @@ class HybridPredictor:
             for tree in trees:
                 # Use batch prediction which returns array of predictions
                 preds = tree.predict(X)
-                
+
                 # Normalize preds to integer indices
-                if preds.dtype.kind in {'U', 'S', 'O'}:  # Unicode, String, or Object
-                    # Convert labels to strings and then to indices
+                # Trees store integer class indices in leaves (from np.argmax)
+                # The tree.predict returns dtype=object array containing numpy integers
+                
+                # Check if predictions are strings/objects that need mapping
+                if preds.dtype.kind in {'U', 'S'} or (preds.dtype == 'O' and isinstance(preds.flat[0] if len(preds) > 0 else None, str)):
+                    # String predictions - need to map to indices
                     mapped_preds = []
                     for p in preds:
                         p_str = str(p)
@@ -69,15 +73,19 @@ class HybridPredictor:
                             except ValueError:
                                 pass
                         mapped_preds.append(idx)
-                    preds = np.array(mapped_preds)
+                    preds = np.array(mapped_preds, dtype=np.int64)
                 else:
-                    # If they are already numeric, assume they are indices
-                    # but check if they are within range
-                    preds = np.asarray(preds, dtype=int)
-                
+                    # Predictions are already numeric (numpy integers in object array)
+                    # Convert to proper int64 array
+                    try:
+                        preds = np.array([int(p) for p in preds], dtype=np.int64)
+                    except (ValueError, TypeError):
+                        # Fallback: try direct conversion
+                        preds = np.asarray(preds, dtype=np.int64)
+
                 # Validate indices
                 valid_mask = (preds >= 0) & (preds < self.n_classes)
-                
+
                 # Report mapping failures if any
                 num_invalid = np.sum(~valid_mask)
                 if num_invalid > 0:
@@ -85,7 +93,7 @@ class HybridPredictor:
                     logger = logging.getLogger("HybridPredictor")
                     logger.warning(f"Found {num_invalid} invalid predictions in tree from source {source_key}. "
                                    f"Sample of invalid values: {preds[~valid_mask][:5]}")
-                
+
                 # Vectorized accumulation
                 for c in range(self.n_classes):
                     mask = (preds == c) & valid_mask

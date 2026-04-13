@@ -1,10 +1,10 @@
 {
   "dataset": {
-    "type": "Vowel",
-    "file_path": "data/vowel.csv",
+    "type": "Nursery",
+    "file_path": "data/nursery.csv",
     "train_path": "",
     "test_path": "",
-    "target_column": "Class",
+    "target_column": "class",
     "test_size": 0.2,
     "scale": true,
     "scaler_type": "standard",
@@ -25,10 +25,10 @@
     "episode_size": 5
   },
   "aggregation": {
-    "strategy": "s6_perclient_f1",
+    "strategy": "s7_perclient_f1_pcd",
     "t_max": 100,
-    "f1_weight": 0.5,
-    "pcd_weight": 0.5,
+    "f1_weight": 0.7,
+    "pcd_weight": 0.3,
     "convergence": 0.002,
     "episode_size": 5,
     "window_size": 5,

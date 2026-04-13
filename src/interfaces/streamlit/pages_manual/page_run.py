@@ -63,19 +63,20 @@ def render():
     st.divider()
 
     # ── Re-run confirmation ───────────────────────────────────────────────────
-    has_previous_results = st.session_state.get("fl_results") is not None
+    # has_previous_results = st.session_state.get("fl_results") is not None
     run_button = st.button("🚀 Ejecutar ronda federada", type="primary")
 
-    if has_previous_results and run_button:
-        st.warning("⚠️ **Ya existen resultados de una ronda anterior.** Ejecutar de nuevo los sobrescribirá.")
-        confirm = st.checkbox("Confirmar: sobrescribir resultados anteriores")
-        if not confirm:
-            st.info("Ejecución cancelada.")
-            run_button = False
-    elif not has_previous_results and run_button:
-        confirm = True  # First run, no confirmation needed
+    # if has_previous_results and run_button:
+    #     st.warning("⚠️ **Ya existen resultados de una ronda anterior.** Ejecutar de nuevo los sobrescribirá.")
+    #     confirm = st.checkbox("Confirmar: sobrescribir resultados anteriores")
+    #     if not confirm:
+    #         st.info("Ejecución cancelada.")
+    #         run_button = False
+    # elif not has_previous_results and run_button:
+    #     confirm = True  # First run, no confirmation needed
 
-    if run_button and (confirm or not has_previous_results):
+    # if run_button and (confirm or not has_previous_results):    
+    if run_button:
         progress  = st.progress(0, text="Inicializando...")
         status    = st.empty()
         log_placeholder = st.empty()  # Para el log acumulativo
