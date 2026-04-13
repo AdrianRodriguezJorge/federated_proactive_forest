@@ -17,6 +17,7 @@ class GenericCsvAdapter(IDatasetAdapter):
     def __init__(self, name: str, train_path: str, target_column: str,
                  test_path: Optional[str] = None,
                  categorical_features: Optional[List[str]] = None,
+                 columns_to_drop: Optional[List[str]] = None,
                  scale: bool = True, scaler_type: str = "standard",
                  test_size: float = 0.2, seed: int = 42, sep: str = ","):
         self._name = name
@@ -24,6 +25,7 @@ class GenericCsvAdapter(IDatasetAdapter):
         self.test_path = test_path
         self.target_column = target_column
         self.categorical_features = categorical_features or []
+        self.columns_to_drop = columns_to_drop or []
         self.scale = scale
         self.scaler_type = scaler_type
         self.test_size = test_size
@@ -46,6 +48,12 @@ class GenericCsvAdapter(IDatasetAdapter):
         else:
             train_df, test_df = train_test_split(train_df, test_size=self.test_size,
                                                  random_state=self.seed)
+
+        # Drop specified columns (e.g., metadata columns that shouldn't be features)
+        cols_to_drop = [c for c in self.columns_to_drop if c in train_df.columns]
+        if cols_to_drop:
+            train_df = train_df.drop(columns=cols_to_drop)
+            test_df = test_df.drop(columns=cols_to_drop)
 
         feat_cols = [c for c in train_df.columns if c != self.target_column]
 

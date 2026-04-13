@@ -34,6 +34,11 @@ DATASET_METADATA = {
         "target_column": "class",
         "sep": ",",
         "categorical_features": ["parents", "has_nurs", "form", "children", "housing", "finance", "social", "health"]
+    },
+    "vowel": {
+        "target_column": "Class",
+        "sep": ",",
+        "columns_to_drop": ["Train or Test", "Speaker Number", "Sex"]
     }
 }
 
@@ -75,8 +80,7 @@ class DatasetFactory:
             return IrisAdapter(
                 train_test_split_ratio=1.0 - d.get("test_size", 0.2),
                 scale=d.get("scale", True),
-                scaler_type=d.get("scaler_type", "standard"),
-                seed=d.get("seed", 42)
+                scaler_type=d.get("scaler_type", "standard")
             )
 
         # Handle Generic CSVs (Custom or Presets)
@@ -86,9 +90,10 @@ class DatasetFactory:
         # Merge config with metadata (config takes precedence)
         target_column = d.get("target_column") or metadata.get("target_column", "class")
         categorical_features = d.get("categorical_features") or metadata.get("categorical_features", [])
+        columns_to_drop = d.get("columns_to_drop") or metadata.get("columns_to_drop", [])
         sep = d.get("sep") or metadata.get("sep", ",")
         file_path = d.get("file_path") or d.get("train_path")
-        
+
         # If relative, join with project root
         if file_path and not Path(file_path).is_absolute():
             file_path = str(project_root / file_path)
@@ -100,6 +105,7 @@ class DatasetFactory:
             target_column=target_column,
             test_size=d.get("test_size", 0.2),
             categorical_features=categorical_features,
+            columns_to_drop=columns_to_drop,
             scale=d.get("scale", True),
             scaler_type=d.get("scaler_type", "standard"),
             seed=d.get("seed", 42),
