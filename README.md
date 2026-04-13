@@ -8,17 +8,15 @@
 ## 🎯 Main Features
 
 - ✅ **8 aggregation strategies** (S1-S7 + Progressive Windows) with varied tree selection criteria
-- ✅ **Horizontal Federated Learning** with configurable N clients
+- ✅ **Horizontal Federated Learning** with configurable N clients and unified synchronization
 - ✅ **Complete non-IID heterogeneity support** (Dirichlet distributions)
-- ✅ **Modern Web UI** with Streamlit (4 interactive pages)
-- ✅ **Full CLI** with YAML configuration for reproducible experimentation
-- ✅ **Clean Hexagonal Architecture** (Domain → Application → Infrastructure)
-- ✅ **Multiple datasets**: NSL-KDD, Iris, Students Dropout, and 7 additional CSV datasets
-- ✅ **Complete metrics**: Accuracy, F1, Macro-F1, PCD, confusion matrices
-- ✅ **Ranking visualization** with per-client and strategy-based selection
-- ✅ **Extensible**: Easily add new datasets and strategies
-- ✅ **Hyperparameter optimization** with Optuna integration
-- ✅ **Hybrid prediction** with configurable local/global weights
+- ✅ **Robust Label Handling**: Unified encoding via `LabelService` to ensure consistency across clients
+- ✅ **Weighted Hybrid Prediction**: Optimized local/global voting logic with biased-prediction fixes
+- ✅ **Statistical Validation**: Built-in Friedman and Wilcoxon tests for rigorous performance comparison
+- ✅ **Modern Web UI**: Streamlit interface with real-time ranking and confusion matrices
+- ✅ **Clean Hexagonal Architecture**: Strict separation between Domain, Application, and Infrastructure
+- ✅ **Hyperparameter Optimization**: Integrated Optuna support for strategy-specific parameters
+- ✅ **FLEX Framework Integration**: Advanced FL orchestration support
 
 ## 📋 Table of Contents
 
@@ -31,6 +29,7 @@
 - [CLI](#-cli)
 - [Advanced Configuration](#-advanced-configuration)
 - [Adding New Datasets](#-adding-new-datasets)
+- [Statistical Validation](#-statistical-validation)
 - [Contributing](#-contributing)
 - [License](#-license)
 - [Citations](#-citations)
@@ -112,21 +111,33 @@ python -m src.interfaces.cli.main --config configs/experiments/exp_s1_simple_poo
 
 ### Option 3: Programmatic Usage
 
-```python
-from src.application.orchestrators.fl_orchestrator import FLOrchestrator
+### Option 3: Programmatic Usage
 
-# Basic configuration
+```python
+from src.application.orchestrators.fl_orchestrator import FLEXOrchestrator
+from src.infrastructure.dataset.dataset_factory import DatasetFactory
+
+# 1. Load dataset via factory
+adapter = DatasetFactory.create_adapter({"type": "Iris"})
+dataset_split = adapter.load()
+
+# 2. Configure federation
 config = {
-    "dataset": {"type": "Iris", "test_size": 0.2},
-    "federation": {"n_clients": 5, "distribution": "iid"},
+    "n_clients": 5,
+    "distribution": "noniid_dirichlet",
+    "alpha": 0.5,
+    "strategy": "S7",
     "model": {"n_estimators": 50, "alpha": 0.1},
-    "aggregation": {"strategy": "s1_simple_pool"}
+    "prediction": {"local_weight": 0.4, "global_weight": 0.6}
 }
 
-# Run federated round
-orchestrator = FLOrchestrator(config)
+# 3. Run federated round
+orchestrator = FLEXOrchestrator(config)
+orchestrator.setup_federation(dataset_split)
 results = orchestrator.run_federated_round()
+
 print(f"Global accuracy: {results.global_accuracy:.4f}")
+print(f"Aggregated trees: {results.n_trees_global}")
 ```
 
 ## 📊 Supported Datasets
@@ -176,13 +187,19 @@ The project implements **8 strategies** for tree selection in federated environm
 | **S7** | Per-Client | F1 + PCD | Individual ranking with diversity |
 | **PW** | Progressive Windows | Adaptive | Progressive windows with adaptive stopping |
 
-### Weight Configuration (S4, S7)
+### Weight Configuration (S4, S7, PW)
 ```yaml
 aggregation:
   strategy: s7_perclient_f1_pcd
-  f1_weight: 0.7    # Weight for F1-score
-  pcd_weight: 0.3   # Weight for PCD diversity
+  f1_weight: 0.7    # Weight for F1-score performance
+  pcd_weight: 0.3   # Weight for PCD diversity (automatically 1-f1_weight)
 ```
+
+### Tree Selection & Synchronization Fixes
+The recent refactoring addressed critical issues in tree aggregation:
+- **Unified Label Mapping**: Using `LabelService` to ensure all clients and the orchestrator share the same index-to-class mapping, preventing prediction "shifting".
+- **Biased Fallback Fix**: Removed fallback logic that caused trees to vote for the majority class of the first client when a label was unknown.
+- **Correct Mapping**: Verified tree-to-client origins to ensure `HybridPredictor` correctly excludes a client's own trees from the "global" pool it receives, preventing over-representation.
 
 ### Progressive Windows Strategy (PW)
 The PW strategy implements a novel approach with:
@@ -209,49 +226,41 @@ aggregation:
 src/
 ├── domain/                    # 📦 Business core (no external dependencies)
 │   ├── model/                # ML models: ProactiveForest, strategies
-│   │   ├── cpf_implementation/  # CPF algorithm components
+│   │   ├── cpf_implementation/  # CPF algorithm tree components
 │   │   ├── proactive_forest.py
-│   │   ├── progressive_forest.py
-│   │   └── random_forest.py
+│   │   └── progressive_forest.py
 │   ├── aggregation/          # Aggregation logic S1-S7 + PW
-│   │   ├── strategies/       # Individual strategy implementations
-│   │   │   ├── progressive_windows/
-│   │   │   ├── global_progressive_base.py
-│   │   │   └── perclient_progressive_base.py
-│   │   ├── tree_ranker.py    # Tree ranking logic
-│   │   ├── cpf_stopper.py    # Progressive stopping
+│   │   ├── strategies/       # S1-S7 and Progressive Windows
+│   │   ├── tree_ranker.py    # Tree ranking for S2-S7
 │   │   └── aggregation_factory.py
-│   ├── dataset/              # Dataset interfaces
-│   ├── metrics/              # Model evaluation
-│   ├── metadata/             # Client metadata management
-│   ├── prediction/           # Hybrid prediction (local + global)
-│   └── update/               # Client update logic (No-Repeat Merge)
+│   ├── metrics/              # Model evaluation (ForestEvaluator)
+│   ├── services/             # LabelService (Unified encoding)
+│   ├── prediction/           # Weighted Hybrid Prediction
+│   └── update/               # No-Repeat Merge logic
 │
 ├── application/              # 🎯 Use cases and orchestration
-│   ├── commands/             # FL commands (train, aggregate, predict, update)
-│   ├── orchestrators/        # Orchestrators: FL, Progressive Windows
-│   └── hyperparam_optimizer.py  # Hyperparameter optimization with Optuna
+│   ├── orchestrators/        # FLEXOrchestrator, PWOrchestrator
+│   └── hyperparam_optimizer.py  # Optuna-based optimization
 │
 ├── infrastructure/           # 🔌 Concrete adapters
-│   └── dataset/              # Adapters: NSL-KDD, Iris, CSV
+│   ├── dataset/              # Adapters: NSL-KDD, Iris, CSV, FlexTrees
+│   ├── flex/                 # FLEX Framework primitives (train, aggregate)
+│   └── persistence/          # Results logging and CSV storage
 │
 └── interfaces/               # 🎨 User interfaces
-    ├── cli/                  # Command-line interface
-    └── streamlit/            # Modern web interface
-        ├── app.py            # Entry point
-        ├── components/       # Reusable UI components
-        ├── pages_manual/     # Page implementations
-        └── state/            # Session state management
+    ├── cli/                  # Command-line interface (main.py)
+    └── streamlit/            # Streamlit multi-page application
 ```
 
 ### Key Components
 
 - **Proactive Forest (CPF)**: Ensemble algorithm with dynamic probability adjustment
-- **FLOrchestrator**: Main orchestrator for federated learning rounds
-- **ProgressiveWindowsOrchestrator**: Specialized orchestrator for PW strategy
+- **FLEXOrchestrator**: Main orchestrator for federated learning rounds with FLEX support
+- **PWOrchestrator**: Specialized orchestrator for Progressive Windows strategy
+- **LabelService**: Unified label service for consistent encoding across federation
 - **Early Stopping**: Automatic convergence detection in progressive training
 - **PCD Diversity**: Pairwise Classifier Disagreement diversity measure
-- **Hybrid Prediction**: Configurable local/global model weighting
+- **Hybrid Prediction**: Configurable weighted voting between local and global models
 - **No-Repeat Merge**: Prevents duplicate tree selection across rounds
 
 ## 🌐 Streamlit Interface
@@ -551,26 +560,29 @@ pip install flex-framework flex-trees
 - **FlexPool**: Manages client-server communication
 - **FedDataDistribution**: Handles data partitioning across clients
 - **Decorators**: Simplifies FL task orchestration
-- **Actors**: Defines client and server roles
 
-### Without FLEX
+## 📊 Statistical Validation
 
-The system can run **without FLEX** using simplified orchestration, but you'll miss:
-- Advanced data distribution (Dirichlet)
-- FlexPool decorators
-- Some deployment features
+To ensure the reliability of the comparative analysis, the project includes a specialized script for non-parametric statistical testing.
 
-The code gracefully handles missing FLEX with fallbacks and warnings.
+### Friedman & Wilcoxon Tests
+Located in `tests/Friedman_test_new_results.py`, this script performs:
+1.  **Friedman Test**: Determines if there are globally significant differences between the 8 strategies and the standalone Proactive Forest (PF) baseline.
+2.  **Wilcoxon Post-hoc**: Conducts pairwise comparisons (PF vs each S1-S7/PW strategy) with **Bonferroni correction**.
+3.  **Maximum Impact Ranking**: Identifies which datasets show the largest performance gain when moving from standalone to federated models.
+
+```bash
+# Run statistical analysis on current results
+python tests/Friedman_test_new_results.py
+```
 
 ## 📜 Scripts
 
 ### Hyperparameter Optimization
+Using **Optuna**, you can optimize the `alpha` parameter for Proactive Forest or the `f1_weight` for aggregation strategies.
 ```bash
-# Optimize S6 strategy alpha parameter
+# Optimize strategy-specific parameters
 python scripts/optimize_s6_alpha_pf.py
-
-# Run optimization pipeline
-python scripts/run_optimization.py
 ```
 
 ## 🛠️ Technologies
