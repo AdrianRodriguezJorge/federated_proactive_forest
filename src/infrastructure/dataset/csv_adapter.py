@@ -42,18 +42,29 @@ class GenericCsvAdapter(IDatasetAdapter):
         return len(self._class_names_)
 
     def load(self) -> DatasetSplit:
-        train_df = pd.read_csv(self.train_path, sep=self.sep)
-        if self.test_path:
-            test_df = pd.read_csv(self.test_path, sep=self.sep)
-        else:
-            train_df, test_df = train_test_split(train_df, test_size=self.test_size,
-                                                 random_state=self.seed)
+        """
+        Load datasets from CSV paths and prepare for federated training.
+        Includes categorical encoding, label encoding, and feature scaling.
+        """
+        try:
+            train_df = pd.read_csv(self.train_path, sep=self.sep)
+            if self.test_path:
+                test_df = pd.read_csv(self.test_path, sep=self.sep)
+            else:
+                train_df, test_df = train_test_split(
+                    train_df, test_size=self.test_size, random_state=self.seed
+                )
+        except Exception as e:
+            raise RuntimeError(f"Error loading CSV from {self.train_path}: {e}")
 
         # Drop specified columns (e.g., metadata columns that shouldn't be features)
         cols_to_drop = [c for c in self.columns_to_drop if c in train_df.columns]
         if cols_to_drop:
             train_df = train_df.drop(columns=cols_to_drop)
             test_df = test_df.drop(columns=cols_to_drop)
+
+        if self.target_column not in train_df.columns:
+            raise KeyError(f"Target column '{self.target_column}' not found in dataset.")
 
         feat_cols = [c for c in train_df.columns if c != self.target_column]
 
@@ -67,22 +78,38 @@ class GenericCsvAdapter(IDatasetAdapter):
                     detected_cat.append(col)
 
         # Combine explicit + detected categorical columns
-        all_cat_cols = list(dict.fromkeys(self.categorical_features + detected_cat))  # preserve order, no dupes
+        all_cat_cols = list(dict.fromkeys(self.categorical_features + detected_cat))
 
         if all_cat_cols:
             enc = OrdinalEncoder(handle_unknown="use_encoded_value", unknown_value=-1)
-            train_df[all_cat_cols] = enc.fit_transform(train_df[all_cat_cols])
-            test_df[all_cat_cols]  = enc.transform(test_df[all_cat_cols])
+            train_df[all_cat_cols] = enc.fit_transform(train_df[all_cat_cols].astype(str))
+            test_df[all_cat_cols]  = enc.transform(test_df[all_cat_cols].astype(str))
 
+        # Handle target column
         le = LabelEncoder()
-        # Fit ONLY on training data to prevent data leakage
-        le.fit(train_df[self.target_column].values)
-        y_train = np.array([str(y) for y in train_df[self.target_column].values])  # Convert to strings
-        y_test  = np.array([str(y) for y in test_df[self.target_column].values])   # Convert to strings
+        # Ensure target is string for consistent encoding
+        y_train_raw = train_df[self.target_column].astype(str).values
+        y_test_raw = test_df[self.target_column].astype(str).values
+        
+        le.fit(y_train_raw)
         self._class_names_ = [str(c) for c in le.classes_]
+        
+        y_train = y_train_raw
+        y_test = y_test_raw
 
-        X_train = train_df[feat_cols].values.astype(np.float64)
-        X_test  = test_df[feat_cols].values.astype(np.float64)
+        # Feature validation and conversion
+        try:
+            X_train = train_df[feat_cols].values.astype(np.float64)
+            X_test  = test_df[feat_cols].values.astype(np.float64)
+        except ValueError as e:
+            # If conversion fails, identify which columns are non-numeric
+            non_numeric = []
+            for col in feat_cols:
+                try:
+                    train_df[col].values.astype(np.float64)
+                except ValueError:
+                    non_numeric.append(col)
+            raise ValueError(f"Feature conversion to float failed. Columns containing non-numeric data without being marked as categorical: {non_numeric}. Original error: {e}")
 
         if self.scale:
             scaler = StandardScaler() if self.scaler_type == "standard" else MinMaxScaler()

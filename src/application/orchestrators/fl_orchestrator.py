@@ -88,6 +88,8 @@ class FLResults:
     hybrid_weights: Dict[str, float] = field(default_factory=lambda: {'local_weight': 0.4, 'global_weight': 0.6})  # Pesos usados en inferencia híbrida
 
 
+from src.domain.config.config_models import FLConfig
+
 class FLEXOrchestrator:
     """
     Enhanced Federated Learning Orchestrator using FLEX Framework.
@@ -97,40 +99,34 @@ class FLEXOrchestrator:
     - Both Client-Server and P2P architectures
     - Multiple aggregation strategies
     - Full tree-based federation
-    
-    Usage:
-        config = {
-            'n_clients': 5,
-            'distribution': 'noniid_dirichlet',  # or 'iid'
-            'alpha': 0.5,  # Dirichlet parameter (lower = more heterogeneous)
-            'strategy': 'S1',  # Aggregation strategy
-            'n_estimators': 100,
-            'alpha_pf': 0.1,  # Proactive Forest parameter
-            'architecture': 'client_server',  # or 'p2p'
-        }
-        
-        orchestrator = FLEXOrchestrator.from_config(config)
-        orchestrator.setup_federation(dataset_split)
-        results = orchestrator.run_federated_round()
     """
 
     def __init__(self, 
-                 config: dict, 
+                 config: Union[dict, FLConfig], 
                  step_callback: Optional[Callable] = None,
                  use_flex_pool: bool = True):
         """
         Initialize orchestrator.
         
         Args:
-            config: Configuration dict with federation parameters
+            config: Configuration dict or FLConfig model with federation parameters
             step_callback: Optional callback for progress tracking
             use_flex_pool: Whether to use FlexPool with decorators (if FLEX available)
         """
-        self.config = config
+        # Convert dict to FLConfig if necessary for internal consistency
+        if isinstance(config, dict):
+            # Only use Pydantic for validation if it's a standard dict, 
+            # might need partial parsing if dict is not complete
+            self.config_dict = config
+            self.config = config # Keep original for backward compat in methods
+        else:
+            self.config = config.dict()
+            self.config_dict = self.config
+
         self.step_callback = step_callback or (lambda *a, **kw: None)
-        self.dataset_split = None
+        self.dataset_split: Optional[DatasetSplit] = None
         self.federated_data = None
-        self.client_partitions = {}
+        self.client_partitions: Dict[str, Tuple[np.ndarray, np.ndarray]] = {}
         self.use_flex_pool = use_flex_pool
         self.flex_pool = None
         
@@ -252,8 +248,13 @@ class FLEXOrchestrator:
         dataset_split.y_train = y_train_fed
         self.dataset_split = dataset_split
         
-        # Fit label service once with all possible labels
-        self.label_svc.fit(dataset_split.get_all_labels())
+        # Fit label service once with all possible labels, prioritize class names if available
+        self.label_svc.fit(dataset_split.class_names or dataset_split.get_all_labels())
+        
+        # Inject class names into model config so they travel through FLEX primitives
+        model_config = self.config.setdefault('model', {})
+        if dataset_split.class_names:
+            model_config['class_names'] = dataset_split.class_names
 
         # Create FLEX Dataset
         centralized_dataset = Dataset.from_array(
@@ -698,7 +699,11 @@ class FLEXOrchestrator:
                 verbose=self._get_config_value('verbose', default=False),
                 class_names=self.dataset_split.class_names
             )
-            pf.fit(X_train_local, y_train_local, X_val=X_val_local, y_val=y_val_local)
+            # Ensure labels are strings (names) even if FLEX partitioned them as indices
+            y_train_local_str = self.label_svc.inverse_transform(self.label_svc.transform(y_train_local))
+            y_val_local_str = self.label_svc.inverse_transform(self.label_svc.transform(y_val_local))
+
+            pf.fit(X_train_local, y_train_local_str, X_val=X_val_local, y_val=y_val_local_str)
 
             # Evaluate each tree individually on local validation set (Real Tree Ranking)
             tree_metrics = []

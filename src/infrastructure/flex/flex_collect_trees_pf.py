@@ -63,7 +63,8 @@ def set_aggregated_trees_pf(server_flex_model: Dict[str, Any]) -> Dict[str, Any]
     from src.domain.model.proactive_forest import ProactiveForest
     
     global_trees = server_flex_model.get('global_trees', [])
-    class_names = server_flex_model.get('config', {}).get('class_names', None)
+    config = server_flex_model.get('config', {})
+    class_names = config.get('class_names') or config.get('model', {}).get('class_names')
     
     server_flex_model['model'] = ProactiveForest.from_trees(global_trees, class_names=class_names)
     server_flex_model['trees'] = global_trees

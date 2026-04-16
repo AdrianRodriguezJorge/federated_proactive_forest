@@ -110,14 +110,57 @@ def render():
             c3.metric("Árboles global",   results.n_trees_global)
             c4.metric("Estrategia",       results.strategy_id)
 
-            # PW-specific: show convergence round
-            if results.strategy_id == "PW" and results.convergence_round is not None:
-                st.info(
-                    f"🛑 **Convergencia PW alcanzada en ronda {results.convergence_round}** "
-                    f"(de {results.num_rounds} máx.). "
-                    f"Pesos híbridos: local={results.hybrid_weights.get('local_weight', 0.5):.2f}, "
-                    f"global={results.hybrid_weights.get('global_weight', 0.5):.2f}"
-                )
+            # PW-specific: show convergence round and dashboard
+            if results.strategy_id == "PW":
+                st.divider()
+                st.subheader("📊 Dashboard de Convergencia (Progressive Windows)")
+                
+                # Metrics at the top
+                rev_c1, rev_c2, rev_c3 = st.columns(3)
+                if results.convergence_round is not None:
+                    rev_c1.metric("Ronda de parada", results.convergence_round)
+                    
+                    reason = "Progreso estable (Umbral)" if results.convergence_round < results.num_rounds else "Máximo de rondas alcanzado"
+                    rev_c2.metric("Motivo de parada", "Convergencia" if results.convergence_round < results.num_rounds else "Límite")
+                    st.info(f"💡 **Motivo de la parada**: {reason}")
+                
+                # Accordion for rounds detail
+                if hasattr(results, 'round_logs') and results.round_logs:
+                    with st.expander("📈 Visualizar evolución de métricas", expanded=True):
+                        # Prepare data for plotting
+                        plot_rows = []
+                        for log in results.round_logs:
+                            plot_rows.append({
+                                'Ronda': log['round'],
+                                'Accuracy (Val)': log['round_accuracy'],
+                                'Árboles Totales': log['trees_after']
+                            })
+                        
+                        df_plot = pd.DataFrame(plot_rows)
+                        
+                        # Accuracy Chart
+                        st.write("**Evolución de Accuracy Global**")
+                        st.line_chart(df_plot.set_index('Ronda')['Accuracy (Val)'])
+                        
+                        # Forest Size Chart
+                        st.write("**Evolución del tamaño del bosque**")
+                        st.bar_chart(df_plot.set_index('Ronda')['Árboles Totales'])
+                        
+                        # Detailed table
+                        st.write("**Detalle de agregación por ronda**")
+                        detail_rows = []
+                        for log in results.round_logs:
+                            detail_rows.append({
+                                'Ronda': log['round'],
+                                'Árboles previos': log['trees_before'],
+                                'Nuevos (W)': sum(log['client_windows'].values()),
+                                'Seleccionados': sum(log['selected_trees'].values()),
+                                'Total final': log['trees_after'],
+                                'Accuracy': f"{log['round_accuracy']:.4f}"
+                            })
+                        st.table(pd.DataFrame(detail_rows))
+                else:
+                    st.warning("No se encontraron logs detallados de rondas para esta ejecución.")
 
             # Tabla rápida de clientes
             st.subheader("Resumen por cliente")

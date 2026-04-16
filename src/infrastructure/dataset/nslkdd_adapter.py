@@ -71,7 +71,9 @@ class NslKddAdapter(IDatasetAdapter):
             X_train = self._scaler.fit_transform(X_train)
             X_test  = self._scaler.transform(X_test)
 
-        self._class_names_ = sorted(list(set(y_train_raw) | set(y_test_raw)))  # clases únicas en orden de train y test
+        # Unique classes as strings, sorted
+        all_labels = sorted(list(set(y_train) | set(y_test)))
+        self._class_names_ = [str(c) for c in all_labels]
 
         return DatasetSplit(
             X_train=X_train, X_test=X_test,

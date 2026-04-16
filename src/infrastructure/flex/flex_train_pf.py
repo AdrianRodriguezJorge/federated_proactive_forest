@@ -35,7 +35,8 @@ def train_pf(client_flex_model: Dict[str, Any]) -> Dict[str, Any]:
     train_cmd = TrainCommand(lambda: ProactiveForest(
         n_estimators=client_flex_model.get('config', {}).get('n_estimators', 100),
         alpha=client_flex_model.get('config', {}).get('alpha', 0.1),
-        verbose=client_flex_model.get('config', {}).get('verbose', False)
+        verbose=client_flex_model.get('config', {}).get('verbose', False),
+        class_names=client_flex_model.get('config', {}).get('class_names')
     ))
 
     # Assume data is already in client_flex_model

@@ -9,9 +9,17 @@ from .progressive_forest import ComparativeProgressiveForest
 class ProactiveForest(ABCForest):
     """
     Proactive Forest implementation for Federated Learning.
+    
+    This class wraps the ProactiveForestClassifier and ComparativeProgressiveForest
+    to provide a high-level API for federated tree-based learning.
     """
 
-    def __init__(self, n_estimators: int = 100, alpha: float = 0.1, random_state: int = 42, verbose: bool = False, class_names: Optional[List[str]] = None):
+    def __init__(self, 
+                 n_estimators: int = 100, 
+                 alpha: float = 0.1, 
+                 random_state: int = 42, 
+                 verbose: bool = False, 
+                 class_names: Optional[List[str]] = None):
         """
         Args:
             n_estimators: Number of trees in the forest
@@ -25,7 +33,7 @@ class ProactiveForest(ABCForest):
         self.random_state = random_state
         self.verbose = verbose
         self.class_names = class_names
-        self._is_fitted = False
+        self._is_fitted: bool = False
 
         # Create the internal ProactiveForestClassifier using CPF
         self._classifier = ProactiveForestClassifier(
@@ -55,26 +63,22 @@ class ProactiveForest(ABCForest):
             X_val: Optional validation features for early stopping
             y_val: Optional validation labels for early stopping
         """
-        y_arr = np.asarray(y)
+        from ..services.label_service import SimpleLabelService
+        label_svc = SimpleLabelService(self.class_names)
+        
+        if self.class_names is None or len(self.class_names) == 0:
+            # If no class_names provided at init, we fit them from y
+            label_svc.fit(y)
+            self.class_names = label_svc.classes
 
-        # Convert indices to class names if class_names is provided.
-        if self.class_names is not None and np.issubdtype(y_arr.dtype, np.integer):
-            if np.any((y_arr < 0) | (y_arr >= len(self.class_names))):
-                raise ValueError("y contains index values outside class_names range")
-            y_labels = np.array([self.class_names[int(v)] for v in y_arr], dtype=object)
-        else:
-            y_labels = y_arr
+        # Convert y to official string labels for internal consistency
+        y_labels = label_svc.inverse_transform(label_svc.transform(y))
 
         # Configure encoder on the classifier for consistent global class mapping.
         if not hasattr(self._classifier, '_encoder_dict'):
-            if self.class_names is not None and len(self.class_names) > 0:
-                self._classifier.classes_ = np.array(self.class_names)
-                self._classifier._encoder_dict = {val: idx for idx, val in enumerate(self.class_names)}
-                self._classifier._decoder_dict = {idx: val for idx, val in enumerate(self.class_names)}
-            else:
-                self._classifier.classes_ = np.unique(y_labels)
-                self._classifier._encoder_dict = {val: idx for idx, val in enumerate(self._classifier.classes_)}
-                self._classifier._decoder_dict = {idx: val for idx, val in enumerate(self._classifier.classes_)}
+            self._classifier.classes_ = np.array(self.class_names)
+            self._classifier._encoder_dict = {val: idx for idx, val in enumerate(self.class_names)}
+            self._classifier._decoder_dict = {idx: val for idx, val in enumerate(self.class_names)}
         
         self._classifier._n_classes = len(self._classifier.classes_)
 
@@ -92,8 +96,7 @@ class ProactiveForest(ABCForest):
                 train_idx, val_idx = indices[:split_idx], indices[split_idx:]
                 
                 X_train, X_val = X[train_idx], X[val_idx]
-                y_train, y_val = y_labels[train_idx], y_labels[val_idx]
-                y_val_labels = y_val
+                y_train, y_val_labels = y_labels[train_idx], y_labels[val_idx]
             else:
                 # Warning: dataset too small for real split, fallback to overlap with warning
                 import warnings
@@ -103,13 +106,7 @@ class ProactiveForest(ABCForest):
             X_train = X
             y_train = y_labels
             # Process y_val the same way we process y
-            y_val_arr = np.asarray(y_val)
-            if self.class_names is not None and np.issubdtype(y_val_arr.dtype, np.integer):
-                if np.any((y_val_arr < 0) | (y_val_arr >= len(self.class_names))):
-                    raise ValueError("y_val contains index values outside class_names range")
-                y_val_labels = np.array([self.class_names[int(v)] for v in y_val_arr], dtype=object)
-            else:
-                y_val_labels = y_val_arr
+            y_val_labels = label_svc.inverse_transform(label_svc.transform(y_val))
 
         # Use Comparative Progressive Forest with early stopping
         self._cpf = ComparativeProgressiveForest(self._classifier, verbose=self.verbose)
@@ -117,7 +114,15 @@ class ProactiveForest(ABCForest):
         self._is_fitted = True
 
     def predict(self, X: np.ndarray) -> np.ndarray:
-        """Make predictions using the trained forest."""
+        """
+        Make predictions using the trained forest.
+        
+        Args:
+            X: Input features
+            
+        Returns:
+            np.ndarray: Predicted class labels
+        """
         if not self._is_fitted or self._cpf is None:
             raise ValueError("Forest not fitted yet. Call fit() first.")
 
@@ -125,29 +130,55 @@ class ProactiveForest(ABCForest):
         y_pred = self._cpf.return_forest().predict(X)
 
         if isinstance(y_pred, np.ndarray) and np.issubdtype(y_pred.dtype, np.integer):
-            if hasattr(self._classifier, '_decoder_dict'):
-                y_pred = np.array([self._classifier._decoder_dict[val] for val in y_pred])
+            from ..services.label_service import SimpleLabelService
+            label_svc = SimpleLabelService(self.class_names)
+            # Safe reverse mapping
+            y_pred = label_svc.inverse_transform(y_pred)
 
         return np.array(y_pred)
 
     def get_trees(self) -> List[Any]:
-        """Return the list of trained trees."""
+        """
+        Return the list of trained trees.
+        
+        Returns:
+            List[Any]: List of tree objects
+        """
         if not self._is_fitted or self._cpf is None:
             raise ValueError("Forest not fitted yet.")
         forest = self._cpf.return_forest()
         return forest.get_trees()
 
-    def diversity_measure(self, X, y, diversity='pcd'):
-        """Calculate diversity measure of the forest."""
+    def diversity_measure(self, X: np.ndarray, y: np.ndarray, diversity: str = 'pcd') -> float:
+        """
+        Calculate diversity measure of the forest.
+        
+        Args:
+            X: Input features
+            y: Labels
+            diversity: Type of diversity measure ('pcd' supported)
+            
+        Returns:
+            float: Diversity score
+        """
         if not self._is_fitted or self._cpf is None:
             raise ValueError("Forest not fitted yet.")
         forest = self._cpf.return_forest()
         return forest.diversity_measure(X, y, diversity)
 
     @classmethod
-    def from_trees(cls, trees: List[Any], class_names: List[str] = None) -> 'ProactiveForest':
-        """Create a forest instance from a list of trees."""
-        instance = cls()
+    def from_trees(cls, trees: List[Any], class_names: Optional[List[str]] = None) -> 'ProactiveForest':
+        """
+        Create a forest instance from a list of trees.
+        
+        Args:
+            trees: List of tree objects
+            class_names: Optional list of class names for decoding
+            
+        Returns:
+            ProactiveForest: A fitted forest instance
+        """
+        instance = cls(class_names=class_names)
 
         # Infer n_features from the trees (assuming all trees have the same n_features)
         if trees:

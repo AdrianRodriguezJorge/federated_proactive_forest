@@ -33,8 +33,6 @@ class ForestReport:
     def report(self) -> str:
         """Generate a detailed classification report string."""
         # Create dummy y_true and y_pred from confusion matrix for classification_report
-        # This is a bit hacky, but since we don't store the original predictions,
-        # we reconstruct them from the confusion matrix
         cm = self.confusion_matrix
         y_true = []
         y_pred = []
@@ -59,7 +57,6 @@ class ForestEvaluator:
                  metrics_svc: IMetricsService = None) -> ForestReport:
         
         # If no metrics service provided, we can't perform high-level evaluation
-        # (Alternatively, we could have a default implementation here, but injection is better)
         if metrics_svc is None:
             raise ValueError("An implementation of IMetricsService must be provided for evaluation.")
 
@@ -71,32 +68,18 @@ class ForestEvaluator:
         if hasattr(y_pred, 'values'):
             y_pred = y_pred.values
 
-        # Ensure y and y_pred are strings for consistency
-        if len(y) > 0 and isinstance(y[0], (int, np.integer)):
-            # Validate indices are within range before converting
-            y_arr = np.asarray(y, dtype=np.int64)
-            if np.any((y_arr < 0) | (y_arr >= len(class_names))):
-                import warnings
-                invalid_mask = (y_arr < 0) | (y_arr >= len(class_names))
-                warnings.warn(
-                    f"y contains {np.sum(invalid_mask)} indices out of range [0, {len(class_names)}). "
-                    f"Clipping to valid range."
-                )
-                y_arr = np.clip(y_arr, 0, len(class_names) - 1)
-            y = np.array([class_names[i] for i in y_arr])
+        # Ensure y and y_pred are normalized using projects standards
+        from ..services.label_service import SimpleLabelService
+        label_svc = SimpleLabelService(class_names)
         
-        if len(y_pred) > 0 and isinstance(y_pred[0], (int, np.integer)):
-            # Validate indices are within range before converting
-            y_pred_arr = np.asarray(y_pred, dtype=np.int64)
-            if np.any((y_pred_arr < 0) | (y_pred_arr >= len(class_names))):
-                import warnings
-                invalid_mask = (y_pred_arr < 0) | (y_pred_arr >= len(class_names))
-                warnings.warn(
-                    f"y_pred contains {np.sum(invalid_mask)} indices out of range [0, {len(class_names)}). "
-                    f"Clipping to valid range."
-                )
-                y_pred_arr = np.clip(y_pred_arr, 0, len(class_names) - 1)
-            y_pred = np.array([class_names[i] for i in y_pred_arr])
+        # Convert raw labels (which could be strings or indices) to project class names
+        y_indices = label_svc.transform(y)
+        y_pred_indices = label_svc.transform(y_pred)
+        
+        # Finally use the string representation for metrics that expect them 
+        classes_arr = np.array(label_svc.classes)
+        y = classes_arr[y_indices] if len(y_indices) > 0 else np.array([])
+        y_pred = classes_arr[y_pred_indices] if len(y_pred_indices) > 0 else np.array([])
         
         labels = class_names  # Usar nombres de clases como labels
 
@@ -156,32 +139,16 @@ class ForestEvaluator:
         if hasattr(y_pred, 'values'):
             y_pred = y_pred.values
 
-        # Ensure y and y_pred are strings for consistency
-        if len(y_true) > 0 and isinstance(y_true[0], (int, np.integer)):
-            # Validate indices are within range before converting
-            y_true_arr = np.asarray(y_true, dtype=np.int64)
-            if np.any((y_true_arr < 0) | (y_true_arr >= len(class_names))):
-                import warnings
-                invalid_mask = (y_true_arr < 0) | (y_true_arr >= len(class_names))
-                warnings.warn(
-                    f"y_true contains {np.sum(invalid_mask)} indices out of range [0, {len(class_names)}). "
-                    f"Clipping to valid range."
-                )
-                y_true_arr = np.clip(y_true_arr, 0, len(class_names) - 1)
-            y_true = np.array([class_names[i] for i in y_true_arr])
+        # Use centralized LabelService for normalization
+        from ..services.label_service import SimpleLabelService
+        label_svc = SimpleLabelService(class_names)
         
-        if len(y_pred) > 0 and isinstance(y_pred[0], (int, np.integer)):
-            # Validate indices are within range before converting
-            y_pred_arr = np.asarray(y_pred, dtype=np.int64)
-            if np.any((y_pred_arr < 0) | (y_pred_arr >= len(class_names))):
-                import warnings
-                invalid_mask = (y_pred_arr < 0) | (y_pred_arr >= len(class_names))
-                warnings.warn(
-                    f"y_pred contains {np.sum(invalid_mask)} indices out of range [0, {len(class_names)}). "
-                    f"Clipping to valid range."
-                )
-                y_pred_arr = np.clip(y_pred_arr, 0, len(class_names) - 1)
-            y_pred = np.array([class_names[i] for i in y_pred_arr])
+        y_true_indices = label_svc.transform(y_true)
+        y_pred_indices = label_svc.transform(y_pred)
+        
+        classes_arr = np.array(label_svc.classes)
+        y_true = classes_arr[y_true_indices] if len(y_true_indices) > 0 else np.array([])
+        y_pred = classes_arr[y_pred_indices] if len(y_pred_indices) > 0 else np.array([])
         
         labels = class_names
 

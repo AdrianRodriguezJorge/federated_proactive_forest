@@ -1,4 +1,4 @@
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Union
 import os
 from pathlib import Path
 
@@ -12,6 +12,7 @@ DATASET_METADATA = {
     "students_dropout": {
         "target_column": "Target",
         "sep": ";",
+        "file_path": "data/students_dropout.csv",
         "categorical_features": [
             "Marital status", "Application mode", "Application order", "Course",
             "Daytime/evening attendance", "Previous qualification", "Nacionality",
@@ -28,17 +29,40 @@ DATASET_METADATA = {
     "car": {
         "target_column": "class",
         "sep": ",",
+        "file_path": "data/car.csv",
         "categorical_features": ["buying", "maint", "doors", "persons", "lug_boot", "safety"]
     },
     "nursery": {
         "target_column": "class",
         "sep": ",",
+        "file_path": "data/nursery.csv",
         "categorical_features": ["parents", "has_nurs", "form", "children", "housing", "finance", "social", "health"]
     },
     "vowel": {
         "target_column": "Class",
         "sep": ",",
+        "file_path": "data/vowel.csv",
         "columns_to_drop": ["Train or Test", "Speaker Number", "Sex"]
+    },
+    "letter": {
+        "target_column": "class",
+        "sep": ",",
+        "file_path": "data/letter.csv"
+    },
+    "optdigits": {
+        "target_column": "class",
+        "sep": ",",
+        "file_path": "data/optdigits.csv"
+    },
+    "sonar": {
+        "target_column": "Class",
+        "sep": ",",
+        "file_path": "data/sonar.csv"
+    },
+    "spambase": {
+        "target_column": "class",
+        "sep": ",",
+        "file_path": "data/spambase.csv"
     }
 }
 
@@ -92,7 +116,7 @@ class DatasetFactory:
         categorical_features = d.get("categorical_features") or metadata.get("categorical_features", [])
         columns_to_drop = d.get("columns_to_drop") or metadata.get("columns_to_drop", [])
         sep = d.get("sep") or metadata.get("sep", ",")
-        file_path = d.get("file_path") or d.get("train_path")
+        file_path = d.get("file_path") or d.get("train_path") or metadata.get("file_path")
 
         # If relative, join with project root
         if file_path and not Path(file_path).is_absolute():
