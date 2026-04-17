@@ -91,7 +91,8 @@ class GenericCsvAdapter(IDatasetAdapter):
         y_train_raw = train_df[self.target_column].astype(str).values
         y_test_raw = test_df[self.target_column].astype(str).values
         
-        le.fit(y_train_raw)
+        # Fit on BOTH train and test to guarantee all classes are known
+        le.fit(np.concatenate([y_train_raw, y_test_raw]))
         self._class_names_ = [str(c) for c in le.classes_]
         
         y_train = y_train_raw

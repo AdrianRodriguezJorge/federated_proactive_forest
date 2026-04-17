@@ -1,76 +1,132 @@
-"""FLEX primitive for training Proactive Forest on clients."""
-from typing import Dict, Any
+from typing import Dict, Any, List
+from flex.model import FlexModel
+from flex.pool.decorators import init_server_model, collect_clients_weights
 
 
-def init_server_model_pf():
+@init_server_model
+def init_server_model_pf(config: Dict[str, Any] = None):
     """
     Initialize server model for Proactive Forest.
-    FLEX primitive function (called once at start).
+    FLEX primitive function.
     
-    Returns a dict with server-side model state.
+    Returns a dict that will be used to update the FlexModel.
     """
     return {
-        'model': None,  # Will be set after aggregation
+        'model': None,
         'trees': [],
-        'config': {},
+        'config': config or {},
     }
 
 
-def train_pf(client_flex_model: Dict[str, Any]) -> Dict[str, Any]:
+def train_pf(client_flex_model: FlexModel, client_data: Any) -> FlexModel:
     """
-    Train Proactive Forest on client data.
-    FLEX primitive function (called on each client).
-    
-    Assumes data is already in client_flex_model as 'X_train', 'y_train'.
-    
-    Args:
-        client_flex_model: Client model state dict
-        
-    Returns:
-        Updated client_flex_model with trained 'model' and 'trees'
+    Train Proactive Forest on client data with local validation.
     """
+    from sklearn.model_selection import train_test_split
     from src.application.commands.train_command import TrainCommand
     from src.domain.model.proactive_forest import ProactiveForest
+    from src.domain.metadata.client_metadata import ClientMetadata
+    from src.domain.metrics.forest_evaluator import ForestEvaluator
+    from src.infrastructure.metrics.sklearn_metrics_service import SklearnMetricsService
 
-    train_cmd = TrainCommand(lambda: ProactiveForest(
-        n_estimators=client_flex_model.get('config', {}).get('n_estimators', 100),
-        alpha=client_flex_model.get('config', {}).get('alpha', 0.1),
-        verbose=client_flex_model.get('config', {}).get('verbose', False),
-        class_names=client_flex_model.get('config', {}).get('class_names')
-    ))
+    # 1. Prepare data
+    X, y = client_data.to_numpy()
+    
+    # Local validation split (20%)
+    try:
+        X_train, X_val, y_train, y_val = train_test_split(
+            X, y, test_size=0.2, random_state=42, stratify=y if len(np.unique(y)) > 1 else None
+        )
+    except Exception:
+        X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
 
-    # Assume data is already in client_flex_model
-    updated_data = train_cmd.execute_on_client(client_flex_model)
-    client_flex_model.update(updated_data)
+    config = client_flex_model.get('config', {})
+    
+    # class_names may be nested under 'model' in the config dict
+    class_names = config.get('class_names')
+    if not class_names:
+        class_names = config.get('model', {}).get('class_names', [])
+
+    # 2. Train local model
+    pf = ProactiveForest(
+        n_estimators=config.get('n_estimators', 100),
+        alpha=config.get('alpha', 0.1),
+        verbose=config.get('verbose', False),
+        class_names=class_names
+    )
+    
+    pf.fit(X_train, y_train)
+    
+    # 3. Local Evaluation for Metadata
+    metrics_svc = SklearnMetricsService()
+    report = ForestEvaluator.evaluate(
+        pf, X_val, y_val, 
+        class_names=class_names,
+        metrics_svc=metrics_svc
+    )
+    
+    # Individual tree metrics for ranking strategies (S4, S7, PW)
+    from src.domain.services.label_service import SimpleLabelService
+    label_svc = SimpleLabelService(class_names)
+    
+    y_val_norm = label_svc.transform(y_val)
+    
+    tree_metrics = []
+    for tree in pf.get_trees():
+        y_p = tree.predict(X_val)
+        y_p_norm = label_svc.transform(y_p)
+        
+        tree_metrics.append({
+            'accuracy': metrics_svc.accuracy_score(y_val_norm, y_p_norm),
+            'macro_f1': metrics_svc.f1_score(y_val_norm, y_p_norm, average='macro')
+        })
+
+
+
+    # 4. Create and store metadata
+    # Use actor_id to ensure consistency
+    actor_id = getattr(client_flex_model, 'actor_id', 'unknown')
+    meta = ClientMetadata(
+        client_id=actor_id,
+        n_trees=len(pf.get_trees()),
+        accuracy=report.accuracy,
+        macro_f1=report.macro_f1,
+        pcd=report.pcd,
+        tree_metrics=tree_metrics
+    )
+    
+    client_flex_model.update({
+        'model': pf,
+        'trees': pf.get_trees(),
+        'metadata': meta,
+        'X_train': X_train,
+        'y_train': y_train
+    })
     
     return client_flex_model
 
 
-def collect_clients_trees_pf(server_flex_model: Dict[str, Any],
-                             clients_flex_models: Dict[str, Dict[str, Any]]) -> None:
+@collect_clients_weights
+def collect_clients_trees_pf(client_flex_model: FlexModel, *args, **kwargs) -> List[Any]:
     """
-    Collect trees from all clients into server model.
-    FLEX primitive function (called on server/aggregator).
+    Collect trees from a single client.
+    FLEX primitive function decorated with @collect_clients_weights.
     
-    Processes all client models and consolidates their trees for aggregation.
+    The decorator handles the accumulation of these return values into 
+    server_flex_model['weights'].
     
     Args:
-        server_flex_model: Server-side model to store collected data
-        clients_flex_models: Dict of all client models
-    """
-    all_client_trees = []
-    client_metadata = {}
-
-    for client_id, client_model in clients_flex_models.items():
-        trees = client_model.get('trees', [])
-        all_client_trees.append(trees)
+        client_flex_model: Client model state (FlexModel)
         
-        # Extract metadata from client
-        metadata = client_model.get('metadata', {})
-        client_metadata[client_id] = metadata
-
-    server_flex_model['all_client_trees'] = all_client_trees
-    server_flex_model['client_metadata'] = client_metadata
+    Returns:
+        List of trees from this client
+    """
+    # Just return what we want to aggregate
+    # We can also return a dict if we want to include metadata
+    return {
+        'trees': client_flex_model.get('trees', []),
+        'metadata': client_flex_model.get('metadata', {})
+    }
 
 
 __all__ = ['init_server_model_pf', 'train_pf', 'collect_clients_trees_pf']

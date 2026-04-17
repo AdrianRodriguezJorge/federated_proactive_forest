@@ -8,13 +8,14 @@ class FlexPoolFactory:
     """
 
     @staticmethod
-    def create_client_server_pool(federated_data, init_model_func):
+    def create_client_server_pool(federated_data, init_model_func, **kwargs):
         """
-        Create a client-server FLEX pool.
+        Create a client-server FLEX pool using the native classmethod.
 
         Args:
             federated_data: FedDataDistribution from FLEX
             init_model_func: Function to initialize the model
+            **kwargs: Additional arguments passed to init_model_func
 
         Returns:
             FlexPool instance
@@ -24,17 +25,12 @@ class FlexPoolFactory:
         except ImportError:
             raise ImportError("FLEX not installed. Run: pip install flex-framework")
 
-        # Create actors
-        actors = FlexPoolFactory._create_client_server_actors(federated_data)
-
-        # Create pool
-        pool = FlexPool(
-            federated_data=federated_data,
-            actors=actors,
-            init_func=init_model_func
+        # Use native classmethod which handles actor creation and model initialization
+        return FlexPool.client_server_pool(
+            fed_dataset=federated_data,
+            init_func=init_model_func,
+            **kwargs
         )
-
-        return pool
 
     @staticmethod
     def _create_client_server_actors(federated_data):

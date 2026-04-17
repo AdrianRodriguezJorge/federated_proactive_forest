@@ -68,20 +68,30 @@ class ForestEvaluator:
         if hasattr(y_pred, 'values'):
             y_pred = y_pred.values
 
-        # Ensure y and y_pred are normalized using projects standards
+        # Ensure y and y_pred are normalized using project standards
         from ..services.label_service import SimpleLabelService
         label_svc = SimpleLabelService(class_names)
         
-        # Convert raw labels (which could be strings or indices) to project class names
-        y_indices = label_svc.transform(y)
-        y_pred_indices = label_svc.transform(y_pred)
+        # If class_names is empty, skip label conversion and use raw values (assumed numeric)
+        if not class_names:
+            y_norm = np.array(y)
+            y_pred_norm = np.array(y_pred)
+        else:
+            # Convert raw labels (which could be strings or indices) to project class names
+            y_indices = label_svc.transform(y)
+            y_pred_indices = label_svc.transform(y_pred)
+            
+            # Finally use the string representation for metrics that expect them 
+            classes_arr = np.array(label_svc.classes)
+            y_norm = classes_arr[y_indices] if len(y_indices) > 0 else np.array([])
+            y_pred_norm = classes_arr[y_pred_indices] if len(y_pred_indices) > 0 else np.array([])
         
-        # Finally use the string representation for metrics that expect them 
-        classes_arr = np.array(label_svc.classes)
-        y = classes_arr[y_indices] if len(y_indices) > 0 else np.array([])
-        y_pred = classes_arr[y_pred_indices] if len(y_pred_indices) > 0 else np.array([])
+        # Use normalized variables for metric calculations
+        y = y_norm
+        y_pred = y_pred_norm
         
-        labels = class_names  # Usar nombres de clases como labels
+        # Use class_names as labels only if they are provided; otherwise let sklearn infer them
+        labels = class_names if class_names else None  # Usar nombres de clases como labels cuando existen
 
         per_f1   = metrics_svc.f1_score(y, y_pred, average=None)
         per_prec = metrics_svc.precision_score(y, y_pred, average=None)

@@ -1,17 +1,18 @@
 from typing import List, Any, Optional
 import numpy as np
-
+from flextrees.utils import GlobalRandomForest
 from .base_forest import ABCForest
 from .cpf_implementation.estimator import ProactiveForestClassifier
 from .progressive_forest import ComparativeProgressiveForest
 
 
-class ProactiveForest(ABCForest):
+class ProactiveForest(GlobalRandomForest, ABCForest):
     """
     Proactive Forest implementation for Federated Learning.
     
     This class wraps the ProactiveForestClassifier and ComparativeProgressiveForest
     to provide a high-level API for federated tree-based learning.
+    It inherits from GlobalRandomForest to be compatible with flex-trees utilities.
     """
 
     def __init__(self, 
@@ -28,7 +29,9 @@ class ProactiveForest(ABCForest):
             verbose: Whether to print CPF training logs
             class_names: List of all possible class names (for consistent encoding)
         """
-        self.n_estimators = n_estimators
+        # Call GlobalRandomForest init (max_depth is not directly used here but good to pass if needed)
+        super().__init__(n_estimators=n_estimators)
+        
         self.alpha = alpha
         self.random_state = random_state
         self.verbose = verbose
@@ -108,10 +111,12 @@ class ProactiveForest(ABCForest):
             # Process y_val the same way we process y
             y_val_labels = label_svc.inverse_transform(label_svc.transform(y_val))
 
-        # Use Comparative Progressive Forest with early stopping
         self._cpf = ComparativeProgressiveForest(self._classifier, verbose=self.verbose)
         self._cpf.fit(X_train, y_train, X_val, y_val_labels)
         self._is_fitted = True
+        
+        # Sync with GlobalRandomForest property
+        self.estimators_ = self.get_trees()
 
     def predict(self, X: np.ndarray) -> np.ndarray:
         """
@@ -201,6 +206,7 @@ class ProactiveForest(ABCForest):
         # Mark as fitted
         instance._classifier = dummy_classifier
         instance._is_fitted = True
+        instance.estimators_ = trees
 
         # Wrap with empty CPF (not used for prediction)
         instance._cpf = ComparativeProgressiveForest(dummy_classifier)
