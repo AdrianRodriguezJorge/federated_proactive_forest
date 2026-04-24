@@ -93,9 +93,9 @@ class ForestEvaluator:
         # Use class_names as labels only if they are provided; otherwise let sklearn infer them
         labels = class_names if class_names else None  # Usar nombres de clases como labels cuando existen
 
-        per_f1   = metrics_svc.f1_score(y, y_pred, average=None)
-        per_prec = metrics_svc.precision_score(y, y_pred, average=None)
-        per_rec  = metrics_svc.recall_score(y, y_pred, average=None)
+        per_f1   = metrics_svc.f1_score(y, y_pred, average=None, labels=labels)
+        per_prec = metrics_svc.precision_score(y, y_pred, average=None, labels=labels)
+        per_rec  = metrics_svc.recall_score(y, y_pred, average=None, labels=labels)
 
         
         # PCD usando el método nativo del bosque
@@ -109,9 +109,9 @@ class ForestEvaluator:
 
         return ForestReport(
             accuracy=metrics_svc.accuracy_score(y, y_pred),
-            macro_f1=metrics_svc.f1_score(y, y_pred, average='macro'),
-            macro_precision=metrics_svc.precision_score(y, y_pred, average='macro'),
-            macro_recall=metrics_svc.recall_score(y, y_pred, average='macro'),
+            macro_f1=metrics_svc.f1_score(y, y_pred, average='macro', labels=labels),
+            macro_precision=metrics_svc.precision_score(y, y_pred, average='macro', labels=labels),
+            macro_recall=metrics_svc.recall_score(y, y_pred, average='macro', labels=labels),
             per_class_f1={cn: float(v) for cn, v in zip(class_names, per_f1)},
             per_class_prec={cn: float(v) for cn, v in zip(class_names, per_prec)},
             per_class_recall={cn: float(v) for cn, v in zip(class_names, per_rec)},

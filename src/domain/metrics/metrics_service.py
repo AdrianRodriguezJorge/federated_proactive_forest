@@ -13,7 +13,7 @@ class IMetricsService(ABC):
         pass
 
     @abstractmethod
-    def f1_score(self, y_true: np.ndarray, y_pred: np.ndarray, average: str = 'macro') -> Any:
+    def f1_score(self, y_true: np.ndarray, y_pred: np.ndarray, average: str = 'macro', labels: List[Any] = None) -> Any:
         # returns float if average is not None, else np.ndarray
         pass
 
@@ -22,11 +22,11 @@ class IMetricsService(ABC):
         pass
 
     @abstractmethod
-    def precision_score(self, y_true: np.ndarray, y_pred: np.ndarray, average: str = 'macro') -> Any:
+    def precision_score(self, y_true: np.ndarray, y_pred: np.ndarray, average: str = 'macro', labels: List[Any] = None) -> Any:
         pass
 
     @abstractmethod
-    def recall_score(self, y_true: np.ndarray, y_pred: np.ndarray, average: str = 'macro') -> Any:
+    def recall_score(self, y_true: np.ndarray, y_pred: np.ndarray, average: str = 'macro', labels: List[Any] = None) -> Any:
         pass
 
 

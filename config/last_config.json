@@ -1,10 +1,10 @@
 {
   "dataset": {
-    "type": "Sonar",
-    "file_path": "data/sonar.csv",
+    "type": "Nursery",
+    "file_path": "data/nursery.csv",
     "train_path": "",
     "test_path": "",
-    "target_column": "Class",
+    "target_column": "class",
     "test_size": 0.2,
     "scale": true,
     "scaler_type": "standard",

@@ -330,32 +330,48 @@ class FLEXOrchestrator:
             client_hybrid_predictions[cid] = hybrid_preds
             client_hybrid_forest_sizes[cid] = len(local_trees) + len(external_global_trees)
 
-        self.step_callback("Resultados consolidados", 100)
-        
-        return FLResults(
-            strategy_id=strategy_name,
-            global_accuracy=global_acc,
-            global_macro_f1=global_f1,
-            n_trees_global=len(global_trees),
-            client_ids=client_ids,
-            client_accuracies=client_accuracies,
-            client_f1_scores=client_f1_scores,
-            client_metadata=client_metadata,
-            global_report=ForestReport(
+        # ── Global Model Full Evaluation ──────────────────────────────────────
+        global_model = server_model.get('model')
+        if global_model:
+            global_preds = global_model.predict(X_test)
+            try:
+                global_pcd = float(global_model.diversity_measure(X_test, y_test, diversity='pcd'))
+            except:
+                global_pcd = 0.0
+                
+            global_report = ForestEvaluator.evaluate_from_predictions(
+                global_preds, y_test_numeric, class_names, len(global_trees), pcd=global_pcd
+            )
+        else:
+            # Fallback if model is missing
+            global_report = ForestReport(
                 accuracy=global_acc,
                 macro_f1=global_f1,
                 macro_precision=0.0,
                 macro_recall=0.0,
-                per_class_f1={},
-                per_class_prec={},
-                per_class_recall={},
+                per_class_f1={cn: 0.0 for cn in class_names},
+                per_class_prec={cn: 0.0 for cn in class_names},
+                per_class_recall={cn: 0.0 for cn in class_names},
                 confusion_matrix=np.zeros((len(class_names), len(class_names))),
                 pcd=0.0,
                 forest_size=len(global_trees),
                 class_names=class_names,
                 accuracy_ci=(0.0, 0.0),
                 macro_f1_ci=(0.0, 0.0)
-            ),
+            )
+
+        self.step_callback("Resultados consolidados", 100)
+        
+        return FLResults(
+            strategy_id=strategy_name,
+            global_accuracy=global_report.accuracy,
+            global_macro_f1=global_report.macro_f1,
+            n_trees_global=len(global_trees),
+            client_ids=client_ids,
+            client_accuracies=client_accuracies,
+            client_f1_scores=client_f1_scores,
+            client_metadata=client_metadata,
+            global_report=global_report,
             client_hybrid_predictions=client_hybrid_predictions,
             y_test=y_test_numeric,
             class_names=class_names,
