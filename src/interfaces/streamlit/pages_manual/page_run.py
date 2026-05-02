@@ -64,19 +64,17 @@ def render():
     st.divider()
 
     # ── Re-run confirmation ───────────────────────────────────────────────────
-    # has_previous_results = st.session_state.get("fl_results") is not None
-    run_button = st.button("🚀 Ejecutar ronda federada", type="primary")
+    has_results = st.session_state.get("fl_results") is not None
+    
+    col_run, col_clear = st.columns([1, 4])
+    with col_run:
+        run_button = st.button("🚀 Ejecutar", type="primary", use_container_width=True)
+    with col_clear:
+        if has_results:
+            if st.button("🗑️ Limpiar Resultados", use_container_width=False):
+                st.session_state.pop("fl_results", None)
+                st.rerun()
 
-    # if has_previous_results and run_button:
-    #     st.warning("⚠️ **Ya existen resultados de una ronda anterior.** Ejecutar de nuevo los sobrescribirá.")
-    #     confirm = st.checkbox("Confirmar: sobrescribir resultados anteriores")
-    #     if not confirm:
-    #         st.info("Ejecución cancelada.")
-    #         run_button = False
-    # elif not has_previous_results and run_button:
-    #     confirm = True  # First run, no confirmation needed
-
-    # if run_button and (confirm or not has_previous_results):    
     if run_button:
         progress  = st.progress(0, text="Inicializando...")
         status    = st.empty()
@@ -212,3 +210,87 @@ def render():
             import traceback
             with st.expander("Traceback completo"):
                 st.code(traceback.format_exc())
+    
+    # ── Persistent Results Display ──────────────────────────────────────────
+    elif st.session_state.get("fl_results"):
+        results = st.session_state["fl_results"]
+        st.success("📊 Mostrando resultados de la última ejecución.")
+        
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("Accuracy global",  f"{results.global_accuracy:.4f}")
+        c2.metric("Macro-F1 global",  f"{results.global_macro_f1:.4f}")
+        c3.metric("Árboles global",   results.n_trees_global)
+        c4.metric("Estrategia",       results.strategy_id)
+
+        # Progressive Forest Convergence Dashboard (S2-S7, PW)
+        if hasattr(results, 'round_logs') and results.round_logs:
+            st.divider()
+            st.subheader("📊 Dashboard de Convergencia Progresiva")
+            
+            logs = results.round_logs
+            rev_c1, rev_c2, rev_c3 = st.columns(3)
+            with rev_c1:
+                st.metric("Episodios", len(logs))
+            with rev_c2:
+                conv_round = results.convergence_round
+                st.metric("Convergencia", f"Episodio {conv_round}" if conv_round else "No alcanzó")
+            with rev_c3:
+                if len(logs) >= 2:
+                    improvement = logs[-1].get('accuracy', 0.0) - logs[-2].get('accuracy', 0.0)
+                    st.metric("Mejora final", f"{improvement:.5f}")
+                else:
+                    st.metric("Mejora final", "N/A")
+
+            if results.convergence_round:
+                st.success(f"🎯 El modelo convergió en el episodio {results.convergence_round}.")
+            else:
+                st.warning("⚠️ El modelo se detuvo por alcanzar el límite de árboles (sin convergencia).")
+
+            with st.expander("📈 Visualizar evolución de la agregación", expanded=True):
+                plot_rows = []
+                for log in logs:
+                    r_idx = log.get('round') or log.get('episode') or 0
+                    acc   = log.get('accuracy') or log.get('round_accuracy') or 0.0
+                    trees = log.get('n_trees') or log.get('trees_after') or 0
+                    f1    = log.get('macro_f1') or 0.0
+                    plot_rows.append({
+                        'Ronda': r_idx,
+                        'Accuracy (Val)': acc,
+                        'Macro-F1 (Val)': f1,
+                        'Árboles Totales': trees
+                    })
+                df_plot = pd.DataFrame(plot_rows)
+                st.write("**Evolución de Desempeño Global**")
+                st.line_chart(df_plot.set_index('Ronda')[['Accuracy (Val)', 'Macro-F1 (Val)']])
+                st.write("**Evolución del tamaño del bosque**")
+                st.bar_chart(df_plot.set_index('Ronda')['Árboles Totales'])
+
+        # Tabla rápida de clientes
+        st.subheader("Resumen por cliente")
+        from src.domain.metrics.forest_evaluator import ForestEvaluator
+        rows = []
+        for cid in results.client_ids:
+            meta = results.client_metadata.get(cid)
+            if meta:
+                y_pred = results.client_hybrid_predictions.get(cid)
+                if y_pred is not None:
+                    hybrid_report = ForestEvaluator.evaluate_from_predictions(
+                        y_pred, results.y_test, results.class_names, 0, 0.0
+                    )
+                    acc_hibrido = f"{hybrid_report.accuracy:.4f}"
+                else:
+                    acc_hibrido = "N/A"
+                
+                rows.append({
+                    "Cliente":      cid,
+                    "Árboles loc.": int(meta.n_trees),
+                    "Acc local":    f"{meta.accuracy:.4f}",
+                    "F1 local":     f"{meta.macro_f1:.4f}",
+                    "PCD local":    f"{meta.pcd:.4f}",
+                    "Sel. en global": int(len(results.selected_ids.get(str(cid), []))),
+                    "Acc híbrido": acc_hibrido,
+                })
+        if rows:
+            df_summary = pd.DataFrame(rows).set_index("Cliente")
+            st.dataframe(df_summary, use_container_width=True)
+
