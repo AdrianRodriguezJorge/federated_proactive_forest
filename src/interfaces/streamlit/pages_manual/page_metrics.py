@@ -32,10 +32,15 @@ def render():
     # Clientes (con inferencia híbrida)
     from src.domain.metrics.forest_evaluator import ForestEvaluator
     for cid in results.client_ids:
+        # Robust lookup for hybrid predictions
         y_pred = results.client_hybrid_predictions.get(cid)
-        meta = results.client_metadata.get(cid)
+        if y_pred is None:
+            y_pred = results.client_hybrid_predictions.get(str(cid))
+            
+        meta = results.client_metadata.get(cid) or results.client_metadata.get(str(cid))
+        
         if y_pred is not None:
-            forest_size = results.client_hybrid_forest_sizes.get(cid, 0)
+            forest_size = results.client_hybrid_forest_sizes.get(cid) or results.client_hybrid_forest_sizes.get(str(cid), 0)
             client_report = ForestEvaluator.evaluate_from_predictions(
                 y_pred, results.y_test, results.class_names, forest_size, pcd=0.0
             )
@@ -68,16 +73,29 @@ def render():
         cid    = sel.replace("👤 ", "")
         # For clients, compute report from hybrid predictions
         from src.domain.metrics.forest_evaluator import ForestEvaluator
+        
+        # Try different key types for robustness
         y_pred = results.client_hybrid_predictions.get(cid)
         if y_pred is None:
-            st.error("No se encontraron predicciones híbridas para este cliente.")
+            # Try as int if it's a numeric string
+            if cid.isdigit():
+                y_pred = results.client_hybrid_predictions.get(int(cid))
+        
+        if y_pred is None:
+            st.error(f"No se encontraron predicciones híbridas para el cliente '{cid}'.")
             return
-        forest_size = results.client_hybrid_forest_sizes.get(cid, 0)
+            
+        forest_size = results.client_hybrid_forest_sizes.get(cid)
+        if forest_size is None and cid.isdigit():
+            forest_size = results.client_hybrid_forest_sizes.get(int(cid), 0)
+        else:
+            forest_size = forest_size or 0
+            
         report = ForestEvaluator.evaluate_from_predictions(
             y_pred, results.y_test, results.class_names, forest_size, pcd=0.0
         )
         title  = f"Modelo Local — {cid} (inferencia híbrida local+global)"
-        meta   = results.client_metadata.get(cid)
+        meta   = results.client_metadata.get(cid) or results.client_metadata.get(int(cid) if cid.isdigit() else cid)
 
     st.subheader(f"📋 {title}")
 
