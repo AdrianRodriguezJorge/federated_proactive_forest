@@ -19,7 +19,7 @@ from src.infrastructure.flex.flex_pool_factory import FlexPoolFactory
 # PF FLEX primitives
 from src.infrastructure.flex.flex_train_pf import train_pf, collect_clients_trees_pf, init_server_model_pf
 from src.infrastructure.flex.flex_deploy_model_pf import deploy_server_config_pf, deploy_server_model_pf
-from src.infrastructure.flex.flex_aggregate_pf import aggregate_trees_from_pf, set_aggregated_trees_pf
+from src.infrastructure.flex.flex_aggregate_pf import aggregate_trees_pf, set_aggregated_trees_pf
 from src.infrastructure.flex.flex_evaluate_pf import evaluate_global_pf_model, evaluate_global_pf_model_at_clients
 
 @dataclass
@@ -98,7 +98,7 @@ class ProgressiveWindowsOrchestrator(FLEXOrchestrator):
             # We use t_max = window_size * round_idx to limit selection logic if needed
             agg_kwargs['t_max'] = self.window_size * round_idx
             
-            self.flex_pool.aggregators.map(aggregate_trees_from_pf, **agg_kwargs)
+            self.flex_pool.aggregators.map(aggregate_trees_pf, **agg_kwargs)
             self.flex_pool.aggregators.map(set_aggregated_trees_pf)
 
             # 5. Evaluate Convergence

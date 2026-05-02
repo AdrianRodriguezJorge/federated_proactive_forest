@@ -23,7 +23,7 @@ from .flex_deploy_model_pf import (
 )
 
 from .flex_aggregate_pf import (
-    aggregate_trees_from_pf,
+    aggregate_trees_pf,
     set_aggregated_trees_pf,
 )
 
@@ -44,7 +44,7 @@ __all__ = [
     
     # Collection & Aggregation
     'collect_clients_trees_pf',
-    'aggregate_trees_from_pf',
+    'aggregate_trees_pf',
     'set_aggregated_trees_pf',
     
     # Deployment

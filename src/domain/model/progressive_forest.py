@@ -26,13 +26,14 @@ class ComparativeProgressiveForest:
     - EPISODE: Tamaño inicial del episodio (5).
     """
 
-    def __init__(self, classifier, verbose: bool = False):
+    def __init__(self, classifier, verbose: bool = False, convergence_threshold: float = 0.002):
         """
         :param classifier: Instancia de ProactiveForestClassifier.
         :param verbose: Si True, imprime logs de progreso (útil para debug/notebooks).
+        :param convergence_threshold: Umbral de convergencia para early stopping.
         """
         self._classifier = classifier
-        self.CONVERGENCE = 0.002
+        self.CONVERGENCE = convergence_threshold
         self.EPISODE = 5
         self.verbose = verbose
 
@@ -118,16 +119,13 @@ class ProgressiveForest:
     CONVERGENCE_THRESHOLD = 0.002
     INITIAL_EPISODE_SIZE = 5
 
-    def __init__(self, forest: Any, verbose: bool = False):
+    def __init__(self, forest: Any, verbose: bool = False, convergence_threshold: float = 0.002):
         """
         Inicializa Progressive Forest.
-
-        Args:
-            forest: Instancia de ProactiveForest o ProactiveForestClassifier
-            verbose: Si True, imprime logs de progreso durante el entrenamiento
         """
         self.forest = forest
         self.verbose = verbose
+        self.convergence_threshold = convergence_threshold
         self._cpf = None
 
     def fit_with_early_stopping(
@@ -137,30 +135,17 @@ class ProgressiveForest:
         X_val: np.ndarray,
         y_val: np.ndarray
     ) -> 'ProgressiveForest':
-        """
-        Entrena el bosque con early stopping basado en convergencia.
-
-        El algoritmo construye árboles en episodios y se detiene cuando
-        la diferencia de accuracy entre episodios consecutivos es menor
-        al umbral de convergencia durante 2 episodios consecutivos.
-
-        Args:
-            X_train: Datos de entrenamiento
-            y_train: Etiquetas de entrenamiento
-            X_val: Datos de validación (para medir convergencia)
-            y_val: Etiquetas de validación
-
-        Returns:
-            Self para encadenamiento de métodos
-        """
-        # Obtener el clasificador subyacente del forest
+        # ...
         if hasattr(self.forest, '_classifier'):
             classifier = self.forest._classifier
         else:
             classifier = self.forest
 
-        # Crear y ejecutar CPF
-        self._cpf = ComparativeProgressiveForest(classifier, verbose=self.verbose)
+        self._cpf = ComparativeProgressiveForest(
+            classifier, 
+            verbose=self.verbose,
+            convergence_threshold=self.convergence_threshold
+        )
         self._cpf.fit(X_train, y_train, X_val, y_val)
 
         return self

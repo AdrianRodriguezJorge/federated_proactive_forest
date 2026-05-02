@@ -43,7 +43,7 @@ from src.infrastructure.flex.flex_deploy_model_pf import (
     deploy_server_model_pf,
 )
 from src.infrastructure.flex.flex_aggregate_pf import (
-    aggregate_trees_from_pf,
+    aggregate_trees_pf,
     set_aggregated_trees_pf,
 )
 from src.infrastructure.flex.flex_evaluate_pf import (
@@ -75,6 +75,7 @@ class FLResults:
     class_names: List[str] = field(default_factory=list)
     client_hybrid_forest_sizes: Dict[str, int] = field(default_factory=dict)
     convergence_round: Optional[int] = None
+    round_logs: List[Dict[str, Any]] = field(default_factory=list)
     hybrid_weights: Dict[str, float] = field(default_factory=lambda: {'local_weight': 0.4, 'global_weight': 0.6})
 
 
@@ -244,7 +245,7 @@ class FLEXOrchestrator:
             'metrics_service': self.metrics_svc,
             'diversity_service': self.diversity_svc
         }
-        self.flex_pool.aggregators.map(aggregate_trees_from_pf, **agg_kwargs)
+        self.flex_pool.aggregators.map(aggregate_trees_pf, **agg_kwargs)
         self.flex_pool.aggregators.map(set_aggregated_trees_pf, self.flex_pool.servers)
 
 
@@ -314,11 +315,28 @@ class FLEXOrchestrator:
             
             # Create ClientMetadata from client model state
             # This requires that train_pf filled 'metadata'
-            meta = client_model.get('metadata')
-            if isinstance(meta, dict):
-                client_metadata[cid] = ClientMetadata(**meta)
+            # Extract metadata robustly (handle object or dict)
+            meta_val = client_model.get('metadata')
+            if isinstance(meta_val, ClientMetadata):
+                meta = meta_val
+            elif isinstance(meta_val, dict):
+                meta = ClientMetadata(**meta_val)
             else:
-                client_metadata[cid] = ClientMetadata(client_id=cid, n_trees=len(client_model.get('trees', [])), accuracy=0.0, macro_f1=0.0, pcd=0.0)
+                meta = ClientMetadata(
+                    client_id=cid, 
+                    n_trees=len(client_model.get('trees', [])), 
+                    accuracy=client_model.get('local_accuracy', 0.0), 
+                    macro_f1=client_model.get('local_f1', 0.0), 
+                    pcd=0.0
+                )
+            
+            # Retrieve selected_ids from server_model
+            selected_ids_raw = server_model.get('selected_ids', {})
+            selected_ids_dict = {str(k): v for k, v in selected_ids_raw.items()}
+            
+            # SYNC selection info back into metadata for UI consumption
+            meta.selected_local_tree_ids = selected_ids_dict.get(str(cid), [])
+            client_metadata[cid] = meta
 
             # Hybrid prediction
             local_trees = client_model.get('trees', [])
@@ -375,7 +393,11 @@ class FLEXOrchestrator:
             client_hybrid_predictions=client_hybrid_predictions,
             y_test=y_test_numeric,
             class_names=class_names,
-            client_hybrid_forest_sizes=client_hybrid_forest_sizes
+            client_hybrid_forest_sizes=client_hybrid_forest_sizes,
+            convergence_round=server_model.get('convergence_round'),
+            round_logs=server_model.get('round_logs', []),
+            selected_ids=selected_ids_dict,
+            all_tree_entries=server_model.get('all_tree_entries', [])
         )
 
 

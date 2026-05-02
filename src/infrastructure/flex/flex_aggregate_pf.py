@@ -7,30 +7,22 @@ from src.domain.model.proactive_forest import ProactiveForest
 
 
 @aggregate_weights
-def aggregate_trees_from_pf(weights: List[Dict[str, Any]], **kwargs) -> List[Any]:
+def aggregate_trees_pf(weights: List[Dict[str, Any]], **kwargs) -> Dict[str, Any]:
     """
     Aggregate trees using the configured strategy.
     
-    FLEX Primitive for @aggregate_weights decorator.
-    Receives the list of collected weights (from collect_clients_trees_pf).
-    
-    Args:
-        weights: List of dicts, each containing 'trees' and 'metadata' from a client.
-        **kwargs: Strategy-specific parameters (X_val, y_val, config, etc.)
-    
-    Returns:
-        List of aggregated trees
+    Returns a dict containing trees and metadata (convergence, logs).
     """
     from src.domain.metadata.client_metadata import ClientMetadata
 
     # Extract trees and metadata in the format expected by our internal logic
-    client_models = {
-        f'client_{i}': {'trees': w['trees']}
-        for i, w in enumerate(weights)
-    }
+    client_models = {}
     client_metadata = {}
-    for i, w in enumerate(weights):
-        cid = f'client_{i}'
+    
+    for w in weights:
+        cid = str(w.get('client_id', 'unknown'))
+        client_models[cid] = {'trees': w['trees']}
+        
         meta = w['metadata']
         if isinstance(meta, dict):
             client_metadata[cid] = ClientMetadata(**meta)
@@ -38,7 +30,14 @@ def aggregate_trees_from_pf(weights: List[Dict[str, Any]], **kwargs) -> List[Any
             client_metadata[cid] = meta
 
     server_config = kwargs.get('server_config', {})
-    strategy_name = server_config.get('strategy', 'S1')
+    raw_strategy = server_config.get('strategy') or server_config.get('aggregation', {}).get('strategy', 'S1')
+    
+    # Normalize: "s4_global_f1_pcd" -> "S4", "pw" -> "PW"
+    if "_" in raw_strategy:
+        strategy_name = raw_strategy.split("_")[0].upper()
+    else:
+        strategy_name = raw_strategy.upper()
+
     agg_config = server_config.get('aggregation', {})
     
     metrics_svc = kwargs.get('metrics_service')
@@ -54,18 +53,26 @@ def aggregate_trees_from_pf(weights: List[Dict[str, Any]], **kwargs) -> List[Any
     y_val = kwargs.get('y_val')
     t_max = kwargs.get('t_max')
 
-    # Build aggregate_kwargs based on strategy type
+    # Build aggregate_kwargs
     aggregate_kwargs = {}
     if strategy_name == 'PW':
-        aggregate_kwargs['window_size'] = agg_config.get('window_size', 5)
-        aggregate_kwargs['max_rounds'] = agg_config.get('max_rounds', 20)
+        aggregate_kwargs.update({
+            'window_size': agg_config.get('window_size', 5),
+            'max_rounds': agg_config.get('max_rounds', 20),
+            'f1_weight': agg_config.get('f1_weight', 0.5),
+            'convergence_threshold': agg_config.get('convergence') or agg_config.get('convergence_threshold', 0.002),
+            'local_weight': server_config.get('prediction', {}).get('local_weight', 0.5)
+        })
+    elif strategy_name in ['S4', 'S7']:
         aggregate_kwargs['f1_weight'] = agg_config.get('f1_weight', 0.5)
-        aggregate_kwargs['convergence_threshold'] = agg_config.get('convergence_threshold', 0.002)
-        aggregate_kwargs['local_weight'] = server_config.get('prediction', {}).get('local_weight', 0.5)
-    elif strategy_name in ['S2', 'S3', 'S4', 'S5', 'S6', 'S7']:
-        if 'S4' in strategy_name or 'S7' in strategy_name:
-            aggregate_kwargs['f1_weight'] = agg_config.get('f1_weight', 0.5)
-            aggregate_kwargs['pcd_weight'] = agg_config.get('pcd_weight', 1.0 - aggregate_kwargs['f1_weight'])
+        aggregate_kwargs['pcd_weight'] = agg_config.get('pcd_weight', 1.0 - aggregate_kwargs['f1_weight'])
+
+    conv_val = agg_config.get('convergence') or agg_config.get('convergence_threshold')
+    if conv_val is not None:
+        aggregate_kwargs['convergence_threshold'] = float(conv_val)
+
+    # Always provide class_names for label normalization in progressive strategies (S2-S7, PW)
+    aggregate_kwargs['class_names'] = server_config.get('model', {}).get('class_names', [])
 
     aggregate_cmd = AggregateCommand(strategy)
     global_data = aggregate_cmd.execute(
@@ -79,23 +86,36 @@ def aggregate_trees_from_pf(weights: List[Dict[str, Any]], **kwargs) -> List[Any
         **aggregate_kwargs
     )
 
-    return global_data.get('global_trees', [])
+    return {
+        'trees': global_data.get('global_trees', []),
+        'selected_ids': global_data.get('selected_indices', {}),
+        'all_tree_entries': global_data.get('all_tree_entries', []),
+        'convergence_round': global_data.get('convergence_round'),
+        'round_logs': global_data.get('round_logs', [])
+    }
 
 
 @set_aggregated_weights
-def set_aggregated_trees_pf(server_flex_model: FlexModel, aggregated_weights: List[Any], **kwargs):
+def set_aggregated_trees_pf(server_flex_model: FlexModel, aggregated_data: Dict[str, Any], **kwargs):
     """
-    Set aggregated trees into the global model.
-    FLEX Primitive for @set_aggregated_weights.
+    Set aggregated trees and metadata into the global model.
     """
+    trees = aggregated_data.get('trees', [])
     config = server_flex_model.get('config', {})
     class_names = config.get('class_names') or config.get('model', {}).get('class_names')
-    global_forest = ProactiveForest.from_trees(aggregated_weights, class_names=class_names)
     
-    server_flex_model['model'] = global_forest
-    server_flex_model['trees'] = aggregated_weights
+    global_forest = ProactiveForest.from_trees(trees, class_names=class_names)
+    
+    server_flex_model.update({
+        'model': global_forest,
+        'trees': trees,
+        'selected_ids': aggregated_data.get('selected_ids', {}),
+        'all_tree_entries': aggregated_data.get('all_tree_entries', []),
+        'convergence_round': aggregated_data.get('convergence_round'),
+        'round_logs': aggregated_data.get('round_logs', [])
+    })
     
     return server_flex_model
 
 
-__all__ = ['aggregate_trees_from_pf', 'set_aggregated_trees_pf']
+__all__ = ['aggregate_trees_pf', 'set_aggregated_trees_pf']

@@ -20,7 +20,8 @@ class ProactiveForest(GlobalRandomForest, ABCForest):
                  alpha: float = 0.1, 
                  random_state: int = 42, 
                  verbose: bool = False, 
-                 class_names: Optional[List[str]] = None):
+                 class_names: Optional[List[str]] = None,
+                 convergence_threshold: float = 0.002):
         """
         Args:
             n_estimators: Number of trees in the forest
@@ -28,6 +29,7 @@ class ProactiveForest(GlobalRandomForest, ABCForest):
             random_state: Random seed
             verbose: Whether to print CPF training logs
             class_names: List of all possible class names (for consistent encoding)
+            convergence_threshold: Threshold for early stopping.
         """
         # Call GlobalRandomForest init (max_depth is not directly used here but good to pass if needed)
         super().__init__(n_estimators=n_estimators)
@@ -36,6 +38,7 @@ class ProactiveForest(GlobalRandomForest, ABCForest):
         self.random_state = random_state
         self.verbose = verbose
         self.class_names = class_names
+        self.convergence_threshold = convergence_threshold
         self._is_fitted: bool = False
 
         # Create the internal ProactiveForestClassifier using CPF
@@ -111,7 +114,11 @@ class ProactiveForest(GlobalRandomForest, ABCForest):
             # Process y_val the same way we process y
             y_val_labels = label_svc.inverse_transform(label_svc.transform(y_val))
 
-        self._cpf = ComparativeProgressiveForest(self._classifier, verbose=self.verbose)
+        self._cpf = ComparativeProgressiveForest(
+            self._classifier, 
+            verbose=self.verbose,
+            convergence_threshold=self.convergence_threshold
+        )
         self._cpf.fit(X_train, y_train, X_val, y_val_labels)
         self._is_fitted = True
         

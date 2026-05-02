@@ -52,7 +52,8 @@ def train_pf(client_flex_model: FlexModel, client_data: Any) -> FlexModel:
         n_estimators=config.get('n_estimators', 100),
         alpha=config.get('alpha', 0.1),
         verbose=config.get('verbose', False),
-        class_names=class_names
+        class_names=class_names,
+        convergence_threshold=config.get('convergence', 0.002)
     )
     
     pf.fit(X_train, y_train)
@@ -124,6 +125,7 @@ def collect_clients_trees_pf(client_flex_model: FlexModel, *args, **kwargs) -> L
     # Just return what we want to aggregate
     # We can also return a dict if we want to include metadata
     return {
+        'client_id': getattr(client_flex_model, 'actor_id', 'unknown'),
         'trees': client_flex_model.get('trees', []),
         'metadata': client_flex_model.get('metadata', {})
     }

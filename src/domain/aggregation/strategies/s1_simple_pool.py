@@ -56,6 +56,6 @@ class S1SimplePoolStrategy(IAggregationStrategy):
                         selected_indices[client_id].append(entry_idx)
                     entry_idx += 1
             
-            return global_trees, selected_indices, selected_entries
+            return global_trees, selected_indices, selected_entries, None, []
 
-        return global_trees, selected_indices, all_entries
+        return global_trees, selected_indices, all_entries, None, []

@@ -7,15 +7,21 @@ def render():
     st.header("🏆 Ranking de Árboles")
 
     results = st.session_state.get("fl_results")
+    cfg = st.session_state.get("fl_config")
+    
     if not results:
         st.warning("⚠️ Ejecuta primero el experimento en la página '▶️ Ejecutar'.")
         return
+    
+    # Get dynamic threshold from config
+    conv_thr = cfg.get("aggregation", {}).get("convergence", 0.002) if cfg else 0.002
 
-    sid = results.strategy_id
+    sid = results.strategy_id.lower()
     is_per_client = sid.startswith("s5") or sid.startswith("s6") or sid.startswith("s7")
     n_total   = len(results.all_tree_entries)
+    # Ensure client_id is string when looking up selected_ids
     n_sel     = sum(1 for e in results.all_tree_entries
-                    if e.tree_local_id in results.selected_ids.get(e.client_id, []))
+                    if e.tree_local_id in results.selected_ids.get(str(e.client_id), []))
 
     info_text = (
         f"**Estrategia:** `{sid}` &nbsp;|&nbsp; "
@@ -23,10 +29,36 @@ def render():
         f"**Seleccionados para bosque global:** {n_sel} &nbsp;|&nbsp; "
         f"**Descartados por Progressive:** {n_total - n_sel}"
     )
-    # PW-specific convergence info
-    if sid == "PW" and results.convergence_round is not None:
-        info_text += f"<br>**Convergencia:** ronda {results.convergence_round}"
-    st.info(info_text)
+    # Show detailed convergence info if available (S2-S7, PW)
+    if sid not in ["s1_simple_pool", "s1"] and hasattr(results, 'round_logs') and results.round_logs:
+        st.info(info_text)
+        logs = results.round_logs
+        
+        if results.convergence_round is not None:
+            # It converged!
+            last_idx = results.convergence_round - 1
+            if 0 < last_idx < len(logs):
+                current_acc = logs[last_idx].get('accuracy', 0.0)
+                prev_acc = logs[last_idx - 1].get('accuracy', 0.0)
+                improvement = current_acc - prev_acc
+                
+                st.success(f"🎯 **Convergencia alcanzada en el episodio {results.convergence_round}**.\n\n"
+                           f"La mejora final fue de `{improvement:.5f}` (Umbral: `{conv_thr}`).")
+            else:
+                st.success(f"🎯 **Parada Temprana**: El modelo global convergió en el episodio {results.convergence_round}.")
+        else:
+            # Did not converge
+            if len(logs) >= 2:
+                current_acc = logs[-1].get('accuracy', 0.0)
+                prev_acc = logs[-2].get('accuracy', 0.0)
+                improvement = current_acc - prev_acc
+                
+                st.warning(f"⚠️ **Selección completa ({n_sel} árboles)**.\n\n"
+                           f"No se alcanzó la convergencia. Variación última: `{improvement:.5f}` (Umbral: `{conv_thr}`).")
+            else:
+                st.warning(f"⚠️ **Sin Convergencia**: Se seleccionaron todos los árboles candidatos ({n_sel}). No hubo suficientes episodios para evaluar la mejora continua.")
+    else:
+        st.info(info_text)
 
     # ── Leyenda ───────────────────────────────────────────────────────────────
     c1, c2 = st.columns(2)
@@ -40,7 +72,7 @@ def render():
     # ── Construir tabla ───────────────────────────────────────────────────────
     rows = []
     for rank, entry in enumerate(results.all_tree_entries, 1):
-        sel = entry.tree_local_id in results.selected_ids.get(entry.client_id, [])
+        sel = entry.tree_local_id in results.selected_ids.get(str(entry.client_id), [])
         rows.append({
             "Rank":       rank,
             "ID árbol":   f"{entry.client_id}_tree{entry.tree_local_id}",
@@ -57,7 +89,7 @@ def render():
     df = pd.DataFrame(rows)
 
     # Para estrategia s1, ordenar por cliente
-    if sid == "s1_simple_pool":
+    if sid == "s1_simple_pool" or sid == "s1":
         df = df.sort_values(["Cliente", "Rank"], ascending=[True, True]).reset_index(drop=True)
         df["Rank"] = range(1, len(df) + 1)  # Reasignar rank después de ordenar
 

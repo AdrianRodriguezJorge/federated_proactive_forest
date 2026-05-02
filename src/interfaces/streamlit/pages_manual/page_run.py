@@ -2,6 +2,7 @@
 import streamlit as st
 import time
 import json
+import pandas as pd
 from src.interfaces.streamlit.pages_manual.page_config import (
     CONFIG_FILE, _load_dataset
 )
@@ -102,7 +103,7 @@ def render():
 
             st.session_state["fl_results"] = results
             progress.progress(1.0, text="✅ Completado")
-            st.success("🎉 Ronda federada completada. Explora los resultados en Ranking y Métricas.")
+            st.success(" Ronda federada completada. Explora los resultados en Ranking y Métricas.")
 
             c1, c2, c3, c4 = st.columns(4)
             c1.metric("Accuracy global",  f"{results.global_accuracy:.4f}")
@@ -110,61 +111,74 @@ def render():
             c3.metric("Árboles global",   results.n_trees_global)
             c4.metric("Estrategia",       results.strategy_id)
 
-            # PW-specific: show convergence round and dashboard
-            if results.strategy_id == "PW":
+            # Progressive Forest Convergence Dashboard (S2-S7, PW)
+            if hasattr(results, 'round_logs') and results.round_logs:
                 st.divider()
-                st.subheader("📊 Dashboard de Convergencia (Progressive Windows)")
+                st.subheader("📊 Dashboard de Convergencia Progresiva")
                 
                 # Metrics at the top
                 rev_c1, rev_c2, rev_c3 = st.columns(3)
-                if results.convergence_round is not None:
-                    rev_c1.metric("Ronda de parada", results.convergence_round)
-                    
-                    reason = "Progreso estable (Umbral)" if results.convergence_round < results.num_rounds else "Máximo de rondas alcanzado"
-                    rev_c2.metric("Motivo de parada", "Convergencia" if results.convergence_round < results.num_rounds else "Límite")
-                    st.info(f"💡 **Motivo de la parada**: {reason}")
                 
-                # Accordion for rounds detail
-                if hasattr(results, 'round_logs') and results.round_logs:
-                    with st.expander("📈 Visualizar evolución de métricas", expanded=True):
-                        # Prepare data for plotting
-                        plot_rows = []
-                        for log in results.round_logs:
-                            plot_rows.append({
-                                'Ronda': log['round'],
-                                'Accuracy (Val)': log['round_accuracy'],
-                                'Árboles Totales': log['trees_after']
-                            })
-                        
-                        df_plot = pd.DataFrame(plot_rows)
-                        
-                        # Accuracy Chart
-                        st.write("**Evolución de Accuracy Global**")
-                        st.line_chart(df_plot.set_index('Ronda')['Accuracy (Val)'])
-                        
-                        # Forest Size Chart
-                        st.write("**Evolución del tamaño del bosque**")
-                        st.bar_chart(df_plot.set_index('Ronda')['Árboles Totales'])
-                        
-                        # Detailed table
-                        st.write("**Detalle de agregación por ronda**")
-                        detail_rows = []
-                        for log in results.round_logs:
-                            detail_rows.append({
-                                'Ronda': log['round'],
-                                'Árboles previos': log['trees_before'],
-                                'Nuevos (W)': sum(log['client_windows'].values()),
-                                'Seleccionados': sum(log['selected_trees'].values()),
-                                'Total final': log['trees_after'],
-                                'Accuracy': f"{log['round_accuracy']:.4f}"
-                            })
-                        st.table(pd.DataFrame(detail_rows))
+                is_converged = results.convergence_round is not None
+                
+                if is_converged:
+                    rev_c1.metric("Episodio/Ronda de parada", results.convergence_round)
+                    logs = results.round_logs
+                    last_idx = results.convergence_round - 1
+                    if 0 < last_idx < len(logs):
+                        current_acc = logs[last_idx].get('accuracy', 0.0)
+                        prev_acc = logs[last_idx - 1].get('accuracy', 0.0)
+                        improvement = current_acc - prev_acc
+                        st.success(f"🎯 **Parada Temprana**: El modelo convergió en el episodio {results.convergence_round}. La mejora fue de `{improvement:.5f}` (<= 0.002).")
+                    else:
+                        st.success(f"🎯 **Parada Temprana**: El modelo convergió en el episodio {results.convergence_round}.")
                 else:
-                    st.warning("No se encontraron logs detallados de rondas para esta ejecución.")
+                    rev_c1.metric("Episodio/Ronda de parada", "No hubo")
+                    logs = results.round_logs
+                    if len(logs) >= 2:
+                        current_acc = logs[-1].get('accuracy', 0.0)
+                        prev_acc = logs[-2].get('accuracy', 0.0)
+                        improvement = current_acc - prev_acc
+                        conv_thr = cfg.get("aggregation", {}).get("convergence", 0.002)
+                        st.warning(f"⚠️ **Límite alcanzado**: No hubo convergencia. Se seleccionaron todos los árboles. Mejora final: `{improvement:.5f}` (> {conv_thr}).")
+                    else:
+                        st.warning("⚠️ **Límite alcanzado**: No hubo convergencia. Se seleccionaron todos los árboles disponibles.")
+                
+                with st.expander("📈 Visualizar evolución de la agregación", expanded=True):
+                    # Prepare data for plotting with flexible key mapping
+                    plot_rows = []
+                    for log in results.round_logs:
+                        # Map keys flexibly to support different strategy implementations
+                        r_idx = log.get('round') or log.get('episode') or 0
+                        acc   = log.get('accuracy') or log.get('round_accuracy') or 0.0
+                        trees = log.get('n_trees') or log.get('trees_after') or 0
+                        f1    = log.get('macro_f1') or 0.0
+                        
+                        plot_rows.append({
+                            'Ronda': r_idx,
+                            'Accuracy (Val)': acc,
+                            'Macro-F1 (Val)': f1,
+                            'Árboles Totales': trees
+                        })
+                    
+                    df_plot = pd.DataFrame(plot_rows)
+                    
+                    # Accuracy/F1 Chart
+                    st.write("**Evolución de Desempeño Global**")
+                    st.line_chart(df_plot.set_index('Ronda')[['Accuracy (Val)', 'Macro-F1 (Val)']])
+                    
+                    # Forest Size Chart
+                    st.write("**Evolución del tamaño del bosque**")
+                    st.bar_chart(df_plot.set_index('Ronda')['Árboles Totales'])
+                    
+                    # Detailed table
+                    st.write("**Detalle de agregación por episodio**")
+                    st.dataframe(df_plot.set_index('Ronda'), use_container_width=True)
+            elif results.strategy_id == "PW":
+                st.warning("No se encontraron logs detallados de rondas para esta ejecución.")
 
             # Tabla rápida de clientes
             st.subheader("Resumen por cliente")
-            import pandas as pd
             from src.domain.metrics.forest_evaluator import ForestEvaluator
             rows = []
             for cid in results.client_ids:
@@ -186,7 +200,7 @@ def render():
                         "Acc local":    f"{meta.accuracy:.4f}",
                         "F1 local":     f"{meta.macro_f1:.4f}",
                         "PCD local":    f"{meta.pcd:.4f}",
-                        "Sel. en global": int(len(results.selected_ids.get(cid, []))),
+                        "Sel. en global": int(len(results.selected_ids.get(str(cid), []))),
                         "Acc híbrido": acc_hibrido,
                     })
             if rows:

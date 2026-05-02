@@ -26,4 +26,10 @@ def calculate_mode(predictions: np.ndarray, axis: int = 1) -> np.ndarray:
         # Get the most common element (first one in case of ties)
         modes[i] = counts.most_common(1)[0][0]
         
+    # Attempt to cast away from 'object' dtype to help downstream libraries (like sklearn)
+    if modes.dtype == object:
+        try:
+            return np.array(modes.tolist())
+        except:
+            return modes
     return modes

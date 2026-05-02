@@ -40,7 +40,7 @@ class AggregateCommand:
             client_trees[client_id] = model_data.get('trees', [])
 
         # Aggregate using strategy
-        global_trees, selected_indices, all_tree_entries = self.strategy.aggregate(
+        result = self.strategy.aggregate(
             client_trees,
             client_metadata,
             X_val=X_val,
@@ -48,9 +48,14 @@ class AggregateCommand:
             t_max=t_max,
             **kwargs
         )
+        
+        # Unpack result (strategies now return 5 values)
+        global_trees, selected_indices, all_tree_entries, conv_round, logs = result
 
         return {
             'global_trees': global_trees,
             'selected_indices': selected_indices,
             'all_tree_entries': all_tree_entries,
+            'convergence_round': conv_round,
+            'round_logs': logs
         }

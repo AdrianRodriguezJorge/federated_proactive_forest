@@ -334,7 +334,7 @@ def render():
         episode_size = current_config["model"].get("episode_size", 5)
         if use_cpf:
             convergence = st.number_input(
-                "Umbral convergencia CPF (local)", 0.0001, 0.01, value=convergence, format="%.4f",
+                "Umbral convergencia CPF (local)", 0.0, 1.0, value=convergence, format="%.4f",
                 help="Se usa solo para entrenamiento local. Para agregación global, ver sección de Estrategia."
             )
             episode_size = st.number_input(
@@ -382,7 +382,7 @@ def render():
         col_conv, col_ep = st.columns(2)
         with col_conv:
             convergence_agg = st.number_input(
-                "Umbral convergencia (global)", 0.0001, 0.01, value=convergence_agg, format="%.4f",
+                "Umbral convergencia (global)", 0.0, 1.0, value=convergence_agg, format="%.4f",
                 help="Si la mejora de accuracy global es menor que este valor durante 2 rondas consecutivas, se detiene."
             )
         with col_ep:
