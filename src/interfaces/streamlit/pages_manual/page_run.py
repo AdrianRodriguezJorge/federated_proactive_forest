@@ -6,6 +6,7 @@ import pandas as pd
 from src.interfaces.streamlit.pages_manual.page_config import (
     CONFIG_FILE, _load_dataset
 )
+from src.interfaces.streamlit.state.experiment_logger import save_experiment_log
 
 MAX_LOG_LINES = 50
 
@@ -101,7 +102,12 @@ def render():
 
             st.session_state["fl_results"] = results
             progress.progress(1.0, text="✅ Completado")
-            st.success(" Ronda federada completada. Explora los resultados en Ranking y Métricas.")
+            st.success("Ronda federada completada. Explora los resultados en Ranking y Métricas.")
+
+            # ── Save experiment log ────────────────────────────────────────
+            log_path = save_experiment_log(results, cfg)
+            if log_path:
+                st.toast(f"📝 Log guardado: {log_path.name}", icon="✅")
 
             c1, c2, c3, c4, c5 = st.columns(5)
             c1.metric("Accuracy global",  f"{results.global_accuracy:.4f}")
