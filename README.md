@@ -550,6 +550,11 @@ pytest tests/test_hybrid_inference.py -v
 - `test_hybrid_inference.py` - Hybrid prediction tests
 - `test_rr_ds_explicit.py` - Round-robin dataset selection tests
 - `test_rr_ds_rounds.py` - Round-robin rounds tests
+- `test_exhaustive_domain_pytest.py` - Exhaustive validation for domain core logic
+- `test_label_normalization_system.py` - Cross-client label normalization and translation
+- `test_label_service.py` - Unit tests for LabelService
+- `test_pw_orchestrator.py` - Progressive Windows orchestrator testing
+- `test_iris_adapter_scaler_isolation.py` - Scaler isolation tests for Dataset Adapters
 
 ## 🔌 FLEX Framework Integration
 
@@ -596,11 +601,35 @@ python tests/Friedman_test_new_results.py
 
 ## 📜 Scripts
 
-### Hyperparameter Optimization
-Using **Optuna**, you can optimize the `alpha` parameter for Proactive Forest or the `f1_weight` for aggregation strategies.
+The project includes several utilities in the `scripts/` directory for experimentation and analysis:
+
+### Benchmarking
+Run comprehensive grid benchmarks across multiple datasets and configurations.
 ```bash
-# Optimize strategy-specific parameters
+# Run comprehensive grid benchmarks
+python scripts/run_grid_benchmark.py --config configs/experiments/benchmark_grid.yaml
+```
+
+### Hyperparameter Optimization
+Using **Optuna**, you can optimize strategy-specific parameters (like the `alpha` parameter for Proactive Forest or the `f1_weight` for aggregation strategies).
+```bash
+# Run general optimization
+python scripts/run_optimization.py
+
+# Optimize specific S6 alpha strategy
 python scripts/optimize_s6_alpha_pf.py
+```
+
+### Analysis Utilities
+```bash
+# Compare weighted vs uniform voting logic
+python scripts/weighted_vs_uniform.py
+
+# Run robustness test for federated models
+python scripts/test_fl_robustness.py
+
+# Rerun CLI with last used configuration
+python scripts/run_cli_last_config.py
 ```
 
 ## 🛠️ Technologies

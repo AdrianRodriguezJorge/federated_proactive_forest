@@ -1,0 +1,33 @@
+datasets:
+  - type: "car"
+  - type: "Iris"
+  - type: "letter"
+  - type: "nursery"
+  - type: "optdigits"
+  - type: "sonar"
+  - type: "spambase"
+  - type: "vowel"
+
+strategies:
+  - "s1_simple_pool"
+  - "s2_global_accuracy"
+  - "s3_global_f1"
+  - "s4_global_f1_pcd"
+  - "s5_perclient_accuracy"
+  - "s6_perclient_f1"
+  - "s7_perclient_f1_pcd"
+  - "pw"
+
+federation:
+  n_clients: 3
+  distribution: "iid" 
+  rounds: 1
+
+model:
+  n_estimators: 20  # Número de árboles base para el experimento
+  alpha: 0.1
+  use_progressive_stopping: true
+  convergence: 0.002
+  episode_size: 5
+
+output_file: "results/benchmark_8_datasets.csv"
