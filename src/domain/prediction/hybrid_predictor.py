@@ -15,7 +15,8 @@ class HybridPredictor:
 
     def __init__(self, local_weight: float = 0.4, global_weight: float = 0.6,
                  n_classes: int = 2, class_names: List[str] = None,
-                 label_service: Any = None):
+                 label_service: Any = None,
+                 use_weighted: bool = True):
         assert abs(local_weight + global_weight - 1.0) < 1e-6, \
             "local_weight + global_weight debe ser 1.0"
         self.lw = local_weight
@@ -23,6 +24,7 @@ class HybridPredictor:
         self.n_classes = n_classes
         self.class_names = class_names or [str(i) for i in range(n_classes)]
         self.label_svc = label_service
+        self.use_weighted = use_weighted
 
     def predict(self, X: np.ndarray,
                 local_trees: List[Any],
@@ -79,8 +81,21 @@ class HybridPredictor:
                     combined[mask, c] += w_per_tree
                     self._last_votes[source_key][mask, c] += w_per_tree
 
-        accumulate_vectorized(local_trees, self.lw, 'local')
-        accumulate_vectorized(global_trees, self.gw, 'global')
+        # Compute effective weights
+        if self.use_weighted:
+            effective_lw = self.lw
+            effective_gw = self.gw
+        else:
+            # Uniform: each tree has equal weight regardless of origin
+            total = len(local_trees) + len(global_trees)
+            if total > 0:
+                effective_lw = len(local_trees) / total
+                effective_gw = len(global_trees) / total
+            else:
+                effective_lw, effective_gw = 0.0, 0.0
+
+        accumulate_vectorized(local_trees, effective_lw, 'local')
+        accumulate_vectorized(global_trees, effective_gw, 'global')
         return np.argmax(combined, axis=1)
 
     def get_debug_stats(self) -> dict:

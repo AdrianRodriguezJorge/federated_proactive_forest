@@ -36,6 +36,7 @@ class AggregationConfig(BaseModel):
 class PredictionConfig(BaseModel):
     local_weight: float = 0.4
     global_weight: float = 0.6
+    use_weighted: bool = True
 
 class FLConfig(BaseModel):
     dataset: DatasetConfig

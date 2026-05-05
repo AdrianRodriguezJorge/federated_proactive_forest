@@ -103,11 +103,13 @@ def render():
             progress.progress(1.0, text="✅ Completado")
             st.success(" Ronda federada completada. Explora los resultados en Ranking y Métricas.")
 
-            c1, c2, c3, c4 = st.columns(4)
+            c1, c2, c3, c4, c5 = st.columns(5)
             c1.metric("Accuracy global",  f"{results.global_accuracy:.4f}")
             c2.metric("Macro-F1 global",  f"{results.global_macro_f1:.4f}")
             c3.metric("Árboles global",   results.n_trees_global)
             c4.metric("Estrategia",       results.strategy_id)
+            pred_mode = "Ponderado (λ)" if cfg.get("prediction", {}).get("use_weighted", True) else "Uniforme (1/N)"
+            c5.metric("Predicción", pred_mode)
 
             # Progressive Forest Convergence Dashboard (S2-S7, PW)
             if hasattr(results, 'round_logs') and results.round_logs:
@@ -216,11 +218,13 @@ def render():
         results = st.session_state["fl_results"]
         st.success("📊 Mostrando resultados de la última ejecución.")
         
-        c1, c2, c3, c4 = st.columns(4)
+        c1, c2, c3, c4, c5 = st.columns(5)
         c1.metric("Accuracy global",  f"{results.global_accuracy:.4f}")
         c2.metric("Macro-F1 global",  f"{results.global_macro_f1:.4f}")
         c3.metric("Árboles global",   results.n_trees_global)
         c4.metric("Estrategia",       results.strategy_id)
+        pred_mode = "Ponderado (λ)" if cfg.get("prediction", {}).get("use_weighted", True) else "Uniforme (1/N)"
+        c5.metric("Predicción", pred_mode)
 
         # Progressive Forest Convergence Dashboard (S2-S7, PW)
         if hasattr(results, 'round_logs') and results.round_logs:

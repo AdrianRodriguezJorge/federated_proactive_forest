@@ -25,7 +25,7 @@
     "episode_size": 5
   },
   "aggregation": {
-    "strategy": "s4_global_f1_pcd",
+    "strategy": "s6_perclient_f1",
     "t_max": 250,
     "f1_weight": 0.5,
     "pcd_weight": 0.5,
@@ -36,7 +36,8 @@
   },
   "prediction": {
     "local_weight": 0.5,
-    "global_weight": 0.5
+    "global_weight": 0.5,
+    "use_weighted": true
   },
   "verbose": false,
   "seed": 42

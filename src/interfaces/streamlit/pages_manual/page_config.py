@@ -186,7 +186,7 @@ def get_default_config():
             "convergence": 0.002, "episode_size": 5,
             "window_size": 5, "max_rounds": 20, "alpha": 0.5,
         },
-        "prediction": {"local_weight": 0.4, "global_weight": 0.6},
+        "prediction": {"local_weight": 0.4, "global_weight": 0.6, "use_weighted": True},
         "verbose": False, "seed": 42,
     }
 
@@ -405,6 +405,7 @@ def render():
 
     # PW: Progressive Windows
     pw_local_weight = current_config.get("prediction", {}).get("local_weight", 0.5)  # always defined
+    use_weighted = current_config.get("prediction", {}).get("use_weighted", True)
     if strategy_key == "pw":
         st.info("🔄 **Progressive Windows**: Entrenamiento por ventanas + selección secuencial con score dinámico")
         col5, col6, col7 = st.columns(3)
@@ -424,10 +425,20 @@ def render():
                 help="Peso F1 en el score dinámico: Score(T) = α·F1(T) + (1-α)·Diversidad(T|G)"
             )
             pcd_weight = round(1.0 - f1_weight, 4)
-        pw_local_weight = st.slider(
-            "Peso predicción local (PW)", 0.0, 1.0, value=pw_local_weight, step=0.05,
-            help="Peso de árboles locales en inferencia híbrida PW. Global = 1 - local."
+        use_weighted = st.checkbox(
+            "Ponderar por origen (local/global)",
+            value=use_weighted,
+            help="Si está activo, los árboles locales y globales tienen pesos distintos (λ, 1-λ). "
+                 "Si se desactiva, cada árbol tiene el mismo voto independientemente de su origen.",
+            key="pw_use_weighted"
         )
+        if use_weighted:
+            pw_local_weight = st.slider(
+                "Peso predicción local (PW)", 0.0, 1.0, value=pw_local_weight, step=0.05,
+                help="Peso de árboles locales en inferencia híbrida PW. Global = 1 - local."
+            )
+        else:
+            st.caption("⚖️ Cada árbol vota con el mismo peso, sin importar si es local o global.")
 
     st.divider()
 
@@ -435,16 +446,27 @@ def render():
     # PW has its own local_weight slider in the aggregation section; skip here
     if strategy_key != "pw":
         st.subheader("🎯 Predicción Híbrida")
-        col8, col9 = st.columns(2)
-        with col8:
-            local_w = st.slider(
-                "Peso votos locales", 0.0, 1.0,
-                value=current_config["prediction"].get("local_weight", 0.4), step=0.05,
-                help="Proporción de votos de árboles locales en la predicción híbrida."
-            )
-        with col9:
-            global_w = round(1.0 - local_w, 4)
-            st.metric("Peso votos globales", f"{global_w:.2f}")
+        use_weighted = st.checkbox(
+            "Ponderar por origen (local/global)",
+            value=use_weighted,
+            help="Si está activo, los árboles locales y globales tienen pesos distintos (λ, 1-λ). "
+                 "Si se desactiva, cada árbol tiene el mismo voto independientemente de su origen.",
+            key="pred_use_weighted"
+        )
+        if use_weighted:
+            col8, col9 = st.columns(2)
+            with col8:
+                local_w = st.slider(
+                    "Peso votos locales", 0.0, 1.0,
+                    value=current_config["prediction"].get("local_weight", 0.4), step=0.05,
+                    help="Proporción de votos de árboles locales en la predicción híbrida."
+                )
+            with col9:
+                global_w = round(1.0 - local_w, 4)
+                st.metric("Peso votos globales", f"{global_w:.2f}")
+        else:
+            local_w = 0.5
+            st.caption("⚖️ Cada árbol vota con el mismo peso, sin importar si es local o global.")
     else:
         # Use the PW-specific value already set above
         local_w = pw_local_weight
@@ -500,6 +522,7 @@ def render():
             "prediction": {
                 "local_weight": pw_local_weight if strategy_key == "pw" else local_w,
                 "global_weight": round(1.0 - (pw_local_weight if strategy_key == "pw" else local_w), 4),
+                "use_weighted": use_weighted,
             },
             "verbose": verbose_cpf,
             "seed": seed,

@@ -152,6 +152,9 @@ class HyperparamOptimizer:
                 # Set local_weight and global_weight in prediction
                 config.setdefault('prediction', {})['local_weight'] = value
                 config['prediction']['global_weight'] = 1.0 - value
+            elif param_path == 'use_weighted':
+                # Set use_weighted in prediction
+                config.setdefault('prediction', {})['use_weighted'] = value
             elif param_path == 't_max':
                 # Set t_max in aggregation
                 config.setdefault('aggregation', {})['t_max'] = value
@@ -339,6 +342,7 @@ class HyperparamOptimizer:
         pred = self.base_config.get('prediction', {})
         defaults['local_weight'] = pred.get('local_weight', 0.4)
         defaults['global_weight'] = pred.get('global_weight', 0.6)
+        defaults['use_weighted'] = pred.get('use_weighted', True)
 
         fed = self.base_config.get('federation', {})
         defaults['n_clients'] = fed.get('n_clients', 5)

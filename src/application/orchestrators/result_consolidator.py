@@ -44,12 +44,14 @@ class ResultConsolidator:
         class_names = self.label_service.classes
         
         local_weight = self.config.get('prediction', {}).get('local_weight', 0.4)
+        use_weighted = self.config.get('prediction', {}).get('use_weighted', True)
         predictor = HybridPredictor(
             local_weight=local_weight, 
             global_weight=1.0 - local_weight, 
             n_classes=len(class_names), 
             class_names=class_names,
-            label_service=self.label_service
+            label_service=self.label_service,
+            use_weighted=use_weighted
         )
 
         for cid in client_ids:
