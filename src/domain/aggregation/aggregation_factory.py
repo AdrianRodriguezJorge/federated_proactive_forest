@@ -29,17 +29,36 @@ class AggregationFactory:
     }
 
     @classmethod
+    def normalize_strategy_name(cls, raw_strategy: str) -> str:
+        """
+        Normalize strategy names (e.g. 's4_global_f1_pcd' -> 'S4', 'pw' -> 'PW').
+        """
+        if not raw_strategy:
+            return "S1"
+        if "_" in raw_strategy:
+            strategy_name = raw_strategy.split("_")[0].upper()
+        else:
+            strategy_name = raw_strategy.upper()
+        
+        # Handle variations of Progressive Windows
+        if strategy_name in ['PROGRESSIVE', 'PROGRESSIVE_WINDOWS']:
+            return "PW"
+            
+        return strategy_name
+
+    @classmethod
     def create_strategy(cls, strategy_name: str, 
                         metrics_service: Optional[IMetricsService] = None,
                         diversity_service: Optional[IDiversityService] = None) -> IAggregationStrategy:
         """
         Create an aggregation strategy instance with injected services.
         """
-        if strategy_name not in cls._strategies:
+        normalized_name = cls.normalize_strategy_name(strategy_name)
+        if normalized_name not in cls._strategies:
             available = sorted(cls._strategies.keys())
-            raise ValueError(f"Unknown strategy '{strategy_name}'. Available: {available}")
+            raise ValueError(f"Unknown strategy '{strategy_name}' (normalized: '{normalized_name}'). Available: {available}")
 
-        strategy_cls = cls._strategies[strategy_name]
+        strategy_cls = cls._strategies[normalized_name]
         
         # Inject dependencies via constructor
         return strategy_cls(

@@ -1,7 +1,7 @@
 {
   "dataset": {
-    "type": "Iris",
-    "file_path": "data/iris.csv",
+    "type": "Nursery",
+    "file_path": "data/nursery.csv",
     "train_path": "",
     "test_path": "",
     "target_column": "class",
@@ -29,7 +29,7 @@
     "t_max": 250,
     "f1_weight": 0.5,
     "pcd_weight": 0.5,
-    "convergence": 0.2,
+    "convergence": 0.005,
     "episode_size": 5,
     "window_size": 5,
     "max_rounds": 20

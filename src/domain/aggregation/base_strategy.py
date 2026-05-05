@@ -22,7 +22,7 @@ class IAggregationStrategy(ABC):
         max_trees_per_client: Optional[int] = None,
         t_max: Optional[int] = None,
         **kwargs
-    ) -> Tuple[List[Any], Dict[str, List[int]], List[Any]]:
+    ) -> Tuple[List[Any], Dict[str, List[int]], List[Any], Optional[int], List[Dict]]:
         """Aggregate trees for the global model.
 
         Args:

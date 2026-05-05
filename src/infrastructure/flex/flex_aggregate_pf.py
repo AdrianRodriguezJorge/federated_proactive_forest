@@ -31,12 +31,7 @@ def aggregate_trees_pf(weights: List[Dict[str, Any]], **kwargs) -> Dict[str, Any
 
     server_config = kwargs.get('server_config', {})
     raw_strategy = server_config.get('strategy') or server_config.get('aggregation', {}).get('strategy', 'S1')
-    
-    # Normalize: "s4_global_f1_pcd" -> "S4", "pw" -> "PW"
-    if "_" in raw_strategy:
-        strategy_name = raw_strategy.split("_")[0].upper()
-    else:
-        strategy_name = raw_strategy.upper()
+    strategy_name = AggregationFactory.normalize_strategy_name(raw_strategy)
 
     agg_config = server_config.get('aggregation', {})
     
@@ -55,17 +50,14 @@ def aggregate_trees_pf(weights: List[Dict[str, Any]], **kwargs) -> Dict[str, Any
 
     # Build aggregate_kwargs
     aggregate_kwargs = {}
-    if strategy_name == 'PW':
-        aggregate_kwargs.update({
-            'window_size': agg_config.get('window_size', 5),
-            'max_rounds': agg_config.get('max_rounds', 20),
-            'f1_weight': agg_config.get('f1_weight', 0.5),
-            'convergence_threshold': agg_config.get('convergence') or agg_config.get('convergence_threshold', 0.002),
-            'local_weight': server_config.get('prediction', {}).get('local_weight', 0.5)
-        })
-    elif strategy_name in ['S4', 'S7']:
-        aggregate_kwargs['f1_weight'] = agg_config.get('f1_weight', 0.5)
-        aggregate_kwargs['pcd_weight'] = agg_config.get('pcd_weight', 1.0 - aggregate_kwargs['f1_weight'])
+    aggregate_kwargs.update({
+        'window_size': agg_config.get('window_size', 5),
+        'max_rounds': agg_config.get('max_rounds', 20),
+        'f1_weight': agg_config.get('f1_weight', 0.5),
+        'pcd_weight': agg_config.get('pcd_weight', 1.0 - agg_config.get('f1_weight', 0.5)),
+        'convergence_threshold': agg_config.get('convergence') or agg_config.get('convergence_threshold', 0.002),
+        'local_weight': server_config.get('prediction', {}).get('local_weight', 0.5)
+    })
 
     conv_val = agg_config.get('convergence') or agg_config.get('convergence_threshold')
     if conv_val is not None:

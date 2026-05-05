@@ -9,8 +9,7 @@ import numpy as np
 from src.domain.services.label_service import SimpleLabelService
 from ..tree_ranker import TreeRanker, RankingCriterion, TreeEntry
 from ...prediction.voting import calculate_mode
-
-from ...model.cpf_implementation.estimator import ProactiveForestClassifier
+from src.domain.aggregation.services.progressive_selector import ProgressiveSelector
 from src.domain.metrics.metrics_service import IMetricsService, IDiversityService
 
 
@@ -98,8 +97,15 @@ class GlobalProgressiveStrategy(ABC):
             except:
                 pass
         
-        global_trees, selected_entries, conv_round, logs = self._progressive_selection_with_convergence(
-            ranked_entries, X_val, y_val_norm, t_max=t_max, label_service=label_svc, **kwargs
+        selector = ProgressiveSelector(metrics_service=self.metrics_svc or kwargs.get('metrics_service'))
+        global_trees, selected_entries, conv_round, logs = selector.select(
+            candidate_entries=ranked_entries,
+            X_val=X_val,
+            y_val_norm=y_val_norm,
+            episode_size=self.EPISODE_SIZE,
+            t_max=t_max if t_max is not None else self.T_MAX,
+            convergence_threshold=kwargs.get('convergence_threshold', self.CONVERGENCE),
+            label_service=label_svc
         )
         
         selected_ids = {cid: [] for cid in client_trees.keys()}
@@ -110,78 +116,6 @@ class GlobalProgressiveStrategy(ABC):
     
     def _get_ranking_criterion(self, **kwargs) -> RankingCriterion:
         return self.ranking_criterion
-    
-    def _progressive_selection_with_convergence(
-        self,
-        ranked_entries: List[TreeEntry],
-        X_val: np.ndarray,
-        y_val: np.ndarray,
-        t_max: Optional[int] = None,
-        label_service: Optional[SimpleLabelService] = None,
-        **kwargs
-    ) -> Tuple[List[Any], List[TreeEntry], Optional[int], List[Dict]]:
-        """Select trees progressively with early stopping. Episode size is fixed at 5."""
-        EPISODE = self.EPISODE_SIZE
-        models_built = 0
-        stop_counter = 0
-        
-        selected_entries: List[TreeEntry] = []
-        episode_accuracies = []
-        round_logs = []
-        convergence_round = None
-
-        T_MAX = t_max if t_max is not None else self.T_MAX
-
-        episode_idx = 0
-        while models_built < min(len(ranked_entries), T_MAX):
-            episode_idx += 1
-            episode_entries = ranked_entries[models_built:models_built + EPISODE]
-            if not episode_entries:
-                break
-
-            for entry in episode_entries:
-                selected_entries.append(entry)
-
-            models_built = len(selected_entries)
-            predictions_raw = self._predict_ensemble(selected_entries, X_val)
-            predictions = label_service.transform(predictions_raw) if label_service else predictions_raw
-            
-            metrics_svc = self.metrics_svc or kwargs.get('metrics_service')
-            acc = float(metrics_svc.accuracy_score(y_val, predictions)) if metrics_svc else float(np.mean(predictions == y_val))
-            f1 = float(metrics_svc.f1_score(y_val, predictions, average='macro')) if metrics_svc else 0.0
-            
-            episode_accuracies.append(acc)
-            round_logs.append({
-                'episode': episode_idx,
-                'n_trees': models_built,
-                'accuracy': acc,
-                'macro_f1': f1
-            })
-
-            if len(episode_accuracies) >= 2:
-                improvement = episode_accuracies[-1] - episode_accuracies[-2]
-                convergence_threshold = kwargs.get('convergence_threshold', self.CONVERGENCE)
-                if improvement < convergence_threshold:
-                    stop_counter += 1
-                    if stop_counter >= 2:
-                        convergence_round = episode_idx
-                        break
-                else:
-                    stop_counter = 0
-
-        return [e.tree for e in selected_entries], selected_entries, convergence_round, round_logs
-    
-    def _predict_ensemble(self, selected_entries: List[TreeEntry], X: np.ndarray) -> np.ndarray:
-        if not selected_entries:
-            return np.zeros(X.shape[0], dtype=int)
-        
-        n_trees = len(selected_entries)
-        # Use object dtype to handle both string and numeric predictions before mode calculation
-        all_predictions = np.empty((X.shape[0], n_trees), dtype=object)
-        for j, entry in enumerate(selected_entries):
-            all_predictions[:, j] = entry.tree.predict(X)
-        
-        return calculate_mode(all_predictions, axis=1)
 
 
 class S2GlobalAccuracyStrategy(GlobalProgressiveStrategy):

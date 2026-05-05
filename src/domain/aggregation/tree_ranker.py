@@ -4,6 +4,7 @@ from enum import Enum
 from typing import Any, Dict, List, Optional
 import numpy as np
 from src.domain.metrics.metrics_service import IDiversityService
+from src.domain.aggregation.services.tree_metric_extractor import TreeMetricExtractor
 
 
 class RankingCriterion(str, Enum):
@@ -49,44 +50,18 @@ class TreeRanker:
                       client_metadata: Dict,
                       X_val: Optional[np.ndarray] = None,
                       diversity_service: Optional[IDiversityService] = None) -> List[TreeEntry]:
-        """Construye TreeEntry por cada árbol de cada cliente."""
+        """Construye TreeEntry por cada árbol de cada cliente delegando en TreeMetricExtractor."""
+        extractor = TreeMetricExtractor(diversity_service=diversity_service)
+        raw_entries = extractor.extract_metrics(client_trees, client_metadata, X_val)
+        
         entries = []
-        for cid, trees in client_trees.items():
-            meta = client_metadata[cid]
-            # Extraer tree_metrics si existen (lista de dicts con 'accuracy' y 'macro_f1')
-            tree_metrics = getattr(meta, 'tree_metrics', [])
-            
-            # Predict each tree if X_val is provided and individual metrics are missing or PCD is needed
-            predictions_matrix = None
-            if X_val is not None and diversity_service is not None:
-                # Optimized: Predict all trees in the client once
-                predictions_matrix = np.zeros((X_val.shape[0], len(trees)), dtype=int)
-                for i, tree in enumerate(trees):
-                    predictions_matrix[:, i] = tree.predict(X_val)
-
-            for local_id, tree in enumerate(trees):
-                # Usar métrica individual si está disponible, si no usar la del bosque completo (fallback)
-                tree_acc = tree_metrics[local_id]['accuracy'] if local_id < len(tree_metrics) else meta.accuracy
-                tree_f1 = tree_metrics[local_id]['macro_f1'] if local_id < len(tree_metrics) else meta.macro_f1
-                
-                # Para PCD, si tenemos el matrix de predicciones y el servicio, calculamos PCD individual
-                tree_pcd = meta.pcd
-                if predictions_matrix is not None and diversity_service is not None:
-                    # Calculate mean disagreement of this tree with others in the same client forest
-                    n_others = predictions_matrix.shape[1] - 1
-                    if n_others > 0:
-                        # Slice other trees' predictions
-                        other_preds = np.delete(predictions_matrix, local_id, axis=1)
-                        # Mean disagreement of this tree with all others
-                        disagreements = (predictions_matrix[:, [local_id]] != other_preds)
-                        tree_pcd = float(np.mean(disagreements))
-
-                entries.append(TreeEntry(
-                    tree=tree,
-                    client_id=cid,
-                    tree_local_id=local_id,
-                    accuracy=tree_acc,
-                    macro_f1=tree_f1,
-                    pcd=tree_pcd,
-                ))
+        for raw in raw_entries:
+            entries.append(TreeEntry(
+                tree=raw['tree'],
+                client_id=raw['client_id'],
+                tree_local_id=raw['tree_local_id'],
+                accuracy=raw['accuracy'],
+                macro_f1=raw['macro_f1'],
+                pcd=raw['pcd'],
+            ))
         return entries

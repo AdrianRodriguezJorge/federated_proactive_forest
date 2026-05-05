@@ -56,7 +56,7 @@ def main():
         acc = results.client_accuracies.get(cid, 0.0)
         f1 = results.client_f1_scores.get(cid, 0.0)
         meta = results.client_metadata.get(cid)
-        sel = len(results.selected_ids.get(cid, []))
+        sel = len(results.selected_ids.get(str(cid), []))
         if meta:
             print(f"  {cid}: acc={acc:.4f} | f1={f1:.4f} | "
                   f"pcd={meta.pcd:.4f} | árboles_loc={meta.n_trees} | sel={sel}")

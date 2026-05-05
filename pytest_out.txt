@@ -1,0 +1,14 @@
+============================= test session starts =============================
+platform win32 -- Python 3.8.10, pytest-8.3.5, pluggy-1.5.0 -- C:\Users\Adrián Rodríguez\AppData\Local\Programs\Python\Python38\python.exe
+cachedir: .pytest_cache
+rootdir: C:\\Users\\Adri\xe1n Rodr\xedguez\\Documents\\! Study \U0001f4dd\\\U0001f4ca KDD \U0001f916\U0001f9e0\\! Federated learning\\federated_proactive_forest
+configfile: pyproject.toml
+collecting ... collected 0 items / 1 error
+
+=================================== ERRORS ====================================
+_______________ ERROR collecting tests/test_pw_orchestrator.py ________________
+ImportError while importing test module 'C:\\Users\\Adri\xe1n Rodr\xedguez\\Documents\\! Study \U0001f4dd\\\U0001f4ca KDD \U0001f916\U0001f9e0\\! Federated learning\\federated_proactive_forest\\tests\\test_pw_orchestrator.py'.\nHint: make sure your test modules/packages have valid Python names.\nTraceback:\n..\\..\\..\\..\\..\\AppData\\Local\\Programs\\Python\\Python38\\lib\\importlib\\__init__.py:127: in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\ntests\\test_pw_orchestrator.py:3: in <module>\n    from src.application.orchestrators.progressive_windows_orchestrator import ProgressiveWindowsOrchestrator\nsrc\\application\\orchestrators\\__init__.py:2: in <module>\n    from .fl_orchestrator import FLEXOrchestrator, FLResults\nsrc\\application\\orchestrators\\fl_orchestrator.py:33: in <module>\n    from src.application.orchestrators.result_consolidator import ResultConsolidator\nsrc\\application\\orchestrators\\result_consolidator.py:10: in <module>\n    from src.application.orchestrators.fl_orchestrator import FLResults\nE   ImportError: cannot import name 'FLResults' from partially initialized module 'src.application.orchestrators.fl_orchestrator' (most likely due to a circular import) (C:\\Users\\Adri\xe1n Rodr\xedguez\\Documents\\! Study \U0001f4dd\\\U0001f4ca KDD \U0001f916\U0001f9e0\\! Federated learning\\federated_proactive_forest\\src\\application\\orchestrators\\fl_orchestrator.py)
+=========================== short test summary info ===========================
+ERROR tests/test_pw_orchestrator.py
+!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
+============================== 1 error in 3.06s ===============================

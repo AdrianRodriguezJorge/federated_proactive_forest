@@ -27,20 +27,25 @@ client_trees = {}
 client_metadata = {}
 for i in range(n_clients):
     client_id = f'client_{i}'
-    # Crear árboles con accuracy variable
-    trees = [{'id': j, 'accuracy': 0.7 + np.random.random() * 0.2} for j in range(n_trees_per_client)]
+    class DummyTree:
+        def __init__(self, accuracy):
+            self.accuracy = accuracy
+        def predict(self, X):
+            return np.random.randint(0, 2, size=X.shape[0])
+            
+    trees = [DummyTree(0.7 + np.random.random() * 0.2) for j in range(n_trees_per_client)]
     client_trees[client_id] = trees
     client_metadata[client_id] = type('obj', (object,), {
         'client_id': client_id,
         'n_trees': len(trees),
-        'accuracy': np.mean([t['accuracy'] for t in trees]),
-        'macro_f1': np.mean([t['accuracy'] for t in trees]) * 0.95,
+        'accuracy': np.mean([t.accuracy for t in trees]),
+        'macro_f1': np.mean([t.accuracy for t in trees]) * 0.95,
         'pcd': 0.3 + np.random.random() * 0.4,
         'to_dict': lambda self=client_id, trees=trees: {
             'client_id': self,
             'n_trees': len(trees),
-            'accuracy': np.mean([t['accuracy'] for t in trees]),
-            'macro_f1': np.mean([t['accuracy'] for t in trees]) * 0.95,
+            'accuracy': np.mean([t.accuracy for t in trees]),
+            'macro_f1': np.mean([t.accuracy for t in trees]) * 0.95,
             'pcd': 0.3 + np.random.random() * 0.4,
         }
     })()

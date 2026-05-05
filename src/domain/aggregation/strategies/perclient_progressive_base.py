@@ -8,9 +8,10 @@ from typing import Dict, List, Any, Tuple, Optional
 import numpy as np
 from ..tree_ranker import TreeRanker, RankingCriterion, TreeEntry
 from ...prediction.voting import calculate_mode
-from ...model.cpf_implementation.estimator import ProactiveForestClassifier
-from src.domain.metrics.metrics_service import IMetricsService, IDiversityService
+from ...prediction.voting import calculate_mode
+from src.domain.aggregation.services.progressive_selector import ProgressiveSelector
 from src.domain.services.label_service import SimpleLabelService
+from src.domain.metrics.metrics_service import IMetricsService, IDiversityService
 
 
 class PerClientProgressiveStrategy(ABC):
@@ -31,6 +32,12 @@ class PerClientProgressiveStrategy(ABC):
     def __init__(self, 
                  metrics_service: Optional[IMetricsService] = None,
                  diversity_service: Optional[IDiversityService] = None):
+        """Initializes the per-client progressive strategy.
+
+        Args:
+            metrics_service (Optional[IMetricsService]): Service to calculate performance metrics.
+            diversity_service (Optional[IDiversityService]): Service to calculate diversity metrics (e.g., PCD).
+        """
         self.metrics_svc = metrics_service
         self.diversity_svc = diversity_service
     
@@ -55,7 +62,31 @@ class PerClientProgressiveStrategy(ABC):
         t_max: int = None,
         **kwargs
     ) -> Tuple[List[Any], Dict[str, List[int]], List[TreeEntry], Optional[int], List[Dict]]:
-        """Aggregate trees using per-client ranking with round-robin and Progressive Forest."""
+        """Aggregates trees from multiple clients using per-client ranking and Progressive Forest.
+
+        This method follows a three-step process:
+        1. Ranks trees for each client independently based on the strategy's criterion.
+        2. Interleaves the ranked trees using a round-robin approach.
+        3. Applies Progressive Forest selection with early stopping if validation data is provided.
+
+        Args:
+            client_trees (Dict[str, List[Any]]): Dictionary mapping client IDs to their list of local trees.
+            client_metadata (Dict): Metadata for each client's trees (e.g., performance metrics).
+            X_val (Optional[np.ndarray]): Validation features for Progressive Forest selection.
+            y_val (Optional[np.ndarray]): Validation labels for Progressive Forest selection.
+            max_trees (Optional[int]): Maximum total trees to select across all clients.
+            max_trees_per_client (Optional[int]): Maximum trees to consider from each client.
+            t_max (Optional[int]): Maximum number of trees allowed in the final ensemble.
+            **kwargs: Additional parameters like `f1_weight`, `pcd_weight`, or `class_names`.
+
+        Returns:
+            Tuple containing:
+                - List[Any]: The final list of aggregated trees.
+                - Dict[str, List[int]]: Mapping of client IDs to the indices of their selected trees.
+                - List[TreeEntry]: Full list of interleaved tree entries before selection.
+                - Optional[int]: The round where convergence was reached (if applicable).
+                - List[Dict]: Execution logs from the progressive selector.
+        """
         client_ids = list(client_trees.keys())
         if not client_ids:
             return [], {}, [], None, []
@@ -103,8 +134,15 @@ class PerClientProgressiveStrategy(ABC):
                 pass
         
         # Step 3: Apply Progressive Forest with early stopping
-        global_trees, selected_entries, conv_round, logs = self._progressive_selection_with_convergence(
-            round_robin_entries, X_val, y_val_norm, t_max=t_max, n_clients=len(client_ids), label_service=label_svc, **kwargs
+        selector = ProgressiveSelector(metrics_service=self.metrics_svc or kwargs.get('metrics_service'))
+        global_trees, selected_entries, conv_round, logs = selector.select(
+            candidate_entries=round_robin_entries,
+            X_val=X_val,
+            y_val_norm=y_val_norm,
+            episode_size=len(client_ids),
+            t_max=t_max if t_max is not None else self.T_MAX,
+            convergence_threshold=kwargs.get('convergence_threshold', self.CONVERGENCE),
+            label_service=label_svc
         )
         
         selected_ids = {cid: [] for cid in client_trees.keys()}
@@ -130,92 +168,10 @@ class PerClientProgressiveStrategy(ABC):
                     round_robin_entries.append(entries[idx])
                     client_indices[client_id] += 1
         return round_robin_entries
-    
-    def _progressive_selection_with_convergence(
-        self,
-        round_robin_entries: List[TreeEntry],
-        X_val: np.ndarray,
-        y_val: np.ndarray,
-        t_max: int = None,
-        n_clients: int = None,
-        label_service: Optional[SimpleLabelService] = None,
-        **kwargs
-    ) -> Tuple[List[Any], List[TreeEntry], Optional[int], List[Dict]]:
-        """Select trees progressively. EPISODE is fixed at n_clients."""
-        EPISODE = n_clients if n_clients is not None else 5
-        models_built = 0
-        stop_counter = 0
-        
-        selected_entries: List[TreeEntry] = []
-        episode_accuracies = []
-        round_logs = []
-        convergence_round = None
-
-        T_MAX = t_max if t_max is not None else self.T_MAX
-        prediction_cache: Dict[int, np.ndarray] = {}
-
-        episode_idx = 0
-        while models_built < min(len(round_robin_entries), T_MAX):
-            episode_idx += 1
-            episode_entries = round_robin_entries[models_built:models_built + EPISODE]
-            if not episode_entries:
-                break
-
-            for entry in episode_entries:
-                selected_entries.append(entry)
-
-            models_built = len(selected_entries)
-            predictions_raw = self._predict_ensemble(selected_entries, X_val, cache=prediction_cache)
-            predictions = label_service.transform(predictions_raw) if label_service else predictions_raw
-            
-            metrics_svc = self.metrics_svc or kwargs.get('metrics_service')
-            acc = float(metrics_svc.accuracy_score(y_val, predictions)) if metrics_svc else float(np.mean(predictions == y_val))
-            f1 = float(metrics_svc.f1_score(y_val, predictions, average='macro')) if metrics_svc else 0.0
-            
-            episode_accuracies.append(acc)
-            round_logs.append({
-                'episode': episode_idx,
-                'n_trees': models_built,
-                'accuracy': acc,
-                'macro_f1': f1
-            })
-
-            if len(episode_accuracies) >= 2:
-                improvement = episode_accuracies[-1] - episode_accuracies[-2]
-                convergence_threshold = kwargs.get('convergence_threshold', self.CONVERGENCE)
-                if improvement < convergence_threshold:
-                    stop_counter += 1
-                    if stop_counter >= 2:
-                        convergence_round = episode_idx
-                        break
-                else:
-                    stop_counter = 0
-
-        return [e.tree for e in selected_entries], selected_entries, convergence_round, round_logs
-    
-    def _predict_ensemble(self, selected_entries: List[TreeEntry], X: np.ndarray, 
-                         cache: Optional[Dict[int, np.ndarray]] = None) -> np.ndarray:
-        if not selected_entries:
-            return np.zeros(X.shape[0], dtype=int)
-        
-        n_samples = X.shape[0]
-        n_trees = len(selected_entries)
-        # Use object dtype to handle both string and numeric predictions before mode calculation
-        all_predictions = np.empty((n_samples, n_trees), dtype=object)
-        for j, entry in enumerate(selected_entries):
-            tree_id = id(entry.tree)
-            if cache is not None and tree_id in cache:
-                all_predictions[:, j] = cache[tree_id]
-            else:
-                preds = entry.tree.predict(X)
-                all_predictions[:, j] = preds
-                if cache is not None:
-                    cache[tree_id] = preds
-        
-        return calculate_mode(all_predictions, axis=1)
 
 
 class S5PerClientAccuracyStrategy(PerClientProgressiveStrategy):
+    """Strategy S5: Per-client ranking based on local accuracy."""
     @property
     def ranking_criterion(self) -> RankingCriterion:
         return RankingCriterion.ACCURACY
@@ -225,6 +181,7 @@ class S5PerClientAccuracyStrategy(PerClientProgressiveStrategy):
 
 
 class S6PerClientF1Strategy(PerClientProgressiveStrategy):
+    """Strategy S6: Per-client ranking based on local Macro-F1 score."""
     @property
     def ranking_criterion(self) -> RankingCriterion:
         return RankingCriterion.MACRO_F1
@@ -234,6 +191,7 @@ class S6PerClientF1Strategy(PerClientProgressiveStrategy):
 
 
 class S7PerClientF1PCDStrategy(PerClientProgressiveStrategy):
+    """Strategy S7: Per-client ranking based on a weighted combination of F1-score and PCD diversity."""
     @property
     def ranking_criterion(self) -> RankingCriterion:
         return RankingCriterion.F1_PCD
