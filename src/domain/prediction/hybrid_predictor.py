@@ -7,9 +7,10 @@ from typing import Any, List
 
 
 class HybridPredictor:
-    """
-    Predicción combinada ponderada: local_weight·local + global_weight·global.
-    local_weight + global_weight debe ser 1.0.
+    """Weighted hybrid prediction logic.
+    
+    Combines predictions from local and global models using a weighted voting scheme:
+    score = local_weight * local_votes + global_weight * global_votes.
     """
 
     def __init__(self, local_weight: float = 0.4, global_weight: float = 0.6,

@@ -35,7 +35,7 @@ def _align_labels(y_true: np.ndarray, y_pred: np.ndarray, class_names: Optional[
 
 
 @evaluate_server_model
-def evaluate_global_pf_model(server_flex_model: FlexModel, test_data: Any = None, *args, **kwargs) -> Dict[str, Any]:
+def evaluate_global_pf_model(server_flex_model: FlexModel, test_data: Any = None, *args, **kwargs: Any) -> Dict[str, Any]:
     """
     Evaluate global model on server side.
     FLEX Primitive for @evaluate_server_model.
@@ -125,7 +125,7 @@ def evaluate_global_pf_model(server_flex_model: FlexModel, test_data: Any = None
         return {'accuracy': 0.0, 'macro_f1': 0.0, 'pcd': 0.0, 'per_class_metrics': {}, 'confusion_matrix': []}
 
 
-def evaluate_global_pf_model_at_clients(client_flex_model: FlexModel, client_data: Any, *args, **kwargs) -> Dict[str, float]:
+def evaluate_global_pf_model_at_clients(client_flex_model: FlexModel, client_data: Any, *args, **kwargs: Any) -> Dict[str, float]:
     global_model = client_flex_model.get('global_model')
     if global_model is None or client_data is None:
         return {'accuracy': 0.0, 'macro_f1': 0.0}
@@ -146,7 +146,7 @@ def evaluate_global_pf_model_at_clients(client_flex_model: FlexModel, client_dat
         return {'accuracy': 0.0, 'macro_f1': 0.0}
 
 
-def evaluate_local_pf_model_at_clients(client_flex_model: FlexModel, client_data: Any, *args, **kwargs) -> Dict[str, float]:
+def evaluate_local_pf_model_at_clients(client_flex_model: FlexModel, client_data: Any, *args, **kwargs: Any) -> Dict[str, float]:
     local_model = client_flex_model.get('model')
     if local_model is None or client_data is None:
         return {'accuracy': 0.0, 'macro_f1': 0.0}

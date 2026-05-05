@@ -60,7 +60,7 @@ class PerClientProgressiveStrategy(ABC):
         max_trees: int = None,
         max_trees_per_client: int = None,
         t_max: int = None,
-        **kwargs
+        **kwargs: Any
     ) -> Tuple[List[Any], Dict[str, List[int]], List[TreeEntry], Optional[int], List[Dict]]:
         """Aggregates trees from multiple clients using per-client ranking and Progressive Forest.
 
@@ -151,7 +151,7 @@ class PerClientProgressiveStrategy(ABC):
         
         return global_trees, selected_ids, round_robin_entries, conv_round, logs
     
-    def _get_ranking_criterion(self, **kwargs) -> RankingCriterion:
+    def _get_ranking_criterion(self, **kwargs: Any) -> RankingCriterion:
         return self.ranking_criterion
     
     def _interleave_round_robin(self, client_ranked_entries: Dict[str, List[TreeEntry]],

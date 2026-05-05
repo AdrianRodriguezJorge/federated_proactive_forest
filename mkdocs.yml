@@ -27,7 +27,7 @@ plugins:
   - mkdocstrings:
       handlers:
         python:
-          paths: [src]
+          paths: ["."]
           options:
             show_source: true
             show_root_heading: true
@@ -40,3 +40,4 @@ nav:
       - Aggregation Strategies: reference/strategies.md
       - Models: reference/models.md
       - Services: reference/services.md
+      - Orchestration: reference/orchestration.md

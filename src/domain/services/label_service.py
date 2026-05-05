@@ -28,8 +28,7 @@ class ILabelService(ABC):
 
 
 class SimpleLabelService(ILabelService):
-    """
-    Concrete implementation of ILabelService with robust type handling.
+    """Concrete implementation of ILabelService with robust type handling.
     
     Supports string labels and integer indices. 
     If integers are provided, they are validated against the fitted classes.
@@ -37,6 +36,11 @@ class SimpleLabelService(ILabelService):
     """
 
     def __init__(self, class_names: Optional[List[Any]] = None):
+        """Initializes the label service.
+
+        Args:
+            class_names (Optional[List[Any]]): Predefined list of class names. If provided, the service is fitted immediately.
+        """
         self._classes: List[Any] = []
         self._encoder: Dict[Any, int] = {}
         self._decoder: Dict[int, Any] = {}

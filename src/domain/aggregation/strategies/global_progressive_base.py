@@ -114,7 +114,7 @@ class GlobalProgressiveStrategy(ABC):
         
         return global_trees, selected_ids, ranked_entries, conv_round, logs
     
-    def _get_ranking_criterion(self, **kwargs) -> RankingCriterion:
+    def _get_ranking_criterion(self, **kwargs: Any) -> RankingCriterion:
         return self.ranking_criterion
 
 

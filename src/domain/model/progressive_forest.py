@@ -17,13 +17,10 @@ import numpy as np
 
 
 class ComparativeProgressiveForest:
-    """
-    Comparative Progressive Forest (CPF).
-    Entrena un ProactiveForest en episodios con early stopping por convergencia.
-
-    Parámetros:
-    - CONVERGENCE: Umbral de convergencia (0.002).
-    - EPISODE: Tamaño inicial del episodio (5).
+    """Comparative Progressive Forest (CPF) implementation.
+    
+    Trains a ProactiveForest in episodes, applying early stopping based on 
+    the convergence of validation accuracy across trees.
     """
 
     def __init__(self, classifier, verbose: bool = False, convergence_threshold: float = 0.002):

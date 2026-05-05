@@ -7,7 +7,7 @@ from src.domain.model.proactive_forest import ProactiveForest
 
 
 @aggregate_weights
-def aggregate_trees_pf(weights: List[Dict[str, Any]], **kwargs) -> Dict[str, Any]:
+def aggregate_trees_pf(weights: List[Dict[str, Any]], **kwargs: Any) -> Dict[str, Any]:
     """
     Aggregate trees using the configured strategy.
     
@@ -88,7 +88,7 @@ def aggregate_trees_pf(weights: List[Dict[str, Any]], **kwargs) -> Dict[str, Any
 
 
 @set_aggregated_weights
-def set_aggregated_trees_pf(server_flex_model: FlexModel, aggregated_data: Dict[str, Any], **kwargs):
+def set_aggregated_trees_pf(server_flex_model: FlexModel, aggregated_data: Dict[str, Any], **kwargs: Any):
     """
     Set aggregated trees and metadata into the global model.
     """

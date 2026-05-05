@@ -22,14 +22,15 @@ class ProactiveForest(GlobalRandomForest, ABCForest):
                  verbose: bool = False, 
                  class_names: Optional[List[str]] = None,
                  convergence_threshold: float = 0.002):
-        """
+        """Initializes the Proactive Forest model.
+
         Args:
-            n_estimators: Number of trees in the forest
-            alpha: Diversity rate for feature probability adjustment (Cepero parameter)
-            random_state: Random seed
-            verbose: Whether to print CPF training logs
-            class_names: List of all possible class names (for consistent encoding)
-            convergence_threshold: Threshold for early stopping.
+            n_estimators (int): Number of trees to train in the forest.
+            alpha (float): Diversity rate for feature probability adjustment (Cepero parameter).
+            random_state (int): Seed for reproducibility.
+            verbose (bool): Whether to print training progress and CPF logs.
+            class_names (Optional[List[str]]): List of class names for consistent label encoding.
+            convergence_threshold (float): Improvement threshold for early stopping.
         """
         # Call GlobalRandomForest init (max_depth is not directly used here but good to pass if needed)
         super().__init__(n_estimators=n_estimators)

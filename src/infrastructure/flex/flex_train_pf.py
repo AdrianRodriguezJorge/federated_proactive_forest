@@ -108,7 +108,7 @@ def train_pf(client_flex_model: FlexModel, client_data: Any) -> FlexModel:
 
 
 @collect_clients_weights
-def collect_clients_trees_pf(client_flex_model: FlexModel, *args, **kwargs) -> List[Any]:
+def collect_clients_trees_pf(client_flex_model: FlexModel, *args, **kwargs: Any) -> List[Any]:
     """
     Collect trees from a single client.
     FLEX primitive function decorated with @collect_clients_weights.

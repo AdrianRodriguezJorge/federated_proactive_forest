@@ -58,14 +58,26 @@ from src.application.orchestrators.fl_results import FLResults
 
 
 class FLEXOrchestrator:
-    """
-    Enhanced Federated Learning Orchestrator using native FLEX Framework constructs.
+    """Enhanced Federated Learning Orchestrator using native FLEX Framework constructs.
+    
+    This orchestrator handles the full lifecycle of a federated round, including:
+    - Data distribution (IID/Non-IID).
+    - Client initialization and local training.
+    - Weight collection and global aggregation.
+    - Model deployment and evaluation.
     """
 
     def __init__(self, 
                  config: Union[dict, Any], 
                  step_callback: Optional[Callable] = None,
                  use_flex_pool: bool = True):
+        """Initializes the orchestrator.
+
+        Args:
+            config (Union[dict, Any]): Configuration dictionary or object containing hyperparameters.
+            step_callback (Optional[Callable]): Function called at each step of the round for progress reporting.
+            use_flex_pool (bool): Whether to use FLEX Framework's FlexPool for communication.
+        """
         self.config = config if isinstance(config, dict) else config.dict()
         self.config_dict = self.config
         self.step_callback = step_callback or (lambda *a, **kw: None)

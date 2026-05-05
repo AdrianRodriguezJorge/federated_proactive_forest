@@ -9,7 +9,7 @@ class RandomForestWrapper(ABCForest):
     Used as a fallback or for comparison purposes.
     """
 
-    def __init__(self, n_estimators: int = 100, random_state: int = 42, **kwargs):
+    def __init__(self, n_estimators: int = 100, random_state: int = 42, **kwargs: Any):
         self.n_estimators = n_estimators
         self.random_state = random_state
         self.kwargs = kwargs

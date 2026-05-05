@@ -8,7 +8,7 @@ class FlexPoolFactory:
     """
 
     @staticmethod
-    def create_client_server_pool(federated_data, init_model_func, **kwargs):
+    def create_client_server_pool(federated_data, init_model_func, **kwargs: Any):
         """
         Create a client-server FLEX pool using the native classmethod.
 

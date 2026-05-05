@@ -17,6 +17,15 @@
 - ✅ **Clean Hexagonal Architecture**: Strict separation between Domain, Application, and Infrastructure
 - ✅ **Hyperparameter Optimization**: Integrated Optuna support for strategy-specific parameters
 - ✅ **FLEX Framework Integration**: Advanced FL orchestration support
+- ✅ **Professional Documentation**: Auto-generated documentation site with MkDocs
+
+## 📖 Documentation
+
+The project includes comprehensive documentation generated from the code's docstrings.
+
+*   **Online/Local Page**: Run `mkdocs serve` to view the documentation site.
+*   **API Reference**: Detailed description of strategies, models, and services.
+*   **Hexagonal Design**: Explanation of the architectural patterns used.
 
 ## 📋 Table of Contents
 
@@ -111,33 +120,42 @@ python -m src.interfaces.cli.main --config configs/experiments/exp_s1_simple_poo
 
 ### Option 3: Programmatic Usage
 
-### Option 3: Programmatic Usage
+You can use the `FLEXOrchestrator` to run experiments directly from Python code. This is ideal for integration into larger pipelines or automated scripts.
 
 ```python
 from src.application.orchestrators.fl_orchestrator import FLEXOrchestrator
 from src.infrastructure.dataset.dataset_factory import DatasetFactory
+from src.domain.services.label_service import LabelService
 
-# 1. Load dataset via factory
+# 1. Load and prepare dataset
 adapter = DatasetFactory.create_adapter({"type": "Iris"})
 dataset_split = adapter.load()
 
-# 2. Configure federation
+# 2. Define experimental configuration
 config = {
     "n_clients": 5,
     "distribution": "noniid_dirichlet",
     "alpha": 0.5,
-    "strategy": "S7",
-    "model": {"n_estimators": 50, "alpha": 0.1},
-    "prediction": {"local_weight": 0.4, "global_weight": 0.6}
+    "strategy": "S7",  # Per-client F1 + PCD
+    "model": {
+        "n_estimators": 50,
+        "alpha": 0.1,
+        "bootstrap": True
+    },
+    "prediction": {
+        "local_weight": 0.4,
+        "global_weight": 0.6
+    }
 }
 
-# 3. Run federated round
+# 3. Initialize and run orchestrator
 orchestrator = FLEXOrchestrator(config)
 orchestrator.setup_federation(dataset_split)
 results = orchestrator.run_federated_round()
 
-print(f"Global accuracy: {results.global_accuracy:.4f}")
-print(f"Aggregated trees: {results.n_trees_global}")
+# 4. Access results
+print(f"✅ Global accuracy: {results.global_accuracy:.4f}")
+print(f"✅ Total trees in global model: {results.n_trees_global}")
 ```
 
 ## 📊 Supported Datasets

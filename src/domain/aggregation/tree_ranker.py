@@ -25,9 +25,22 @@ class TreeEntry:
 
 
 class TreeRanker:
+    """Logic for ranking trees based on various performance and diversity criteria.
+    
+    Used by strategies S2-S7 to determine which trees to include in the global model.
+    """
+
     def __init__(self, criterion: RankingCriterion,
                  f1_weight: float = 0.5, pcd_weight: float = 0.5,
                  diversity_service: Optional[IDiversityService] = None):
+        """Initializes the tree ranker.
+
+        Args:
+            criterion (RankingCriterion): The metric used for ranking (Accuracy, F1, or F1+PCD).
+            f1_weight (float): Weight for F1-score when using F1+PCD criterion.
+            pcd_weight (float): Weight for PCD diversity when using F1+PCD criterion.
+            diversity_service (Optional[IDiversityService]): Service to calculate PCD.
+        """
         self.criterion = criterion
         self.f1_w = f1_weight
         self.pcd_w = pcd_weight
