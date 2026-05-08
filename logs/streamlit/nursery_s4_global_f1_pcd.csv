@@ -1,0 +1,4 @@
+timestamp,dataset,strategy,modelo,accuracy,macro_f1,macro_precision,macro_recall,pcd,forest_size,n_clients,use_weighted,local_weight,n_estimators,seed,convergence_round
+2026-05-08 14:45:30,Nursery,s4_global_f1_pcd,Global,0.9799,0.7644,0.7711,0.7582,0.1937,20,2,True,0.0,100,42,4
+2026-05-08 14:45:30,Nursery,s4_global_f1_pcd,Client_0,0.9688,0.7455,0.7562,0.7366,0.1929,48,2,True,0.0,100,42,4
+2026-05-08 14:45:30,Nursery,s4_global_f1_pcd,Client_1,0.9757,0.7591,0.7629,0.7555,0.1827,74,2,True,0.0,100,42,4

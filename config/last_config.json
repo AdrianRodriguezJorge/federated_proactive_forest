@@ -1,7 +1,7 @@
 {
   "dataset": {
-    "type": "Nursery",
-    "file_path": "data/nursery.csv",
+    "type": "Iris",
+    "file_path": "data/iris.csv",
     "train_path": "",
     "test_path": "",
     "target_column": "class",
@@ -33,7 +33,7 @@
     "episode_size": 5,
     "window_size": 5,
     "max_rounds": 10,
-    "variant": "S9_CONSENSUS",
+    "variant": "S9_MEAN",
     "beta": 0.0,
     "convergence_threshold": 0.005
   },

@@ -51,6 +51,17 @@ def render():
             st.warning("⚠️ No hay configuración guardada. Crea una configuración en la página '⚙️ Configuración'.")
             return
 
+    # Lazy load dataset if config exists but dataset object is missing
+    if cfg and cfg.get("_dataset_split") is None:
+        with st.spinner("📦 Cargando dataset para el experimento..."):
+            try:
+                from src.interfaces.streamlit.pages_manual.page_config import _load_dataset
+                ds = _load_dataset(cfg)
+                cfg["_dataset_split"] = ds
+                st.session_state["fl_config"] = cfg
+            except Exception as e:
+                st.error(f"❌ Error al cargar el dataset: {e}")
+
     # Resumen de la config activa
     with st.expander("📋 Configuración activa", expanded=False):
         clean = {k: v for k, v in cfg.items() if k != "_dataset_split"}
@@ -119,19 +130,30 @@ def render():
             if log_path:
                 st.toast(f"📝 Log guardado: {log_path.name}", icon="✅")
 
-            c1, c2, c3, c4, c5 = st.columns(5)
-            c1.metric("Accuracy global",  f"{results.global_accuracy:.4f}")
-            c2.metric("Macro-F1 global",  f"{results.global_macro_f1:.4f}")
+            # ── Dashboard de Resultados (KPIs) ──────────────────────────────────
+            st.markdown("### 📊 Resumen de la Ejecución")
             
-            if is_s9:
-                c3.metric("Coste Comm.", f"{results.total_communication_bytes/1024:.2f} KB")
-                c4.metric("Estrategia", f"S9 ({results.roulette_variant})")
-                c5.metric("Beta (Local)", f"{results.beta:.2f}")
-            else:
-                c3.metric("Árboles global",   results.n_trees_global)
-                c4.metric("Estrategia",       results.strategy_id)
-                pred_mode = "Ponderado (λ)" if cfg.get("prediction", {}).get("use_weighted", True) else "Uniforme (1/N)"
-                c5.metric("Predicción", pred_mode)
+            # Fila 1: Métricas de eficacia
+            row1_c1, row1_c2 = st.columns(2)
+            with row1_c1:
+                st.metric("🎯 Accuracy (Referencia Ensamble)", f"{results.global_accuracy:.4f}")
+            with row1_c2:
+                st.metric("📈 Macro-F1 (Referencia Ensamble)", f"{results.global_macro_f1:.4f}")
+
+            # Fila 2: Métricas técnicas y federación
+            row2_c1, row2_c2, row2_c3 = st.columns([1, 2, 1])
+            with row2_c1:
+                comm_kb = getattr(results, 'total_communication_bytes', 0) / 1024
+                st.metric("📡 Coste Comm.", f"{comm_kb:.2f} KB")
+            with row2_c2:
+                is_s9 = "S9" in results.strategy_id
+                strat_label = f"S9 ({getattr(results, 'roulette_variant', 'N/A')})" if is_s9 else results.strategy_id
+                st.metric("🧠 Estrategia", strat_label)
+            with row2_c3:
+                if is_s9:
+                    st.metric("⚖️ Beta (Local)", f"{getattr(results, 'beta', 0.0):.2f}")
+                else:
+                    st.metric("🌲 Árboles Global", results.n_trees_global)
 
             # ── Dashboards & Details (Optional expanders to avoid redundancy) ────────
             if is_s9:
@@ -161,20 +183,30 @@ def render():
         results = st.session_state["fl_results"]
         st.success("📊 Resultados de la última ejecución listos.")
         
-        c1, c2, c3, c4, c5 = st.columns(5)
-        c1.metric("Accuracy global",  f"{results.global_accuracy:.4f}")
-        c2.metric("Macro-F1 global",  f"{results.global_macro_f1:.4f}")
+        # ── Dashboard de Resultados (KPIs) ──────────────────────────────────
+        st.markdown("### 📊 Resumen de la Ejecución")
         
-        is_s9 = "S9" in results.strategy_id
-        if is_s9:
-            c3.metric("Coste Comm.", f"{getattr(results, 'total_communication_bytes', 0)/1024:.2f} KB")
-            c4.metric("Estrategia", f"S9 ({getattr(results, 'roulette_variant', 'N/A')})")
-            c5.metric("Beta (Local)", f"{getattr(results, 'beta', 0.0):.2f}")
-        else:
-            c3.metric("Árboles global",   results.n_trees_global)
-            c4.metric("Estrategia",       results.strategy_id)
-            pred_mode = "Ponderado (λ)" if cfg.get("prediction", {}).get("use_weighted", True) else "Uniforme (1/N)"
-            c5.metric("Predicción", pred_mode)
+        # Fila 1: Métricas de eficacia
+        row1_c1, row1_c2 = st.columns(2)
+        with row1_c1:
+            st.metric("🎯 Accuracy (Referencia Ensamble)", f"{results.global_accuracy:.4f}")
+        with row1_c2:
+            st.metric("📈 Macro-F1 (Referencia Ensamble)", f"{results.global_macro_f1:.4f}")
+
+        # Fila 2: Métricas técnicas y federación
+        row2_c1, row2_c2, row2_c3 = st.columns([1, 2, 1])
+        with row2_c1:
+            comm_kb = getattr(results, 'total_communication_bytes', 0) / 1024
+            st.metric("📡 Coste Comm.", f"{comm_kb:.2f} KB")
+        with row2_c2:
+            is_s9 = "S9" in results.strategy_id
+            strat_label = f"S9 ({getattr(results, 'roulette_variant', 'N/A')})" if is_s9 else results.strategy_id
+            st.metric("🧠 Estrategia", strat_label)
+        with row2_c3:
+            if is_s9:
+                st.metric("⚖️ Beta (Local)", f"{getattr(results, 'beta', 0.0):.2f}")
+            else:
+                st.metric("🌲 Árboles Global", results.n_trees_global)
 
         # ── Optional Dashboards & Table ──────────────────────────────────
         if is_s9:
