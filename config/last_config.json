@@ -1,7 +1,7 @@
 {
   "dataset": {
-    "type": "Iris",
-    "file_path": "data/iris.csv",
+    "type": "Nursery",
+    "file_path": "data/nursery.csv",
     "train_path": "",
     "test_path": "",
     "target_column": "class",
@@ -16,7 +16,7 @@
     "dirichlet_alpha": 0.5
   },
   "model": {
-    "n_estimators": 250,
+    "n_estimators": 100,
     "alpha": 0.1,
     "split_criterion": "gini",
     "feature_selection": "prob",
@@ -25,18 +25,21 @@
     "episode_size": 5
   },
   "aggregation": {
-    "strategy": "s6_perclient_f1",
+    "strategy": "s9_roulette",
     "t_max": 250,
     "f1_weight": 0.5,
     "pcd_weight": 0.5,
     "convergence": 0.005,
     "episode_size": 5,
     "window_size": 5,
-    "max_rounds": 20
+    "max_rounds": 10,
+    "variant": "S9_CONSENSUS",
+    "beta": 0.0,
+    "convergence_threshold": 0.005
   },
   "prediction": {
-    "local_weight": 0.5,
-    "global_weight": 0.5,
+    "local_weight": 0.0,
+    "global_weight": 1.0,
     "use_weighted": true
   },
   "verbose": false,

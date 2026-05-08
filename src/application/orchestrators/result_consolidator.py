@@ -54,6 +54,8 @@ class ResultConsolidator:
             use_weighted=use_weighted
         )
 
+        client_reports = {}
+
         for cid in client_ids:
             client_model = flex_pool._models[cid]
             client_accuracies[cid] = client_model.get('global_accuracy', 0.0)
@@ -83,7 +85,13 @@ class ResultConsolidator:
             
             hybrid_preds = predictor.predict(X_test, local_trees, external_global_trees)
             client_hybrid_predictions[cid] = hybrid_preds
-            client_hybrid_forest_sizes[cid] = len(local_trees) + len(external_global_trees)
+            forest_size = len(local_trees) + len(external_global_trees)
+            client_hybrid_forest_sizes[cid] = forest_size
+            
+            # Generate pre-calculated report for UI
+            client_reports[cid] = ForestEvaluator.evaluate_from_predictions(
+                hybrid_preds, y_test_numeric, class_names, forest_size, pcd=meta.pcd
+            )
 
         global_model = server_model.get('model')
         if global_model:
@@ -122,13 +130,16 @@ class ResultConsolidator:
             client_accuracies=client_accuracies,
             client_f1_scores=client_f1_scores,
             client_metadata=client_metadata,
+            client_reports=client_reports,
             global_report=global_report,
             client_hybrid_predictions=client_hybrid_predictions,
             y_test=y_test_numeric,
             class_names=class_names,
+            feature_names=dataset_split.feature_names,
             client_hybrid_forest_sizes=client_hybrid_forest_sizes,
             convergence_round=server_model.get('convergence_round'),
             round_logs=server_model.get('round_logs', []),
             selected_ids=selected_ids_dict,
             all_tree_entries=server_model.get('all_tree_entries', [])
         )
+

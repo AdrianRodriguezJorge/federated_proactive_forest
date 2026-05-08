@@ -1,0 +1,37 @@
+experiment:
+  name: "exp_s9_consensus_iris"
+  description: "S9 Roulette - Consensus (softmax-weighted by local F1 performance)"
+
+dataset:
+  type: "Iris"
+  scale: true
+  scaler_type: standard
+  test_size: 0.2
+
+federation:
+  n_clients: 5
+  distribution: "noniid_dirichlet"
+  dirichlet_alpha: 0.5
+  seed: 42
+
+model:
+  n_estimators: 100
+  alpha: 0.1
+  split_criterion: "entropy"
+  verbose: false
+
+aggregation:
+  strategy: "S9"
+  variant: "S9_CONSENSUS"
+  beta: 0.0
+  window_size: 5
+  max_rounds: 20
+  convergence_threshold: 0.002
+  t_max: 100
+
+prediction:
+  local_weight: 0.0
+  global_weight: 1.0
+
+verbose: false
+seed: 42

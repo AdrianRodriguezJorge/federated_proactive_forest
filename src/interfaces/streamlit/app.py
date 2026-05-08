@@ -25,12 +25,23 @@ SessionState.initialize_defaults()
 st.sidebar.title("🌲 Federated Proactive Forest")
 st.sidebar.markdown("---")
 
+# Get current strategy to customize sidebar
+fl_config = st.session_state.get("fl_config") or {}
+strategy = fl_config.get("aggregation", {}) or {}
+strategy_id = strategy.get("strategy", "")
+is_s9 = (strategy_id == "s9_roulette")
+
 pages = [
     "⚙️  Configuración",
     "▶️  Ejecutar",
-    "🏆 Ranking de Árboles",
-    "📊 Métricas",
 ]
+
+if is_s9:
+    pages.append("🎰 Evolución de Ruleta")
+else:
+    pages.append("🏆 Ranking de Árboles")
+
+pages.append("📊 Métricas")
 
 page = st.sidebar.radio("Navegación", pages)
 
@@ -44,6 +55,9 @@ if page == "⚙️  Configuración":
 elif page == "▶️  Ejecutar":
     from src.interfaces.streamlit.pages_manual import page_run
     page_run.render()
+elif page == "🎰 Evolución de Ruleta":
+    from src.interfaces.streamlit.pages_manual import page_roulette
+    page_roulette.render()
 elif page == "🏆 Ranking de Árboles":
     from src.interfaces.streamlit.pages_manual import page_ranking
     page_ranking.render()

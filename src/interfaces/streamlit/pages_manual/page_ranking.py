@@ -110,15 +110,22 @@ def render():
     cC.metric("Descartados", int(n_shown - n_sel_shown))
     cD.metric("% Selección", f"{100*n_sel_shown/n_shown:.1f}%" if n_shown else "—")
 
-    # ── Por cliente ───────────────────────────────────────────────────────────
-    if is_per_client:
-        st.subheader("Detalle por cliente")
-        sel_clients = sorted(df["Cliente"].unique())
-        for cid in sel_clients:
-            sub = df[df["Cliente"] == cid]
-            if sub.empty:
-                continue
+    # ── Detalle por cliente (Scalable View) ───────────────────────────────────
+    st.subheader("🔍 Detalle por Cliente")
+    sel_clients = sorted(df["Cliente"].unique())
+    
+    if not sel_clients:
+        st.info("No hay datos de clientes disponibles.")
+    else:
+        # Client selector for scalability
+        selected_cid = st.selectbox("Seleccionar cliente para ver sus árboles", 
+                                   ["Todos"] + [str(c) for c in sel_clients],
+                                   index=0)
+        
+        if selected_cid == "Todos":
+            st.dataframe(df[display_cols].reset_index(drop=True), use_container_width=True)
+        else:
+            sub = df[df["Cliente"].astype(str) == selected_cid]
             n_s = sub["_sel"].sum()
-            with st.expander(f"👤 {cid} — {len(sub)} árboles, {int(n_s)} seleccionados"):
-                st.dataframe(sub[display_cols].reset_index(drop=True),
-                             use_container_width=True)
+            st.write(f"Mostrando **{len(sub)}** árboles del cliente **{selected_cid}** ({int(n_s)} seleccionados para el bosque global).")
+            st.dataframe(sub[display_cols].reset_index(drop=True), use_container_width=True)

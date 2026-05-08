@@ -14,8 +14,6 @@ from typing import Any, Dict, List, Optional
 
 import pandas as pd
 
-from src.domain.metrics.forest_evaluator import ForestEvaluator
-
 logger = logging.getLogger(__name__)
 
 # Project root → logs/streamlit/
@@ -95,32 +93,26 @@ def save_experiment_log(
 
         # 2. Per-client (hybrid predictions)
         for cid in results.client_ids:
-            y_pred = results.client_hybrid_predictions.get(cid)
-            if y_pred is None:
-                y_pred = results.client_hybrid_predictions.get(str(cid))
+            report = results.client_reports.get(cid) or results.client_reports.get(str(cid))
+            meta = results.client_metadata.get(cid) or results.client_metadata.get(str(cid))
 
-            meta = (results.client_metadata.get(cid)
-                    or results.client_metadata.get(str(cid)))
-
-            if y_pred is not None:
-                forest_size = (
-                    results.client_hybrid_forest_sizes.get(cid)
-                    or results.client_hybrid_forest_sizes.get(str(cid), 0)
-                )
-                client_report = ForestEvaluator.evaluate_from_predictions(
-                    y_pred, results.y_test, results.class_names,
-                    forest_size, pcd=0.0,
-                )
-                pcd_val = round(meta.pcd, 4) if meta else 0.0
+            if report:
+                if meta:
+                    if isinstance(meta, dict):
+                        pcd_val = round(meta.get('pcd', 0.0), 4)
+                    else:
+                        pcd_val = round(getattr(meta, 'pcd', 0.0), 4)
+                else:
+                    pcd_val = 0.0
                 rows.append({
                     **meta_cols,
                     "modelo": f"Client_{cid}",
-                    "accuracy": round(client_report.accuracy, 4),
-                    "macro_f1": round(client_report.macro_f1, 4),
-                    "macro_precision": round(client_report.macro_precision, 4),
-                    "macro_recall": round(client_report.macro_recall, 4),
+                    "accuracy": round(report.accuracy, 4),
+                    "macro_f1": round(report.macro_f1, 4),
+                    "macro_precision": round(report.macro_precision, 4),
+                    "macro_recall": round(report.macro_recall, 4),
                     "pcd": pcd_val,
-                    "forest_size": client_report.forest_size,
+                    "forest_size": report.forest_size,
                 })
 
         # ── Write CSV (overwrite) ─────────────────────────────────────────

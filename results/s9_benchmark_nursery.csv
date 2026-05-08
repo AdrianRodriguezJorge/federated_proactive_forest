@@ -1,0 +1,5 @@
+Dataset,Variant,Beta,Global Accuracy,Global Macro-F1,Total Comm. Bytes,Comm. KB,Rounds,Convergence Round,Total Trees,Time (s)
+Nursery,S9_WEIGHTED,0.0,0.902,0.5807,1920,1.88,3,3,166,106.6
+Nursery,S9_MEAN,0.0,0.914,0.6541,1920,1.88,3,3,235,117.4
+Nursery,S9_MEDIAN,0.0,0.9101,0.6449,1920,1.88,3,3,217,133.2
+Nursery,S9_CONSENSUS,0.0,0.9151,0.6538,1920,1.88,3,3,118,118.8

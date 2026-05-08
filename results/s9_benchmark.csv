@@ -1,0 +1,5 @@
+Dataset,Variant,Beta,Global Accuracy,Global Macro-F1,Total Comm. Bytes,Comm. KB,Rounds,Convergence Round,Total Trees,Time (s)
+Iris,S9_WEIGHTED,0.0,0.8667,0.8667,960,0.94,3,3,88,22.3
+Iris,S9_MEAN,0.0,0.9333,0.9327,960,0.94,3,3,66,27.3
+Iris,S9_MEDIAN,0.0,0.8667,0.8653,2240,2.19,7,7,68,75.9
+Iris,S9_CONSENSUS,0.0,0.7333,0.7306,2560,2.5,8,8,70,78.6

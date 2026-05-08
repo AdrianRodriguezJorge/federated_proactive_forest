@@ -427,7 +427,8 @@ class ProactiveForestClassifier(DecisionForestClassifier):
         self.set_generator = ProbabilitySet(self._n_instances)
         self._m_progressive_accuracy = []
 
-        if len(self._trees) >= self.n_estimators:
+        if len(self._trees) > 0 and EPISODE == self.n_estimators:
+            # Only reset if we are building the full forest from scratch
             self._trees = []
 
         if self.random_state is not None:
@@ -461,3 +462,48 @@ class ProactiveForestClassifier(DecisionForestClassifier):
             self.set_generator.clear()
             if verbose:
                 print(f"  Árbol {len(self._trees)} | acc={acc:.4f}")
+
+    # ── FL S9 Roulette: métodos para exponer/inyectar la ruleta de atributos ──
+
+    def get_feature_probabilities(self) -> list:
+        """Return the current feature probability vector (roulette state).
+
+        After training (fit or buildEpisode), this vector reflects
+        how the Proactive algorithm has adjusted the exploration
+        probabilities for each feature based on accumulated Feature
+        Importance.  In the S9 federated strategy, this vector is
+        sent to the server for aggregation.
+
+        Returns:
+            list[float]: Probability for each feature, sums to 1.0.
+        """
+        # After buildEpisode, the ledger holds the latest state
+        if hasattr(self, 'ledger') and self.ledger is not None:
+            return list(self.ledger.probabilities)
+        # After fit() (non-CPF path), _feature_prob has the latest state
+        if self._feature_prob is not None:
+            return list(self._feature_prob)
+        # Fallback: uniform
+        if self._n_features is not None and self._n_features > 0:
+            p = 1.0 / self._n_features
+            return [p] * self._n_features
+        return []
+
+    def set_feature_probabilities(self, probabilities: list) -> None:
+        """Inject a new feature probability vector (federated roulette).
+
+        This overwrites ``_feature_prob`` so that the *next* call to
+        ``buildEpisode`` (or ``fit``) will initialize its
+        ``FIProbabilityLedger`` with these probabilities instead of
+        the uniform distribution.
+
+        Args:
+            probabilities: List of floats of length ``n_features``,
+                must sum to 1.0 and contain only positive values.
+        """
+        probs = list(probabilities)
+        if self._n_features is not None and len(probs) != self._n_features:
+            raise ValueError(
+                f"Expected {self._n_features} probabilities, got {len(probs)}."
+            )
+        self._feature_prob = probs

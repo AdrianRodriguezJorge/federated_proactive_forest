@@ -1,0 +1,4 @@
+timestamp,dataset,strategy,modelo,accuracy,macro_f1,macro_precision,macro_recall,pcd,forest_size,n_clients,use_weighted,local_weight,n_estimators,seed,convergence_round
+2026-05-08 02:04:21,Nursery,s9_roulette,Global,0.9742,0.7432,0.7762,0.7213,0.0,30,2,True,0.0,250,42,4
+2026-05-08 02:04:21,Nursery,s9_roulette,Client_0,0.9765,0.7547,0.7598,0.75,0.1949,20,2,True,0.0,250,42,4
+2026-05-08 02:04:21,Nursery,s9_roulette,Client_1,0.9772,0.7623,0.7723,0.7535,0.2102,10,2,True,0.0,250,42,4

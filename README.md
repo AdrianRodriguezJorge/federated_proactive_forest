@@ -1,13 +1,13 @@
 # 🌲 Federated Proactive Forest
 
-**Federated Proactive Forest** is an advanced **horizontal federated learning** system that implements and compares **8 aggregation strategies** based on **Proactive Forest** (Cepero, 2023). The project combines a pure FL framework (no external FL library dependencies) with modern interactive interfaces, enabling systematic investigation of how different tree selection and ranking criteria affect performance in distributed non-IID environments.
+**Federated Proactive Forest** is an advanced **horizontal federated learning** system that implements and compares **9 aggregation strategies** based on **Proactive Forest** (Cepero, 2023). The project combines a pure FL framework (no external FL library dependencies) with modern interactive interfaces, enabling systematic investigation of how different tree selection and ranking criteria affect performance in distributed non-IID environments.
 
 [![Python Version](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 ## 🎯 Main Features
 
-- ✅ **8 aggregation strategies** (S1-S7 + Progressive Windows) with varied tree selection criteria
+- ✅ **9 aggregation strategies** (S1-S7, PW, S9) with varied tree selection and feature exploration criteria
 - ✅ **Horizontal Federated Learning** with configurable N clients and unified synchronization
 - ✅ **Complete non-IID heterogeneity support** (Dirichlet distributions)
 - ✅ **Robust Label Handling**: Unified encoding via `LabelService` to ensure consistency across clients
@@ -192,7 +192,7 @@ print(f"✅ Total trees in global model: {results.n_trees_global}")
 
 ## 🏆 Aggregation Strategies
 
-The project implements **8 strategies** for tree selection in federated environments:
+The project implements **9 strategies** for tree selection and feature exploration in federated environments:
 
 | Strategy | Scope | Criterion | Description |
 |----------|-------|-----------|-------------|
@@ -204,6 +204,7 @@ The project implements **8 strategies** for tree selection in federated environm
 | **S6** | Per-Client | Macro-F1 | Individual ranking per client |
 | **S7** | Per-Client | F1 + PCD | Individual ranking with diversity |
 | **PW** | Progressive Windows | Adaptive | Progressive windows with adaptive stopping |
+| **S9** | Global Roulette | Statistical | Attribute roulette (probability vector exchange) |
 
 ### Weight Configuration (S4, S7, PW)
 ```yaml
@@ -234,6 +235,22 @@ aggregation:
   alpha: 1.0
   convergence: 0.002
   episode_size: 5
+
+### Global Attribute Roulette (S9)
+A radically different approach for low-bandwidth environments:
+- **Vector-based aggregation**: Instead of trees, clients exchange **probability vectors** of attributes.
+- **Privacy-preserving**: No model weights or trees are sent, only statistical feature importance.
+- **Fused Learning**: Clients combine the Global Roulette with their Local Roulette via a $\beta$ balance parameter.
+- **Extreme Efficiency**: Reduces communication cost by **>99%** (typical payload < 2KB per round).
+
+```yaml
+aggregation:
+  strategy: s9_roulette
+  variant: S9_CONSENSUS  # MEAN, WEIGHTED, MEDIAN, CONSENSUS
+  beta: 0.1             # 0=Adopt global, 1=Stay local
+  window_size: 5        # Trees per window
+  max_rounds: 20
+```
 ```
 
 ## 🏗️ System Architecture
@@ -309,6 +326,7 @@ The web interface provides a complete experimentation experience:
 - Interactive confusion matrices
 - Per-client metrics
 - Strategy comparison
+- **🎰 Roulette Evolution**: Dynamic heatmap of attribute importance over rounds (S9 only)
 
 ## 💻 CLI
 
@@ -357,6 +375,7 @@ aggregation:
 - `exp_s6_perclient_f1.yaml` - Per-client F1
 - `exp_s7_perclient_f1_pcd.yaml` - Per-client F1 + PCD
 - `exp_pw_progressive_windows.yaml` - Progressive Windows strategy
+- `exp_s9_roulette.yaml` - Global Attribute Roulette strategy
 
 ## ⚙️ Advanced Configuration
 
@@ -508,6 +527,8 @@ If you use this code in your research, please cite:
 | Small datasets | S5-S7 | Ensures all clients contribute |
 | Large datasets | S2-S4 | More efficient |
 | Adaptive stopping | PW (Progressive Windows) | Automatic convergence detection |
+| **Low Bandwidth** | **S9 (Roulette)** | **Extreme communication efficiency** |
+| High Heterogeneity | S9_CONSENSUS | Weights clients by performance |
 
 ## 🐛 Troubleshooting
 
@@ -555,6 +576,7 @@ pytest tests/test_hybrid_inference.py -v
 - `test_label_service.py` - Unit tests for LabelService
 - `test_pw_orchestrator.py` - Progressive Windows orchestrator testing
 - `test_iris_adapter_scaler_isolation.py` - Scaler isolation tests for Dataset Adapters
+- `_validate_s9.py` - S9 Roulette engine and fusion tests
 
 ## 🔌 FLEX Framework Integration
 
@@ -608,6 +630,9 @@ Run comprehensive grid benchmarks across multiple datasets and configurations.
 ```bash
 # Run comprehensive grid benchmarks
 python scripts/run_grid_benchmark.py --config configs/experiments/benchmark_grid.yaml
+
+# Run S9 specific benchmark (Nursery/Iris)
+python scripts/run_s9_benchmark.py
 ```
 
 ### Hyperparameter Optimization

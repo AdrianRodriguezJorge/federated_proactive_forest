@@ -23,6 +23,7 @@ class FLResults:
     client_hybrid_predictions: Dict[str, np.ndarray] = field(default_factory=dict)
     y_test: np.ndarray = None
     class_names: List[str] = field(default_factory=list)
+    feature_names: List[str] = field(default_factory=list)
     client_hybrid_forest_sizes: Dict[str, int] = field(default_factory=dict)
     convergence_round: Optional[int] = None
     round_logs: List[Dict[str, Any]] = field(default_factory=list)

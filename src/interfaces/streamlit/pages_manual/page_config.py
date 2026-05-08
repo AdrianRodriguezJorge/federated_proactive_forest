@@ -11,97 +11,9 @@ PROJECT_ROOT = Path(__file__).resolve().parents[4]
 CONFIG_DIR = PROJECT_ROOT / "config"
 CONFIG_FILE = CONFIG_DIR / "last_config.json"
 
-# ── Dataset presets with categorical columns in a single source of truth ──────
-DATASET_PRESETS = {
-    "Iris": {
-        "file_path": "data/iris.csv", "target_column": "class", "test_size": 0.2,
-        "scale": True, "sep": ",",
-        "categorical_columns": [],
-        "info": "150 muestras, 4 features, 3 clases (setosa, versicolor, virginica)",
-    },
-    "Letter": {
-        "file_path": "data/letter.csv", "target_column": "class", "test_size": 0.2,
-        "scale": True, "sep": ",",
-        "categorical_columns": [],
-        "info": "20,000 muestras, 16 features, 26 clases (A-Z)",
-    },
-    "Optdigits": {
-        "file_path": "data/optdigits.csv", "target_column": "class", "test_size": 0.2,
-        "scale": True, "sep": ",",
-        "categorical_columns": [],
-        "info": "5,620 muestras, 64 features (8x8 píxeles), 10 clases (0-9)",
-    },
-    "Spambase": {
-        "file_path": "data/spambase.csv", "target_column": "class", "test_size": 0.2,
-        "scale": True, "sep": ",",
-        "categorical_columns": [],
-        "info": "4,601 muestras, 57 features, 2 clases (spam/ham)",
-    },
-    "Nursery": {
-        "file_path": "data/nursery.csv", "target_column": "class", "test_size": 0.2,
-        "scale": True, "sep": ",",
-        "categorical_columns": ["parents", "has_nurs", "form", "children", "housing", "finance", "social", "health"],
-        "info": "12,960 muestras, 8 features categóricas, 5 clases",
-    },
-    "Sonar": {
-        "file_path": "data/sonar.csv", "target_column": "Class", "test_size": 0.2,
-        "scale": True, "sep": ",",
-        "categorical_columns": [],
-        "info": "208 muestras, 60 features, 2 clases (Rock/Mine)",
-    },
-    "Vowel": {
-        "file_path": "data/vowel.csv", "target_column": "Class", "test_size": 0.2,
-        "scale": True, "sep": ",",
-        "categorical_columns": [],
-        "info": "990 muestras, 10 features, 11 clases",
-    },
-    "Car": {
-        "file_path": "data/car.csv", "target_column": "class", "test_size": 0.2,
-        "scale": True, "sep": ",",
-        "categorical_columns": ["buying", "maint", "doors", "persons", "lug_boot", "safety"],
-        "info": "1,728 muestras, 6 features categóricas, 4 clases (unacc, acc, good, vgood)",
-    },
-    "Students Dropout": {
-        "file_path": "data/students_dropout.csv", "target_column": "Target", "test_size": 0.2,
-        "scale": True, "sep": ";",
-        "categorical_columns": [
-            "Marital status", "Application mode", "Application order", "Course",
-            "Daytime/evening attendance", "Previous qualification", "Nacionality",
-            "Mother's qualification", "Father's qualification", "Mother's occupation",
-            "Father's occupation", "Displaced", "Educational special needs", "Debtor",
-            "Tuition fees up to date", "Gender", "Scholarship holder", "International",
-            "Curricular units 1st sem (credited)", "Curricular units 1st sem (enrolled)",
-            "Curricular units 1st sem (evaluations)", "Curricular units 1st sem (approved)",
-            "Curricular units 1st sem (without evaluations)", "Curricular units 2nd sem (credited)",
-            "Curricular units 2nd sem (enrolled)", "Curricular units 2nd sem (evaluations)",
-            "Curricular units 2nd sem (approved)", "Curricular units 2nd sem (without evaluations)",
-        ],
-        "info": "~4K muestras, 36 features, 3 clases (Dropout, Graduate, Enrolled)",
-    },
-    "NSL-KDD": {
-        "file_path": "", "target_column": "class", "test_size": 0.0,
-        "scale": True, "sep": ",",
-        "categorical_columns": [],  # NSL-KDD handles categoricals internally via OrdinalEncoder
-        "info": "~148K train, ~22K test, 41 features, 5 clases",
-    },
-    "CSV personalizado": {
-        "file_path": "", "target_column": "class", "test_size": 0.2,
-        "scale": True, "sep": ",",
-        "categorical_columns": [],
-        "info": "Carga tu propio archivo CSV",
-    },
-}
-
-STRATEGY_LABELS = {
-    "s1_simple_pool":        "S1 — Simple Pool (todos los árboles, sin ordenar)",
-    "s2_global_accuracy":    "S2 — Global, orden por Accuracy + Progressive",
-    "s3_global_f1":          "S3 — Global, orden por Macro-F1 + Progressive",
-    "s4_global_f1_pcd":      "S4 — Global, orden por α·F1 + β·PCD + Progressive",
-    "s5_perclient_accuracy": "S5 — Per-Client, orden por Accuracy + Progressive",
-    "s6_perclient_f1":       "S6 — Per-Client, orden por Macro-F1 + Progressive",
-    "s7_perclient_f1_pcd":   "S7 — Per-Client, orden por α·F1 + β·PCD + Progressive",
-    "pw":                    "PW — Progressive Windows (ventanas + score dinámico F1+Diversidad)",
-}
+from src.interfaces.streamlit.components.constants import (
+    DATASET_PRESETS, STRATEGY_LABELS, S9_VARIANT_LABELS
+)
 
 
 def save_config_to_file(config: dict):
@@ -440,11 +352,46 @@ def render():
         else:
             st.caption("⚖️ Cada árbol vota con el mismo peso, sin importar si es local o global.")
 
+    # S9: Global Attribute Roulette
+    s9_variant = current_config.get("aggregation", {}).get("variant", "S9_MEAN")
+    s9_beta = float(current_config.get("aggregation", {}).get("beta", 0.0))
+    s9_window_size = int(current_config.get("aggregation", {}).get("window_size", 5))
+    s9_max_rounds = int(current_config.get("aggregation", {}).get("max_rounds", 20))
+    if strategy_key == "s9_roulette":
+        st.info("🎰 **Ruleta Global de Atributos**: Intercambio de vectores de probabilidad de features en lugar de árboles.")
+        col_s9a, col_s9b = st.columns(2)
+        with col_s9a:
+            s9_variant_options = list(S9_VARIANT_LABELS.keys())
+            s9_variant_idx = s9_variant_options.index(s9_variant) if s9_variant in s9_variant_options else 0
+            s9_variant = st.selectbox(
+                "Variante de agregacion", s9_variant_options,
+                index=s9_variant_idx,
+                format_func=lambda k: S9_VARIANT_LABELS[k],
+                help="Metodo para combinar los vectores de probabilidad de todos los clientes."
+            )
+            s9_window_size = st.number_input(
+                "Arboles por ventana (W)", 2, 20, value=s9_window_size,
+                help="Arboles que cada cliente construye antes de enviar su vector de probabilidades."
+            )
+        with col_s9b:
+            s9_beta = st.slider(
+                "Beta (balance local/global)", 0.0, 1.0, value=s9_beta, step=0.05,
+                help="0 = adoptar completamente la ruleta global. 1 = mantener solo la local."
+            )
+            s9_max_rounds = st.number_input(
+                "Rondas maximas", 5, 50, value=s9_max_rounds,
+                help="Numero maximo de rondas federadas."
+            )
+
     st.divider()
 
     # ── Predicción ────────────────────────────────────────────────────────────
-    # PW has its own local_weight slider in the aggregation section; skip here
-    if strategy_key != "pw":
+    # PW has its own local_weight slider; S9 uses local inference only (no hybrid)
+    if strategy_key == "s9_roulette":
+        st.subheader("🎯 Predicción")
+        st.caption("En S9, la inferencia es local: cada cliente usa su propio bosque entrenado con la ruleta global.")
+        local_w = 0.0
+    elif strategy_key != "pw":
         st.subheader("🎯 Predicción Híbrida")
         use_weighted = st.checkbox(
             "Ponderar por origen (local/global)",
@@ -516,8 +463,11 @@ def render():
                 "pcd_weight": pcd_weight if strategy_key in ("s4_global_f1_pcd", "s7_perclient_f1_pcd", "pw") else 0.5,
                 "convergence": convergence_agg if is_progressive else convergence,
                 "episode_size": episode_size_agg if is_progressive else episode_size,
-                "window_size": window_size if strategy_key == "pw" else 5,
-                "max_rounds": max_rounds if strategy_key == "pw" else 20,
+                "window_size": s9_window_size if strategy_key == "s9_roulette" else (window_size if strategy_key == "pw" else 5),
+                "max_rounds": s9_max_rounds if strategy_key == "s9_roulette" else (max_rounds if strategy_key == "pw" else 20),
+                "variant": s9_variant if strategy_key == "s9_roulette" else "",
+                "beta": s9_beta if strategy_key == "s9_roulette" else 0.0,
+                "convergence_threshold": convergence_agg if is_progressive else convergence,
             },
             "prediction": {
                 "local_weight": pw_local_weight if strategy_key == "pw" else local_w,

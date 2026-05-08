@@ -11,100 +11,80 @@ def render():
         st.warning("⚠️ Ejecuta primero el experimento en la página '▶️ Ejecutar'.")
         return
 
-    # ── Comparación de todos los clientes vs Global ───────────────────────────
-    st.subheader("📈 Comparación de todos los Clientes vs Global")
+    is_s9 = results.strategy_id.startswith("S9")
     
-    # Preparar datos para la tabla
-    comparison_data = []
+    # ── Comparación de todos los clientes ───────────────────────────
+    if is_s9:
+        st.subheader("📈 Comparación de Desempeño entre Clientes")
+    else:
+        st.subheader("📈 Comparación de todos los Clientes vs Global")
     
-    # Modelo Global
-    global_report = results.global_report
-    comparison_data.append({
-        "Modelo": "🌐 Global",
-        "Accuracy": f"{global_report.accuracy:.4f}",
-        "Macro-F1": f"{global_report.macro_f1:.4f}",
-        "Macro Precision": f"{global_report.macro_precision:.4f}",
-        "Macro Recall": f"{global_report.macro_recall:.4f}",
-        "PCD": f"{global_report.pcd:.4f}",
-        "Tamaño Bosque": global_report.forest_size
-    })
-    
-    # Clientes (con inferencia híbrida)
-    from src.domain.metrics.forest_evaluator import ForestEvaluator
-    for cid in results.client_ids:
-        # Robust lookup for hybrid predictions
-        y_pred = results.client_hybrid_predictions.get(cid)
-        if y_pred is None:
-            y_pred = results.client_hybrid_predictions.get(str(cid))
-            
-        meta = results.client_metadata.get(cid) or results.client_metadata.get(str(cid))
-        
-        if y_pred is not None:
-            forest_size = results.client_hybrid_forest_sizes.get(cid) or results.client_hybrid_forest_sizes.get(str(cid), 0)
-            client_report = ForestEvaluator.evaluate_from_predictions(
-                y_pred, results.y_test, results.class_names, forest_size, pcd=0.0
-            )
-            pcd_value = f"{meta.pcd:.4f}" if meta else "N/A"
-            comparison_data.append({
-                "Modelo": f"👤 {cid}",
-                "Accuracy": f"{client_report.accuracy:.4f}",
-                "Macro-F1": f"{client_report.macro_f1:.4f}",
-                "Macro Precision": f"{client_report.macro_precision:.4f}",
-                "Macro Recall": f"{client_report.macro_recall:.4f}",
-                "PCD": pcd_value,
-                "Tamaño Bosque": client_report.forest_size
-            })
-    
-    # Mostrar tabla
-    df_comparison = pd.DataFrame(comparison_data)
-    st.dataframe(df_comparison.set_index("Modelo"), use_container_width=True)
+    # Tabla comparativa (Global vs Clientes)
+    from src.interfaces.streamlit.components.metrics_table import render_comparison_table
+    render_comparison_table(results)
     
     st.divider()
 
     # ── Selector de modelo ────────────────────────────────────────────────────
-    options = ["🌐 Modelo Global"] + [f"👤 {cid}" for cid in results.client_ids]
-    sel = st.selectbox("Seleccionar modelo a analizar", options)
-
-    if sel == "🌐 Modelo Global":
-        report = results.global_report
-        title  = "Modelo Global (Bosque Federado)"
-        meta   = None
-    else:
-        cid    = sel.replace("👤 ", "")
-        # For clients, compute report from hybrid predictions
-        from src.domain.metrics.forest_evaluator import ForestEvaluator
+    if is_s9:
+        options = [f"👤 {cid}" for cid in results.client_ids]
+        if not options:
+            st.error("❌ No hay clientes disponibles para analizar.")
+            return
+        sel = st.selectbox("Seleccionar cliente a analizar", options)
+        if sel is None:
+            return
+        cid = sel.replace("👤 ", "")
+        report = results.client_reports.get(cid)
+        if report is None and cid.isdigit():
+            report = results.client_reports.get(int(cid))
         
-        # Try different key types for robustness
-        y_pred = results.client_hybrid_predictions.get(cid)
-        if y_pred is None:
-            # Try as int if it's a numeric string
-            if cid.isdigit():
-                y_pred = results.client_hybrid_predictions.get(int(cid))
-        
-        if y_pred is None:
-            st.error(f"No se encontraron predicciones híbridas para el cliente '{cid}'.")
+        if report is None:
+            st.error(f"No se encontraron reportes métricos para el cliente '{cid}'.")
             return
             
-        forest_size = results.client_hybrid_forest_sizes.get(cid)
-        if forest_size is None and cid.isdigit():
-            forest_size = results.client_hybrid_forest_sizes.get(int(cid), 0)
+        title = f"Modelo Local — {cid}"
+        meta = results.client_metadata.get(cid) or results.client_metadata.get(int(cid) if cid.isdigit() else cid)
+    else:
+        options = ["🌐 Modelo Global"] + [f"👤 {cid}" for cid in results.client_ids]
+        sel = st.selectbox("Seleccionar modelo a analizar", options)
+
+        if sel == "🌐 Modelo Global":
+            report = results.global_report
+            title  = "Modelo Global (Bosque Federado)"
+            meta   = None
         else:
-            forest_size = forest_size or 0
+            cid    = sel.replace("👤 ", "")
+            # For clients, use pre-calculated report
+            report = results.client_reports.get(cid)
+            if report is None and cid.isdigit():
+                report = results.client_reports.get(int(cid))
             
-        report = ForestEvaluator.evaluate_from_predictions(
-            y_pred, results.y_test, results.class_names, forest_size, pcd=0.0
-        )
-        title  = f"Modelo Local — {cid} (inferencia híbrida local+global)"
-        meta   = results.client_metadata.get(cid) or results.client_metadata.get(int(cid) if cid.isdigit() else cid)
+            if report is None:
+                st.error(f"No se encontraron reportes métricos para el cliente '{cid}'.")
+                return
+                
+            title  = f"Modelo Local — {cid} (inferencia híbrida local+global)"
+            meta   = results.client_metadata.get(cid) or results.client_metadata.get(int(cid) if cid.isdigit() else cid)
 
     st.subheader(f"📋 {title}")
 
     if meta:
-        st.caption(f"Árboles locales entrenados: {meta.n_trees} | "
-                   f"Seleccionados en global: {len(meta.selected_local_tree_ids)}")
+        if isinstance(meta, dict):
+            n_trees = meta.get('n_trees', 0)
+            # S9 doesn't have "selected_local_tree_ids" as it builds iterative forests
+            st.caption(f"Árboles locales en el bosque: {n_trees}")
+        else:
+            n_trees = getattr(meta, 'n_trees', 0)
+            selected = len(getattr(meta, 'selected_local_tree_ids', []))
+            st.caption(f"Árboles locales entrenados: {n_trees} | "
+                       f"Seleccionados en global: {selected}")
 
     # ── KPIs ──────────────────────────────────────────────────────────────────
-    st.markdown("#### Métricas Globales")
+    if is_s9:
+        st.markdown("#### Métricas del Cliente")
+    else:
+        st.markdown("#### Métricas Globales")
     c1, c2, c3, c4, c5, c6 = st.columns(6)
     c1.metric("Accuracy",        f"{report.accuracy:.4f}")
     c2.metric("Macro-F1",        f"{report.macro_f1:.4f}")

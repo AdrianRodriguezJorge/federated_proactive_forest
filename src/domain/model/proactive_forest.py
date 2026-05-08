@@ -220,3 +220,36 @@ class ProactiveForest(GlobalRandomForest, ABCForest):
         instance._cpf = ComparativeProgressiveForest(dummy_classifier)
 
         return instance
+
+    # ── FL S9 Roulette: public API for extracting/injecting the feature roulette ──
+
+    def get_feature_probabilities(self) -> np.ndarray:
+        """Return the current feature probability vector (roulette state).
+
+        Delegates to the internal ProactiveForestClassifier.  The returned
+        array represents the exploration bias for each feature after
+        local training.
+
+        Returns:
+            np.ndarray: Probability vector of shape ``(n_features,)``.
+        """
+        probs = self._classifier.get_feature_probabilities()
+        return np.array(probs, dtype=np.float64)
+
+    def set_feature_probabilities(self, probabilities: np.ndarray) -> None:
+        """Inject a new feature probability vector (federated roulette).
+
+        Overwrites the internal ``_feature_prob`` so the next training
+        episode uses these probabilities as the initial roulette state.
+
+        Args:
+            probabilities: 1-D array of shape ``(n_features,)``
+                summing to 1.0.
+        """
+        probs = np.asarray(probabilities, dtype=np.float64)
+        self._classifier.set_feature_probabilities(probs.tolist())
+
+    @property
+    def n_features(self) -> int:
+        """Number of features the classifier was fitted on."""
+        return getattr(self._classifier, '_n_features', 0) or 0
