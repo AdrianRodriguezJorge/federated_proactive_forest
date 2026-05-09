@@ -1,17 +1,19 @@
 from typing import Dict, List, Any, Tuple, Optional
 import numpy as np
-from src.domain.aggregation.tree_ranker import TreeEntry
-from src.domain.metrics.metrics_service import IMetricsService
+from src.domain.aggregation.tree_ranker import TreeEntry, TreeRanker
+from src.domain.metrics.metrics_service import IMetricsService, IDiversityService
 from src.domain.services.label_service import SimpleLabelService
 from src.domain.prediction.voting import calculate_mode
 
 class ProgressiveSelector:
     """
     Handles progressive tree selection with early stopping (convergence).
-    Used by S2-S7 and Progressive Windows to reduce duplication.
+    Supports proactive re-ranking based on Marginal PCD.
     """
-    def __init__(self, metrics_service: Optional[IMetricsService] = None):
+    def __init__(self, metrics_service: Optional[IMetricsService] = None,
+                 diversity_service: Optional[IDiversityService] = None):
         self.metrics_svc = metrics_service
+        self.diversity_svc = diversity_service
 
     def select(
         self,
@@ -21,16 +23,12 @@ class ProgressiveSelector:
         episode_size: int,
         t_max: int,
         convergence_threshold: float,
-        label_service: Optional[SimpleLabelService] = None
+        label_service: Optional[SimpleLabelService] = None,
+        ranker: Optional[TreeRanker] = None
     ) -> Tuple[List[Any], List[TreeEntry], Optional[int], List[Dict]]:
         """
         Progressively selects trees evaluating against validation data.
-        
-        Returns:
-            - global_trees: Selected trees.
-            - selected_entries: Selected entries.
-            - convergence_round: Episode index where convergence occurred.
-            - round_logs: Evolution logs.
+        If a ranker is provided, it performs proactive re-ranking at each episode.
         """
         models_built = 0
         stop_counter = 0
@@ -40,18 +38,55 @@ class ProgressiveSelector:
         round_logs = []
         convergence_round = None
         prediction_cache: Dict[int, np.ndarray] = {}
+        
+        # Track hit counts for proactive PCD
+        n_val_samples = X_val.shape[0]
+        global_hits_per_sample = np.zeros(n_val_samples, dtype=int)
 
+        remaining_candidates = candidate_entries.copy()
         episode_idx = 0
-        while models_built < min(len(candidate_entries), t_max):
+        
+        while len(selected_entries) < t_max and remaining_candidates:
             episode_idx += 1
-            episode_entries = candidate_entries[models_built:models_built + episode_size]
-            if not episode_entries:
+            
+            # PROACTIVE RE-RANKING (if ranker and diversity service are available)
+            if ranker and self.diversity_svc and ranker.criterion.value == "f1_pcd":
+                # Update PCD for all remaining candidates relative to current global_hits_per_sample
+                for entry in remaining_candidates:
+                    # Cache predictions for speed
+                    tree_id = id(entry.tree)
+                    if tree_id not in prediction_cache:
+                        prediction_cache[tree_id] = entry.tree.predict(X_val)
+                    
+                    preds = prediction_cache[tree_id]
+                    entry.pcd = self.diversity_svc.calculate_marginal_pcd(
+                        candidate_predictions=preds,
+                        current_hits_per_sample=global_hits_per_sample,
+                        n_existing_trees=len(selected_entries),
+                        y_true=y_val_norm
+                    )
+                # Re-sort remaining candidates
+                remaining_candidates = ranker.rank(remaining_candidates)
+
+            # Pick next episode
+            current_episode = remaining_candidates[:episode_size]
+            remaining_candidates = remaining_candidates[episode_size:]
+            
+            if not current_episode:
                 break
 
-            for entry in episode_entries:
+            for entry in current_episode:
                 selected_entries.append(entry)
+                # Update global hits
+                tree_id = id(entry.tree)
+                if tree_id not in prediction_cache:
+                    prediction_cache[tree_id] = entry.tree.predict(X_val)
+                
+                preds_raw = prediction_cache[tree_id]
+                preds = label_service.transform(preds_raw) if label_service else preds_raw
+                global_hits_per_sample += (preds == y_val_norm).astype(int)
 
-            models_built = len(selected_entries)
+            # Evaluate current ensemble
             predictions_raw = self._predict_ensemble(selected_entries, X_val, cache=prediction_cache)
             predictions = label_service.transform(predictions_raw) if label_service else predictions_raw
             
@@ -65,11 +100,12 @@ class ProgressiveSelector:
             episode_accuracies.append(acc)
             round_logs.append({
                 'episode': episode_idx,
-                'n_trees': models_built,
+                'n_trees': len(selected_entries),
                 'accuracy': acc,
                 'macro_f1': f1
             })
 
+            # Check convergence
             if len(episode_accuracies) >= 2:
                 improvement = episode_accuracies[-1] - episode_accuracies[-2]
                 if improvement < convergence_threshold:
@@ -89,7 +125,6 @@ class ProgressiveSelector:
         
         n_samples = X.shape[0]
         n_trees = len(selected_entries)
-        # Use object dtype to handle both string and numeric predictions before mode calculation
         all_predictions = np.empty((n_samples, n_trees), dtype=object)
         for j, entry in enumerate(selected_entries):
             tree_id = id(entry.tree)

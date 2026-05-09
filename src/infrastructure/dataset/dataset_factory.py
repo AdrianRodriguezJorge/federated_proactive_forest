@@ -2,29 +2,17 @@ from typing import Dict, Any, List, Optional, Union
 import os
 from pathlib import Path
 
-from .nslkdd_adapter import NslKddAdapter
-from .iris_adapter import IrisAdapter
+
+
 from .csv_adapter import GenericCsvAdapter
 from ...domain.dataset.base_adapter import DatasetSplit
 
 # Central Registry of Dataset Metadata
 DATASET_METADATA = {
-    "students_dropout": {
-        "target_column": "Target",
-        "sep": ";",
-        "file_path": "data/students_dropout.csv",
-        "categorical_features": [
-            "Marital status", "Application mode", "Application order", "Course",
-            "Daytime/evening attendance", "Previous qualification", "Nacionality",
-            "Mother's qualification", "Father's qualification", "Mother's occupation",
-            "Father's occupation", "Displaced", "Educational special needs", "Debtor",
-            "Tuition fees up to date", "Gender", "Scholarship holder", "International",
-            "Curricular units 1st sem (credited)", "Curricular units 1st sem (enrolled)",
-            "Curricular units 1st sem (evaluations)", "Curricular units 1st sem (approved)",
-            "Curricular units 1st sem (without evaluations)", "Curricular units 2nd sem (credited)",
-            "Curricular units 2nd sem (enrolled)", "Curricular units 2nd sem (evaluations)",
-            "Curricular units 2nd sem (approved)", "Curricular units 2nd sem (without evaluations)"
-        ]
+    "iris": {
+        "target_column": "class",
+        "sep": ",",
+        "file_path": "data/iris.csv"
     },
     "car": {
         "target_column": "class",
@@ -90,22 +78,7 @@ class DatasetFactory:
             # Assume we are in src/infrastructure/dataset/
             project_root = Path(__file__).resolve().parents[3]
 
-        if dtype == "NSL-KDD":
-            train_path = d.get("train_path") or str(project_root / "data" / "NSL-KDD_train.csv")
-            test_path = d.get("test_path") or str(project_root / "data" / "NSL-KDD_test.csv")
-            return NslKddAdapter(
-                train_path=train_path,
-                test_path=test_path,
-                scale=d.get("scale", True),
-                scaler_type=d.get("scaler_type", "standard")
-            )
 
-        if dtype == "Iris":
-            return IrisAdapter(
-                train_test_split_ratio=1.0 - d.get("test_size", 0.2),
-                scale=d.get("scale", True),
-                scaler_type=d.get("scaler_type", "standard")
-            )
 
         # Handle Generic CSVs (Custom or Presets)
         preset_key = dtype.lower().replace(" ", "_").replace("-", "_")

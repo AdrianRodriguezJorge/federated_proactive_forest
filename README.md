@@ -162,9 +162,8 @@ print(f"✅ Total trees in global model: {results.n_trees_global}")
 
 | Dataset | Samples | Features | Classes | Type | Adapter | FL Time |
 |---------|----------|----------|--------|------|-----------|-----------|
-| **NSL-KDD** | ~150K | 41 (3 cat) | 5 | Security | `nslkdd_adapter.py` | 4-8 min |
+
 | **Iris** | 150 | 4 (num) | 3 | Classification | `iris_adapter.py` | 1-2 min |
-| **Students Dropout** | ~4K | 36 (mix) | 3 | Education | `csv_adapter.py` | 2-4 min |
 | **Car Evaluation** | 1.7K | 6 (cat) | 4 | Classification | `csv_adapter.py` | 1-2 min |
 | **Letter Recognition** | 20K | 16 (num) | 26 | Classification | `csv_adapter.py` | 3-5 min |
 | **Nursery** | 13K | 8 (cat) | 5 | Classification | `csv_adapter.py` | 2-4 min |
@@ -176,14 +175,6 @@ print(f"✅ Total trees in global model: {results.n_trees_global}")
 
 ### Dataset Preparation
 
-#### NSL-KDD (Intrusion Detection)
-```bash
-# Download from official source
-# https://www.unb.ca/cic/datasets/nsl.html
-# Extract and place in data/:
-# - NSL-KDD_train.csv
-# - NSL-KDD_test.csv
-```
 
 #### Iris & Other Datasets
 - Most datasets are already included in the `data/` directory
@@ -347,9 +338,8 @@ python -m src.interfaces.cli.main \
 ```yaml
 # configs/experiments/exp_s7_perclient_f1_pcd.yaml
 dataset:
-  type: "NSL-KDD"
-  train_path: "data/NSL-KDD_train.csv"
-  test_path: "data/NSL-KDD_test.csv"
+  type: "Iris"
+  file_path: "data/iris.csv"
 
 federation:
   n_clients: 5

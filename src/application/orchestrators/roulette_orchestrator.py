@@ -133,13 +133,13 @@ class RouletteOrchestrator:
     # ── Setup ──────────────────────────────────────────────────────────────
 
     def _setup_logging(self):
-        log_dir = 'logs'
+        log_dir = 'results/logs'
         if not os.path.exists(log_dir):
             os.makedirs(log_dir)
         self.logger = logging.getLogger("RouletteOrchestrator")
         self.logger.setLevel(logging.DEBUG)
         if not self.logger.handlers:
-            fh = logging.FileHandler(os.path.join(log_dir, 'roulette_debug.log'))
+            fh = logging.FileHandler(os.path.join(log_dir, 'S9_roulette_debug.log'))
             fh.setFormatter(logging.Formatter(
                 '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
             ))

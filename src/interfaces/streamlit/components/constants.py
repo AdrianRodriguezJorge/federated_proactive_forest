@@ -49,29 +49,7 @@ DATASET_PRESETS = {
         "categorical_columns": ["buying", "maint", "doors", "persons", "lug_boot", "safety"],
         "info": "1,728 muestras, 6 features categóricas, 4 clases (unacc, acc, good, vgood)",
     },
-    "Students Dropout": {
-        "file_path": "data/students_dropout.csv", "target_column": "Target", "test_size": 0.2,
-        "scale": True, "sep": ";",
-        "categorical_columns": [
-            "Marital status", "Application mode", "Application order", "Course",
-            "Daytime/evening attendance", "Previous qualification", "Nacionality",
-            "Mother's qualification", "Father's qualification", "Mother's occupation",
-            "Father's occupation", "Displaced", "Educational special needs", "Debtor",
-            "Tuition fees up to date", "Gender", "Scholarship holder", "International",
-            "Curricular units 1st sem (credited)", "Curricular units 1st sem (enrolled)",
-            "Curricular units 1st sem (evaluations)", "Curricular units 1st sem (approved)",
-            "Curricular units 1st sem (without evaluations)", "Curricular units 2nd sem (credited)",
-            "Curricular units 2nd sem (enrolled)", "Curricular units 2nd sem (evaluations)",
-            "Curricular units 2nd sem (approved)", "Curricular units 2nd sem (without evaluations)",
-        ],
-        "info": "~4K muestras, 36 features, 3 clases (Dropout, Graduate, Enrolled)",
-    },
-    "NSL-KDD": {
-        "file_path": "", "target_column": "class", "test_size": 0.0,
-        "scale": True, "sep": ",",
-        "categorical_columns": [],
-        "info": "~148K train, ~22K test, 41 features, 5 clases",
-    },
+
     "CSV personalizado": {
         "file_path": "", "target_column": "class", "test_size": 0.2,
         "scale": True, "sep": ",",
@@ -97,4 +75,5 @@ S9_VARIANT_LABELS = {
     "S9_WEIGHTED":  "Promedio Ponderado (por tamaño de dataset)",
     "S9_MEDIAN":    "Mediana (robusta contra outliers)",
     "S9_CONSENSUS": "Consenso (ponderado por F1 local)",
+    "S9_PROACTIVE_PCD": "Proactivo PCD (ponderado por diversidad Cepero)",
 }

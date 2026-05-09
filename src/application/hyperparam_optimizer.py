@@ -1,7 +1,7 @@
 """Hyperparameter Optimization using Optuna.
 
 Bayesian optimization for Federated Proactive Forest aggregation strategies.
-Wraps FLEXOrchestrator to automatically find optimal hyperparameters.
+Wraps FLEXOrchestrator and RouletteOrchestrator to automatically find optimal hyperparameters.
 
 Usage:
     optimizer = HyperparamOptimizer(
@@ -17,10 +17,12 @@ from __future__ import annotations
 
 import optuna
 import numpy as np
+import copy
 from typing import Any, Dict, Optional
 from dataclasses import dataclass
 
 from src.application.orchestrators import FLEXOrchestrator
+from src.application.orchestrators.roulette_orchestrator import RouletteOrchestrator
 
 
 @dataclass
@@ -35,20 +37,19 @@ class OptimizationConfig:
 
 class HyperparamOptimizer:
     """
-    Wraps FLEXOrchestrator for Bayesian hyperparameter optimization with Optuna.
+    Wraps Orchestrators for Bayesian hyperparameter optimization with Optuna.
 
-    Supports all strategies S1-S7 and PW (Progressive Windows).
+    Supports all strategies S1-S7, PW (Progressive Windows) and S9 (Roulette).
 
     Example:
         >>> optimizer = HyperparamOptimizer(
         ...     dataset_split=dataset,
-        ...     strategy='S6',
+        ...     strategy='S9',
         ...     base_config=base_config,
         ...     search_space=search_space
         ... )
         >>> study = optimizer.optimize(n_trials=50, metric='macro_f1')
         >>> print(f"Best params: {study.best_params}")
-        >>> print(f"Best {metric}: {study.best_value:.4f}")
     """
 
     def __init__(
@@ -64,7 +65,7 @@ class HyperparamOptimizer:
 
         Args:
             dataset_split: DatasetSplit with X_train, y_train, X_test, y_test
-            strategy: Strategy name ('S1'-'S7', 'PW')
+            strategy: Strategy name ('S1'-'S7', 'PW', 'S9')
             base_config: Base configuration dict (will be modified with sampled params)
             search_space: Search space definition for each hyperparameter
             verbose: Enable verbose logging during optimization
@@ -77,7 +78,7 @@ class HyperparamOptimizer:
         self._trial_count = 0
 
         # Validate strategy
-        valid_strategies = ['S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'PW']
+        valid_strategies = ['S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'PW', 'S9']
         if self.strategy not in valid_strategies:
             raise ValueError(f"Invalid strategy '{self.strategy}'. Must be one of {valid_strategies}")
 
@@ -134,9 +135,8 @@ class HyperparamOptimizer:
             params: Sampled hyperparameters
 
         Returns:
-            Complete configuration dict for FLEXOrchestrator
+            Complete configuration dict for Orchestrators
         """
-        import copy
         config = copy.deepcopy(self.base_config)
 
         # Apply sampled params to config
@@ -168,14 +168,29 @@ class HyperparamOptimizer:
                 # Set alpha in model
                 config.setdefault('model', {})['alpha'] = value
             elif param_path == 'window_size':
-                # Set window_size in aggregation (for PW)
+                # Set window_size in aggregation (for PW and S9)
                 config.setdefault('aggregation', {})['window_size'] = value
             elif param_path == 'max_rounds':
-                # Set max_rounds in aggregation (for PW)
+                # Set max_rounds in aggregation (for PW and S9)
                 config.setdefault('aggregation', {})['max_rounds'] = value
             elif param_path == 'convergence_threshold':
-                # Set convergence_threshold in aggregation
+                # Set global convergence_threshold in aggregation
                 config.setdefault('aggregation', {})['convergence_threshold'] = value
+            elif param_path == 'local_convergence':
+                # Set local convergence_threshold in model
+                config.setdefault('model', {})['convergence_threshold'] = value
+            elif param_path == 'beta':
+                # Set beta in aggregation (S9)
+                config.setdefault('aggregation', {})['beta'] = value
+            elif param_path == 'variant':
+                # Set variant in aggregation (S9)
+                config.setdefault('aggregation', {})['variant'] = value
+            elif param_path == 'dirichlet_alpha':
+                # Set alpha in federation (for non-iid)
+                config.setdefault('federation', {})['dirichlet_alpha'] = value
+            elif param_path == 'distribution':
+                # Set distribution type in federation
+                config.setdefault('federation', {})['distribution'] = value
             else:
                 # Generic: try to set in aggregation first, then model, then federation
                 if 'aggregation' in config:
@@ -217,24 +232,29 @@ class HyperparamOptimizer:
         np.random.seed(seed)
 
         try:
-            # Create and run orchestrator
-            orchestrator = FLEXOrchestrator.from_config(config)
+            # Create and run appropriate orchestrator
+            if self.strategy == 'S9':
+                orchestrator = RouletteOrchestrator(config)
+            elif self.strategy == 'PW':
+                from src.application.orchestrators.progressive_windows_orchestrator import ProgressiveWindowsOrchestrator
+                orchestrator = ProgressiveWindowsOrchestrator(config)
+            else:
+                orchestrator = FLEXOrchestrator.from_config(config)
+            
             orchestrator.setup_federation(self.dataset_split, seed=seed)
             results = orchestrator.run_federated_round()
 
             # Extract metric to optimize
-            if self._get_metric_name() == 'macro_f1':
+            metric_name = self._get_metric_name()
+            
+            if metric_name == 'macro_f1':
                 metric_value = results.global_macro_f1
-            elif self._get_metric_name() == 'accuracy':
+            elif metric_name == 'accuracy':
                 metric_value = results.global_accuracy
-            elif self._get_metric_name() == 'hybrid_macro_f1':
-                # Use best client hybrid F1
-                client_f1_scores = {}
-                for cid, preds in results.client_hybrid_predictions.items():
-                    from sklearn.metrics import f1_score
-                    f1 = f1_score(results.y_test, preds, average='macro', zero_division=0)
-                    client_f1_scores[cid] = f1
-                metric_value = np.mean(list(client_f1_scores.values())) if client_f1_scores else 0.0
+            elif metric_name == 'hybrid_macro_f1':
+                # Calculate mean of client hybrid F1 scores
+                f1_scores = list(results.client_f1_scores.values())
+                metric_value = np.mean(f1_scores) if f1_scores else 0.0
             else:
                 metric_value = results.global_macro_f1
 
@@ -248,16 +268,20 @@ class HyperparamOptimizer:
                 raise optuna.TrialPruned()
 
             if self.verbose:
-                print(f"✅ Trial {self._trial_count} COMPLETED: {self._get_metric_name()}={metric_value:.4f}")
+                print(f"✅ Trial {self._trial_count} COMPLETED: {metric_name}={metric_value:.4f}")
                 print(f"   Trees: {results.n_trees_global}, "
                       f"Accuracy: {results.global_accuracy:.4f}, "
                       f"Macro-F1: {results.global_macro_f1:.4f}")
 
             return metric_value
 
+        except optuna.TrialPruned:
+            raise
         except Exception as e:
             if self.verbose:
                 print(f"❌ Trial {self._trial_count} FAILED: {str(e)}")
+                import traceback
+                traceback.print_exc()
             raise optuna.TrialPruned()
 
     def _get_metric_name(self) -> str:
@@ -338,6 +362,9 @@ class HyperparamOptimizer:
         defaults['f1_weight'] = agg.get('f1_weight', 0.5)
         defaults['pcd_weight'] = agg.get('pcd_weight', 0.5)
         defaults['t_max'] = agg.get('t_max', 100)
+        defaults['window_size'] = agg.get('window_size', 5)
+        defaults['max_rounds'] = agg.get('max_rounds', 20)
+        defaults['beta'] = agg.get('beta', 0.0)
 
         pred = self.base_config.get('prediction', {})
         defaults['local_weight'] = pred.get('local_weight', 0.4)
@@ -350,5 +377,6 @@ class HyperparamOptimizer:
         model = self.base_config.get('model', {})
         defaults['n_estimators'] = model.get('n_estimators', 100)
         defaults['alpha_pf'] = model.get('alpha', 0.1)
+        defaults['local_convergence'] = model.get('convergence_threshold', 0.002)
 
         return defaults

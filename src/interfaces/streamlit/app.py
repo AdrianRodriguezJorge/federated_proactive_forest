@@ -24,36 +24,51 @@ SessionState.initialize_defaults()
 # ── Custom CSS for Theme Consistency ─────────────────────────────────────────
 st.markdown("""
     <style>
-    /* MIMETIZAR MENSAJES CON EL FONDO DE LA PÁGINA */
+    /* MIMETIZAR MENSAJES CON EL FONDO DE LA PÁGINA (SAGE THEME) */
     [data-testid="stAlert"], .stAlert {
-        background: #F5F2E7 !important;
-        background-color: #F5F2E7 !important;
+        background: #F1F3E0 !important;
+        background-color: #F1F3E0 !important;
         border: none !important;
         box-shadow: none !important;
     }
     
     /* Asegurar que los contenedores internos también sean del color del fondo */
     [data-testid="stAlert"] > div, .stAlert > div {
-        background: #F5F2E7 !important;
-        background-color: #F5F2E7 !important;
+        background: #F1F3E0 !important;
+        background-color: #F1F3E0 !important;
     }
 
-    /* Asegurar que todo el texto sea del color verde primario */
+    /* Asegurar que todo el texto sea del color oscuro restaurado */
     [data-testid="stAlert"] div, [data-testid="stAlert"] p, [data-testid="stAlert"] span {
-        color: #2F6B3A !important;
+        color: #2C2C2C !important;
         font-weight: 500 !important;
     }
 
-    /* Color del icono sincronizado */
+    /* COLOR DEL ICONO Y TEXTO DE ALERTAS (Sincronizado con el tema) */
     [data-testid="stAlert"] svg {
-        fill: #2F6B3A !important;
+        fill: #2C2C2C !important;
     }
 
-    /* Mantener st.success un poco más visible o también minimalista? 
-       Por ahora lo dejamos minimalista para ser coherentes */
-    div[data-testid="stNotificationContentSuccess"], .stAlert:has(svg[aria-label="Success"]) {
-        background-color: transparent !important;
+    /* Mantener alertas minimalistas (sin fondo azul, texto oscuro) */
+    div[data-testid="stNotificationContentSuccess"], 
+    div[data-testid="stNotificationContentInfo"],
+    .stAlert {
+        background-color: #F1F3E0 !important;
+        background: #F1F3E0 !important;
         border: none !important;
+        box-shadow: none !important;
+        border-radius: 0.5rem !important;
+        overflow: hidden !important;
+    }
+
+    [data-testid="stAlert"] div, [data-testid="stAlert"] p, [data-testid="stAlert"] span {
+        color: #2C2C2C !important;
+        font-weight: 500 !important;
+    }
+
+    /* BOTONES EN NEGRITA */
+    button p {
+        font-weight: bold !important;
     }
     </style>
 """, unsafe_allow_html=True)

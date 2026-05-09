@@ -31,10 +31,8 @@ def collect_client_roulette(client_flex_model: FlexModel, *args, **kwargs) -> Di
       - ``roulette``: the local probability vector (list[float]).
       - ``n_samples``: dataset size (for weighted aggregation).
       - ``macro_f1``: local performance (for consensus aggregation).
+      - ``pcd``: local diversity (for proactive aggregation).
       - ``client_id``: actor identifier.
-
-    The ``@collect_clients_weights`` decorator accumulates these dicts
-    into ``server_flex_model['weights']``.
     """
     model = client_flex_model.get('model')
     meta = client_flex_model.get('metadata', {})
@@ -45,11 +43,11 @@ def collect_client_roulette(client_flex_model: FlexModel, *args, **kwargs) -> Di
     else:
         roulette = []
 
-    # Dataset size — stored during train_pf
+    # Dataset size
     X_train = client_flex_model.get('X_train')
     n_samples = len(X_train) if X_train is not None else 0
 
-    # Local macro-F1
+    # Local performance and diversity metrics
     if hasattr(meta, 'macro_f1'):
         macro_f1 = meta.macro_f1
     elif isinstance(meta, dict):
@@ -57,11 +55,19 @@ def collect_client_roulette(client_flex_model: FlexModel, *args, **kwargs) -> Di
     else:
         macro_f1 = 0.0
 
+    if hasattr(meta, 'pcd'):
+        pcd = meta.pcd
+    elif isinstance(meta, dict):
+        pcd = meta.get('pcd', 0.0)
+    else:
+        pcd = 0.0
+
     return {
         'client_id': getattr(client_flex_model, 'actor_id', 'unknown'),
         'roulette': roulette,
         'n_samples': n_samples,
         'macro_f1': macro_f1,
+        'pcd': pcd,
     }
 
 
@@ -70,18 +76,14 @@ def collect_client_roulette(client_flex_model: FlexModel, *args, **kwargs) -> Di
 
 @aggregate_weights
 def aggregate_roulettes(weights: List[Dict[str, Any]], **kwargs) -> Dict[str, Any]:
-    """Aggregate client roulette vectors into a global roulette.
-
-    The ``variant`` kwarg (default ``'S9_MEAN'``) selects the aggregation
-    method.  Communication cost is tracked as the total bytes received
-    from all clients (sum of vector sizes in bytes).
-    """
+    """Aggregate client roulette vectors into a global roulette."""
     variant = kwargs.get('variant', 'S9_MEAN')
     strategy = create_roulette_strategy(variant)
 
     client_vectors: Dict[str, np.ndarray] = {}
     client_sizes: Dict[str, int] = {}
     client_f1: Dict[str, float] = {}
+    client_pcd: Dict[str, float] = {}
     total_upload_bytes = 0
 
     for w in weights:
@@ -90,16 +92,16 @@ def aggregate_roulettes(weights: List[Dict[str, Any]], **kwargs) -> Dict[str, An
         client_vectors[cid] = vec
         client_sizes[cid] = w.get('n_samples', 0)
         client_f1[cid] = w.get('macro_f1', 0.0)
-        # Communication cost: float64 = 8 bytes per element
+        client_pcd[cid] = w.get('pcd', 0.0)
         total_upload_bytes += vec.nbytes
 
     global_roulette = strategy.aggregate_vectors(
         client_vectors=client_vectors,
         client_dataset_sizes=client_sizes,
         client_f1_scores=client_f1,
+        client_pcd_scores=client_pcd,
     )
 
-    # Download cost: one global vector sent to each client
     n_clients = len(client_vectors)
     total_download_bytes = global_roulette.nbytes * n_clients
 

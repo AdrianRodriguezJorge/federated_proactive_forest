@@ -55,13 +55,10 @@ def aggregate_trees_pf(weights: List[Dict[str, Any]], **kwargs: Any) -> Dict[str
         'max_rounds': agg_config.get('max_rounds', 20),
         'f1_weight': agg_config.get('f1_weight', 0.5),
         'pcd_weight': agg_config.get('pcd_weight', 1.0 - agg_config.get('f1_weight', 0.5)),
-        'convergence_threshold': agg_config.get('convergence') or agg_config.get('convergence_threshold', 0.002),
+        'convergence_threshold': agg_config.get('global_convergence_threshold') or agg_config.get('convergence_threshold') or agg_config.get('convergence', 0.002),
+        'episode_size': agg_config.get('global_episode_size') or agg_config.get('episode_size', 5),
         'local_weight': server_config.get('prediction', {}).get('local_weight', 0.5)
     })
-
-    conv_val = agg_config.get('convergence') or agg_config.get('convergence_threshold')
-    if conv_val is not None:
-        aggregate_kwargs['convergence_threshold'] = float(conv_val)
 
     # Always provide class_names for label normalization in progressive strategies (S2-S7, PW)
     aggregate_kwargs['class_names'] = server_config.get('model', {}).get('class_names', [])

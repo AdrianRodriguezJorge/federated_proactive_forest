@@ -105,7 +105,7 @@ class PerClientProgressiveStrategy(ABC):
         
         for client_id, trees in client_trees.items():
             meta = client_metadata[client_id]
-            entries = TreeRanker.build_entries({client_id: trees}, {client_id: meta}, X_val=X_val, diversity_service=diversity_svc)
+            entries = TreeRanker.build_entries({client_id: trees}, {client_id: meta}, X_val=X_val, y_val=y_val, diversity_service=diversity_svc)
             ranked = ranker.rank(entries)
             if max_trees_per_client is not None:
                 ranked = ranked[:max_trees_per_client]
@@ -134,7 +134,10 @@ class PerClientProgressiveStrategy(ABC):
                 pass
         
         # Step 3: Apply Progressive Forest with early stopping
-        selector = ProgressiveSelector(metrics_service=self.metrics_svc or kwargs.get('metrics_service'))
+        selector = ProgressiveSelector(
+            metrics_service=self.metrics_svc or kwargs.get('metrics_service'),
+            diversity_service=diversity_svc
+        )
         global_trees, selected_entries, conv_round, logs = selector.select(
             candidate_entries=round_robin_entries,
             X_val=X_val,
@@ -142,7 +145,8 @@ class PerClientProgressiveStrategy(ABC):
             episode_size=len(client_ids),
             t_max=t_max if t_max is not None else self.T_MAX,
             convergence_threshold=kwargs.get('convergence_threshold', self.CONVERGENCE),
-            label_service=label_svc
+            label_service=label_svc,
+            ranker=ranker
         )
         
         selected_ids = {cid: [] for cid in client_trees.keys()}

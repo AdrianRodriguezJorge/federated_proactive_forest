@@ -91,7 +91,7 @@ def render():
     c3.metric("Macro Precision", f"{report.macro_precision:.4f}")
     c4.metric("Macro Recall",    f"{report.macro_recall:.4f}")
     c5.metric("PCD (diversidad)", f"{report.pcd:.4f}",
-              help="Pair Classifier Disagreement — mayor = más diverso")
+              help="Percentage Correct Diversity — Proporción de instancias en la zona de diversidad (10%-90% de aciertos).")
     c6.metric("Árboles en bosque", report.forest_size)
 
     st.divider()

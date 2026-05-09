@@ -14,7 +14,8 @@ def render():
         return
     
     # Get dynamic threshold from config
-    conv_thr = cfg.get("aggregation", {}).get("convergence", 0.002) if cfg else 0.002
+    conv_thr = cfg.get("aggregation", {}).get("global_convergence_threshold", 
+               cfg.get("aggregation", {}).get("convergence", 0.002)) if cfg else 0.002
 
     sid = results.strategy_id.lower()
     is_per_client = sid.startswith("s5") or sid.startswith("s6") or sid.startswith("s7")

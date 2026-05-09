@@ -8,7 +8,7 @@ from typing import List
 from src.infrastructure.dataset.dataset_factory import DatasetFactory
 
 PROJECT_ROOT = Path(__file__).resolve().parents[4]
-CONFIG_DIR = PROJECT_ROOT / "config"
+CONFIG_DIR = PROJECT_ROOT / "configs"
 CONFIG_FILE = CONFIG_DIR / "last_config.json"
 
 from src.interfaces.streamlit.components.constants import (
@@ -45,8 +45,7 @@ def _validate_dataset_split(ds) -> List[str]:
     warnings = []
     if ds.X_train.shape[0] == 0:
         return ["❌ El conjunto de entrenamiento está vacío."]
-    if ds.X_test.shape[0] == 0:
-        warnings.append("⚠️ El conjunto de test está vacío (común en NSL-KDD con test_size=0).")
+
     if len(ds.class_names) < 2:
         warnings.append(f"❌ Se necesitan al menos 2 clases, se encontraron {len(ds.class_names)}.")
     if ds.X_train.shape[1] == 0:
@@ -91,11 +90,11 @@ def get_default_config():
         "model": {
             "n_estimators": 100, "alpha": 0.1, "split_criterion": "entropy",
             "feature_selection": "prob", "use_progressive_stopping": True,
-            "convergence": 0.002, "episode_size": 5,
+            "local_convergence_threshold": 0.002, "local_episode_size": 5,
         },
         "aggregation": {
             "strategy": "s6_perclient_f1", "f1_weight": 0.5, "pcd_weight": 0.5,
-            "convergence": 0.002, "episode_size": 5,
+            "global_convergence_threshold": 0.002, "global_episode_size": 5,
             "window_size": 5, "max_rounds": 20, "alpha": 0.5,
         },
         "prediction": {"local_weight": 0.4, "global_weight": 0.6, "use_weighted": True},
@@ -140,10 +139,7 @@ def render():
     file_path = preset["file_path"]
     sep = preset["sep"]
 
-    if dataset_type == "NSL-KDD":
-        st.success("✓ Archivos separados Train/Test en data/")
-        test_size = 0.0
-    elif dataset_type == "CSV personalizado":
+    if dataset_type == "CSV personalizado":
         col_a, col_b = st.columns(2)
         with col_a:
             file_path = st.text_input(
@@ -192,7 +188,7 @@ def render():
                     logging.debug(f"Auto-detection of categorical columns failed: {e}")
                     pass
     else:
-        if dataset_type not in ("Iris", "NSL-KDD"):
+        if dataset_type != "Iris":
             test_size = st.slider("Tamaño del conjunto de test", 0.1, 0.5, value=test_size, step=0.05)
 
     st.divider()
@@ -242,16 +238,18 @@ def render():
             value=current_config["model"].get("use_progressive_stopping", True),
             help="Criterio de parada progresivo durante el entrenamiento LOCAL de cada cliente."
         )
-        convergence = current_config["model"].get("convergence", 0.002)
-        episode_size = current_config["model"].get("episode_size", 5)
+        convergence = current_config["model"].get("local_convergence_threshold", 
+                                               current_config["model"].get("convergence", 0.002))
+        episode_size = current_config["model"].get("local_episode_size", 
+                                                current_config["model"].get("episode_size", 5))
         if use_cpf:
             convergence = st.number_input(
                 "Umbral convergencia CPF (local)", 0.0, 1.0, value=convergence, format="%.4f",
-                help="Se usa solo para entrenamiento local. Para agregación global, ver sección de Estrategia."
+                help="$\delta$ local: Mejora mínima requerida para seguir añadiendo árboles al bosque del cliente."
             )
             episode_size = st.number_input(
                 "Tamaño episodio CPF (local)", 2, 20, value=episode_size,
-                help="Se usa solo para entrenamiento local. Para agregación global, ver sección de Estrategia."
+                help="Número de árboles que entrena el cliente antes de evaluar la convergencia local."
             )
         verbose_cpf = st.checkbox("Verbose CPF (debug)", value=current_config.get("verbose", False))
 
@@ -279,8 +277,10 @@ def render():
     window_size = current_config["aggregation"].get("window_size", 5)
     max_rounds = current_config["aggregation"].get("max_rounds", 20)
     # For progressive strategies, use aggregation convergence; fallback to model convergence
-    convergence_agg = current_config["aggregation"].get("convergence", current_config["model"].get("convergence", 0.002))
-    episode_size_agg = current_config["aggregation"].get("episode_size", current_config["model"].get("episode_size", 5))
+    convergence_agg = current_config["aggregation"].get("global_convergence_threshold", 
+                        current_config["aggregation"].get("convergence", convergence))
+    episode_size_agg = current_config["aggregation"].get("global_episode_size", 
+                         current_config["aggregation"].get("episode_size", episode_size))
 
     # T_MAX: always visible
     t_max = st.number_input(
@@ -295,12 +295,12 @@ def render():
         with col_conv:
             convergence_agg = st.number_input(
                 "Umbral convergencia (global)", 0.0, 1.0, value=convergence_agg, format="%.4f",
-                help="Si la mejora de accuracy global es menor que este valor durante 2 rondas consecutivas, se detiene."
+                help="$\delta$ global: Mejora mínima del modelo federado para continuar con la agregación de nuevos árboles."
             )
         with col_ep:
             episode_size_agg = st.number_input(
                 "Tamaño episodio (global)", 2, 20, value=episode_size_agg,
-                help="Árboles por episodio en el criterio progresivo de agregación global."
+                help="Número de árboles que se añaden al bosque global antes de evaluar la convergencia federada."
             )
 
     # S4 / S7: F1 + PCD weighting
@@ -434,8 +434,8 @@ def render():
             "dataset": {
                 "type": dataset_type,
                 "file_path": file_path,
-                "train_path": str(PROJECT_ROOT / "data" / "NSL-KDD_train.csv") if dataset_type == "NSL-KDD" else "",
-                "test_path": str(PROJECT_ROOT / "data" / "NSL-KDD_test.csv") if dataset_type == "NSL-KDD" else "",
+                "train_path": "",
+                "test_path": "",
                 "target_column": target_column,
                 "test_size": test_size,
                 "scale": scale,
@@ -453,21 +453,20 @@ def render():
                 "split_criterion": split_crit,
                 "feature_selection": feat_sel,
                 "use_progressive_stopping": use_cpf,
-                "convergence": convergence,
-                "episode_size": episode_size,
+                "local_convergence_threshold": convergence,
+                "local_episode_size": episode_size,
             },
             "aggregation": {
                 "strategy": strategy_key,
                 "t_max": t_max,
                 "f1_weight": f1_weight if strategy_key in ("s4_global_f1_pcd", "s7_perclient_f1_pcd", "pw") else 0.5,
                 "pcd_weight": pcd_weight if strategy_key in ("s4_global_f1_pcd", "s7_perclient_f1_pcd", "pw") else 0.5,
-                "convergence": convergence_agg if is_progressive else convergence,
-                "episode_size": episode_size_agg if is_progressive else episode_size,
+                "global_convergence_threshold": convergence_agg if is_progressive else convergence,
+                "global_episode_size": episode_size_agg if is_progressive else episode_size,
                 "window_size": s9_window_size if strategy_key == "s9_roulette" else (window_size if strategy_key == "pw" else 5),
                 "max_rounds": s9_max_rounds if strategy_key == "s9_roulette" else (max_rounds if strategy_key == "pw" else 20),
                 "variant": s9_variant if strategy_key == "s9_roulette" else "",
                 "beta": s9_beta if strategy_key == "s9_roulette" else 0.0,
-                "convergence_threshold": convergence_agg if is_progressive else convergence,
             },
             "prediction": {
                 "local_weight": pw_local_weight if strategy_key == "pw" else local_w,

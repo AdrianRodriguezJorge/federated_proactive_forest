@@ -45,6 +45,8 @@ from sklearn.preprocessing import StandardScaler
 
 from src.infrastructure.dataset.dataset_factory import DatasetFactory
 from src.domain.dataset.base_adapter import DatasetSplit
+from src.application.hyperparam_optimizer import HyperparamOptimizer
+from src.infrastructure.persistence.results_logger import OptimizationResultsLogger
 
 
 # ============================================================================
@@ -64,7 +66,7 @@ def load_base_config(strategy: str, n_clients: int = 5, seed: int = 42) -> dict:
     Build base configuration for a given strategy.
 
     Args:
-        strategy: Strategy name (S1-S7, PW)
+        strategy: Strategy name (S1-S7, PW, S9)
         n_clients: Number of federated clients
         seed: Random seed
 
@@ -114,6 +116,14 @@ def load_base_config(strategy: str, n_clients: int = 5, seed: int = 42) -> dict:
             'local_weight': 0.5,
             'global_weight': 0.5,
         }
+    elif strategy == 'S9':
+        config['aggregation'].update({
+            'variant': 'S9_MEAN',
+            'beta': 0.0,
+            'window_size': 5,
+            'max_rounds': 20,
+            'convergence_threshold': 0.002,
+        })
 
     return config
 
@@ -168,14 +178,14 @@ Examples:
         '--strategy',
         type=str,
         required=True,
-        choices=['S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'PW'],
+        choices=['S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'PW', 'S9'],
         help='Aggregation strategy to optimize'
     )
     parser.add_argument(
         '--dataset',
         type=str,
         required=True,
-        choices=['car', 'iris', 'letter', 'students'],
+        choices=['car', 'iris', 'letter'],
         help='Dataset to use for optimization'
     )
     parser.add_argument(
@@ -231,18 +241,13 @@ Examples:
     print(f"{'='*60}")
 
     ds_config = {
-        "type": args.dataset.capitalize() if args.dataset != "students" else "Students Dropout",
+        "type": args.dataset.capitalize(),
         "test_size": 0.2,
         "scale": True,
         "scaler_type": "standard",
-        "seed": args.seed
+        "seed": args.seed,
+        "file_path": f"data/{args.dataset}.csv"
     }
-    
-    # Custom mapping for folder structure consistency
-    if args.dataset == "students":
-        ds_config["file_path"] = "data/students_dropout.csv"
-    else:
-        ds_config["file_path"] = f"data/{args.dataset}.csv"
 
     dataset_split = DatasetFactory.load_from_config(ds_config, project_root=Path(ROOT))
 

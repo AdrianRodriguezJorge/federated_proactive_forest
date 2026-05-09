@@ -52,7 +52,10 @@ class GenericCsvAdapter(IDatasetAdapter):
                 test_df = pd.read_csv(self.test_path, sep=self.sep)
             else:
                 train_df, test_df = train_test_split(
-                    train_df, test_size=self.test_size, random_state=self.seed
+                    train_df, 
+                    test_size=self.test_size, 
+                    random_state=self.seed,
+                    stratify=train_df[self.target_column]
                 )
         except Exception as e:
             raise RuntimeError(f"Error loading CSV from {self.train_path}: {e}")

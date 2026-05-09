@@ -1,0 +1,47 @@
+{
+  "dataset": {
+    "type": "Iris",
+    "file_path": "data/iris.csv",
+    "train_path": "",
+    "test_path": "",
+    "target_column": "class",
+    "test_size": 0.2,
+    "scale": true,
+    "scaler_type": "standard",
+    "sep": ","
+  },
+  "federation": {
+    "n_clients": 2,
+    "distribution": "iid",
+    "dirichlet_alpha": 0.5
+  },
+  "model": {
+    "n_estimators": 100,
+    "alpha": 0.1,
+    "split_criterion": "gini",
+    "feature_selection": "prob",
+    "use_progressive_stopping": true,
+    "convergence": 0.005,
+    "episode_size": 5
+  },
+  "aggregation": {
+    "strategy": "s9_roulette",
+    "t_max": 250,
+    "f1_weight": 0.5,
+    "pcd_weight": 0.5,
+    "convergence": 0.005,
+    "episode_size": 5,
+    "window_size": 5,
+    "max_rounds": 10,
+    "variant": "S9_MEAN",
+    "beta": 0.0,
+    "convergence_threshold": 0.005
+  },
+  "prediction": {
+    "local_weight": 0.0,
+    "global_weight": 1.0,
+    "use_weighted": true
+  },
+  "verbose": false,
+  "seed": 42
+}

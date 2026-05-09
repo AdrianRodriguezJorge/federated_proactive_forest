@@ -159,17 +159,13 @@ class ProgressiveWindowsStrategy(IAggregationStrategy):
                     else:
                         tree_f1 = client_meta_dict.get('macro_f1', 0.5)
 
-                    if X_val is not None and y_val_encoded is not None:
-                        candidate_preds_raw = tree.predict(X_val)
-                        candidate_preds_int = label_service.transform(candidate_preds_raw) if label_service else candidate_preds_raw
-                        is_correct = (candidate_preds_int == y_val_encoded)
-                        
-                        candidate_correct_counts = global_correct_counts + is_correct.astype(int)
-                        total_predictors_temp = len(self._global_trees) + 1
-                        lower_bound = 0.1 * total_predictors_temp
-                        upper_bound = 0.9 * total_predictors_temp
-                        diverse_instances = np.sum((candidate_correct_counts >= lower_bound) & (candidate_correct_counts <= upper_bound))
-                        diversity = diverse_instances / n_val_samples
+                    if X_val is not None and y_val_encoded is not None and self.diversity_svc is not None:
+                        diversity = self.diversity_svc.calculate_marginal_pcd(
+                            candidate_predictions=tree.predict(X_val),
+                            current_hits_per_sample=global_correct_counts,
+                            n_existing_trees=len(self._global_trees),
+                            y_true=y_val_encoded
+                        )
                     else:
                         diversity = 1.0 # Default if no validation data
 

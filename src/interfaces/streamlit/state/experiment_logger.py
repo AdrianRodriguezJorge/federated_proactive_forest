@@ -3,7 +3,7 @@
 Saves evaluation metrics (global + per-client) to CSV files organized by
 dataset × strategy combination. Each combination overwrites its previous log.
 
-Directory: logs/streamlit/
+Directory: results/streamlit_results/
 Filename:  {dataset_type}_{strategy_key}.csv
 Max files: len(datasets) × 8 strategies
 """
@@ -16,8 +16,8 @@ import pandas as pd
 
 logger = logging.getLogger(__name__)
 
-# Project root → logs/streamlit/
-_LOG_DIR = Path(__file__).resolve().parents[4] / "logs" / "streamlit"
+# Project root → results/streamlit_results/
+_LOG_DIR = Path(__file__).resolve().parents[4] / "results" / "streamlit_results"
 
 
 def _sanitize(name: str) -> str:

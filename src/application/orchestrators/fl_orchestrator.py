@@ -104,12 +104,17 @@ class FLEXOrchestrator:
         return cls(config, step_callback=step_callback, use_flex_pool=use_flex_pool)
 
     def _setup_logging(self):
-        log_dir = 'logs'
+        log_dir = 'results/logs'
         if not os.path.exists(log_dir): os.makedirs(log_dir)
+        
+        # Choose log filename based on strategy
+        strategy = str(self.config.get('aggregation', {}).get('strategy', 'S1')).lower()
+        log_filename = 'PW_federated_debug.log' if 'pw' in strategy else 'S1_S7_federated_debug.log'
+        
         self.logger = logging.getLogger("FLEXOrchestrator")
         self.logger.setLevel(logging.DEBUG)
         if not self.logger.handlers:
-            fh = logging.FileHandler(os.path.join(log_dir, 'federated_debug.log'))
+            fh = logging.FileHandler(os.path.join(log_dir, log_filename))
             fh.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
             self.logger.addHandler(fh)
 

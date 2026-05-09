@@ -1,3 +1,0 @@
-number,value,datetime_start,datetime_complete,duration,params_alpha_pf,params_convergence_threshold,params_f1_weight,params_local_weight,params_max_rounds,params_window_size,state
-0,0.9333333333333332,2026-04-10 17:21:24.709090,2026-04-10 17:21:33.258947,0 days 00:00:08.549857,0.30000000000000004,0.001432249371823025,0.6,0.1,20,10,COMPLETE
-1,0.9665831244778613,2026-04-10 17:21:33.259950,2026-04-10 17:21:41.822127,0 days 00:00:08.562177,0.1,0.0010485387725194617,0.8,1.0,15,10,COMPLETE

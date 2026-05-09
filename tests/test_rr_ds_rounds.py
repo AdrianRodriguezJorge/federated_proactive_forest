@@ -4,9 +4,9 @@ from sklearn.model_selection import train_test_split
 import pandas as pd
 
 # Cargar datos
-df = pd.read_csv('data/students_dropout.csv', sep=';')
-X = df[[c for c in df.columns if c != 'Target']].values.astype(np.float64)
-y = LabelEncoder().fit_transform(df['Target'].values)
+df = pd.read_csv('data/iris.csv', sep=',')
+X = df[[c for c in df.columns if c != 'class']].values.astype(np.float64)
+y = LabelEncoder().fit_transform(df['class'].values)
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
 scaler = StandardScaler()
 X_train_scaled = scaler.fit_transform(X_train)
@@ -36,8 +36,8 @@ dataset_split = DatasetSplit(
     X_train=X_train_scaled, X_test=X_test_scaled,
     y_train=y_train, y_test=y_test,
     feature_names=list(df.columns[:-1]),
-    class_names=['Dropout', 'Enrolled'],
-    dataset_name='Test'
+    class_names=['Setosa', 'Versicolor', 'Virginica'],
+    dataset_name='Iris'
 )
 
 orchestrator = FLEXOrchestrator.from_config(config)

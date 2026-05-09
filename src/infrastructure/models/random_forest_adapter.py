@@ -36,6 +36,36 @@ class RandomForestWrapper(ABCForest):
             return []
         return self._rf.estimators_.copy()
 
+    def diversity_measure(self, X: np.ndarray, y: np.ndarray, diversity: str = 'pcd') -> float:
+        """Calculate diversity measure (e.g. PCD) for the forest."""
+        if diversity != 'pcd':
+            return 0.0
+        
+        trees = self.get_trees()
+        if not trees:
+            return 0.0
+            
+        n_samples = X.shape[0]
+        n_trees = len(trees)
+        
+        # Collect predictions from all trees
+        # Use object dtype to handle categorical labels (strings)
+        preds = np.empty((n_samples, n_trees), dtype=object)
+        for i, tree in enumerate(trees):
+            preds[:, i] = tree.predict(X)
+            
+        # Correct counts per sample
+        y_arr = np.asarray(y).reshape(-1, 1)
+        hits = (preds == y_arr)
+        hits_per_sample = np.sum(hits, axis=1)
+        
+        # Cepero's PCD thresholds (10% - 90%)
+        lower = 0.1 * n_trees
+        upper = 0.9 * n_trees
+        diverse = np.sum((hits_per_sample >= lower) & (hits_per_sample <= upper))
+        
+        return float(diverse / n_samples)
+
     @classmethod
     def from_trees(cls, trees: List[Any], class_names: List[str] = None) -> 'RandomForestWrapper':
         """Create a Random Forest from a list of trees."""

@@ -31,7 +31,8 @@ def render_convergence_dashboard(results: Any, config: dict):
     if is_converged:
         st.success(f"🎯 **Parada Temprana**: El modelo convergió en el episodio {results.convergence_round}.")
     else:
-        conv_thr = config.get("aggregation", {}).get("convergence", 0.002)
+        conv_thr = config.get("aggregation", {}).get("global_convergence_threshold", 
+                    config.get("aggregation", {}).get("convergence", 0.002))
         st.warning(f"⚠️ **Límite alcanzado**: No se detectó convergencia significativa (Umbral: {conv_thr}).")
     
     st.write("---")

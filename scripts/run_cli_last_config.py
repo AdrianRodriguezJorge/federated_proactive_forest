@@ -11,9 +11,9 @@ from src.application.orchestrators.fl_orchestrator import FLEXOrchestrator
 from src.infrastructure.dataset.dataset_factory import DatasetFactory
 
 def run_last_config():
-    config_path = Path("config/last_config.json")
+    config_path = Path("configs/last_config.json")
     if not config_path.exists():
-        print("Error: No se encontró config/last_config.json")
+        print("Error: No se encontró configs/last_config.json")
         return
 
     with open(config_path, "r") as f:

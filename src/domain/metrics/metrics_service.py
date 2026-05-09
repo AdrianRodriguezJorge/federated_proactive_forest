@@ -14,7 +14,6 @@ class IMetricsService(ABC):
 
     @abstractmethod
     def f1_score(self, y_true: np.ndarray, y_pred: np.ndarray, average: str = 'macro', labels: List[Any] = None) -> Any:
-        # returns float if average is not None, else np.ndarray
         pass
 
     @abstractmethod
@@ -37,15 +36,27 @@ class IDiversityService(ABC):
     """
 
     @abstractmethod
-    def calculate_pcd(self, predictions_matrix: np.ndarray) -> float:
+    def calculate_pcd(self, predictions_matrix: np.ndarray, y_true: np.ndarray) -> float:
         """
-        Calculate Pairwise Classifier Disagreement (PCD).
+        Calculate Percentage Correct Diversity (PCD) based on Cepero (2023).
+        """
+        pass
+
+    @abstractmethod
+    def calculate_marginal_pcd(self, candidate_predictions: np.ndarray, 
+                               current_hits_per_sample: np.ndarray,
+                               n_existing_trees: int,
+                               y_true: np.ndarray) -> float:
+        """
+        Calculate the potential PCD if a candidate were added to the current ensemble.
         
         Args:
-            predictions_matrix: Matrix of shape (n_samples, n_classifiers)
-                               containing class labels or indices.
+            candidate_predictions: Array of (n_samples,) with candidate predictions.
+            current_hits_per_sample: Array of (n_samples,) with hit counts per sample.
+            n_existing_trees: Number of trees currently in the ensemble.
+            y_true: Ground truth labels.
         
         Returns:
-            Mean pairwise disagreement score in range [0, 1].
+            Potential PCD score.
         """
         pass

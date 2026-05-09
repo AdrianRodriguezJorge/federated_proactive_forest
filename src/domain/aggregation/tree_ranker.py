@@ -62,10 +62,11 @@ class TreeRanker:
     def build_entries(client_trees: Dict[str, List[Any]],
                       client_metadata: Dict,
                       X_val: Optional[np.ndarray] = None,
+                      y_val: Optional[np.ndarray] = None,
                       diversity_service: Optional[IDiversityService] = None) -> List[TreeEntry]:
         """Construye TreeEntry por cada árbol de cada cliente delegando en TreeMetricExtractor."""
         extractor = TreeMetricExtractor(diversity_service=diversity_service)
-        raw_entries = extractor.extract_metrics(client_trees, client_metadata, X_val)
+        raw_entries = extractor.extract_metrics(client_trees, client_metadata, X_val, y_val)
         
         entries = []
         for raw in raw_entries:
