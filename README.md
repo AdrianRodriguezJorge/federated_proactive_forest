@@ -466,17 +466,14 @@ class NewDatasetAdapter(IDatasetAdapter):
         # Return DatasetSplit with X_train, X_test, y_train, y_test
 ```
 
-### Step 2: Register in Configuration
-Update the dataset configuration YAML:
-```yaml
-# configs/datasets/new_dataset.yaml
-dataset:
-  type: "NewDataset"
-  file_path: "data/new_dataset.csv"
-  target_column: "target"
-  test_size: 0.2
-  scale: true
-  scaler_type: "standard"
+### Step 2: Register in Dataset Factory
+Update `DATASET_METADATA` in `src/infrastructure/dataset/dataset_factory.py`:
+```python
+"new_dataset": {
+    "target_column": "target",
+    "sep": ",",
+    "file_path": "data/new_dataset.csv"
+}
 ```
 
 ### Step 3: Update UI (if needed)
@@ -593,7 +590,6 @@ pytest tests/test_hybrid_inference.py -v
 - `test_label_service.py` - Unit tests for LabelService
 - `test_pw_orchestrator.py` - Progressive Windows orchestrator testing
 - `test_iris_adapter_scaler_isolation.py` - Scaler isolation tests for Dataset Adapters
-- `_validate_s9.py` - S9 Roulette engine and fusion tests
 
 ## 🔌 FLEX Framework Integration
 
@@ -628,14 +624,14 @@ pip install flex-framework flex-trees
 To ensure the reliability of the comparative analysis, the project includes a specialized script for non-parametric statistical testing.
 
 ### Friedman & Wilcoxon Tests
-Located in `tests/Friedman_test_new_results.py`, this script performs:
+Located in `scripts/Friedman_test_new_results.py`, this script performs:
 1.  **Friedman Test**: Determines if there are globally significant differences between the 8 strategies and the standalone Proactive Forest (PF) baseline.
 2.  **Wilcoxon Post-hoc**: Conducts pairwise comparisons (PF vs each S1-S7/PW strategy) with **Bonferroni correction**.
 3.  **Maximum Impact Ranking**: Identifies which datasets show the largest performance gain when moving from standalone to federated models.
 
 ```bash
 # Run statistical analysis on current results
-python tests/Friedman_test_new_results.py
+python scripts/Friedman_test_new_results.py
 ```
 
 ## 📜 Scripts
