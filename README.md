@@ -15,7 +15,8 @@
 - ✅ **Statistical Validation**: Built-in Friedman and Wilcoxon tests for rigorous performance comparison
 - ✅ **Modern Web UI**: Streamlit interface with real-time ranking and confusion matrices
 - ✅ **Clean Hexagonal Architecture**: Strict separation between Domain, Application, and Infrastructure
-- ✅ **Hyperparameter Optimization**: Integrated Optuna support for strategy-specific parameters
+- ✅ **Hyperparameter Optimization**: Integrated Optuna support with YAML-based search spaces
+- ✅ **Interactive Notebooks**: Complete pipelines for baseline comparison and strategy optimization
 - ✅ **FLEX Framework Integration**: Advanced FL orchestration support
 - ✅ **Professional Documentation**: Auto-generated documentation site with MkDocs
 
@@ -26,6 +27,7 @@ The project includes comprehensive documentation generated from the code's docst
 *   **Online/Local Page**: Run `mkdocs serve` to view the documentation site.
 *   **API Reference**: Detailed description of strategies, models, and services.
 *   **Hexagonal Design**: Explanation of the architectural patterns used.
+*   **Notebooks**: See `src/interfaces/notebooks/` for interactive experimentation.
 
 ## 📋 Table of Contents
 
@@ -36,6 +38,7 @@ The project includes comprehensive documentation generated from the code's docst
 - [System Architecture](#-system-architecture)
 - [Streamlit Interface](#-streamlit-interface)
 - [CLI](#-cli)
+- [Jupyter Notebooks](#-jupyter-notebooks)
 - [Advanced Configuration](#-advanced-configuration)
 - [Adding New Datasets](#-adding-new-datasets)
 - [Statistical Validation](#-statistical-validation)
@@ -195,7 +198,7 @@ The project implements **9 strategies** for tree selection and feature explorati
 | **S6** | Per-Client | Macro-F1 | Individual ranking per client |
 | **S7** | Per-Client | F1 + PCD | Individual ranking with diversity |
 | **PW** | Progressive Windows | Adaptive | Progressive windows with adaptive stopping |
-| **S9** | Global Roulette | Statistical | Attribute roulette (probability vector exchange) |
+| **S9** | Global Roulette | Statistical | Global attribute roulette (S9_MEAN, S9_WEIGHTED, S9_MEDIAN, S9_CONSENSUS, S9_PROACTIVE_PCD) |
 
 ### Weight Configuration (S4, S7, PW)
 ```yaml
@@ -237,7 +240,7 @@ A radically different approach for low-bandwidth environments:
 ```yaml
 aggregation:
   strategy: s9_roulette
-  variant: S9_CONSENSUS  # MEAN, WEIGHTED, MEDIAN, CONSENSUS
+  variant: S9_CONSENSUS  # MEAN, WEIGHTED, MEDIAN, CONSENSUS, PROACTIVE_PCD
   beta: 0.1             # 0=Adopt global, 1=Stay local
   window_size: 5        # Trees per window
   max_rounds: 20
@@ -262,16 +265,24 @@ src/
 │   ├── metrics/              # Model evaluation (ForestEvaluator)
 │   ├── services/             # LabelService (Unified encoding)
 │   ├── prediction/           # Weighted Hybrid Prediction
-│   └── update/               # No-Repeat Merge logic
+│   ├── update/               # No-Repeat Merge logic
+│   ├── config/               # Domain-specific configuration
+│   └── dataset/              # Domain dataset abstractions
 │
 ├── application/              # 🎯 Use cases and orchestration
 │   ├── orchestrators/        # FLEXOrchestrator, PWOrchestrator
+│   ├── commands/             # Command pattern implementations
 │   └── hyperparam_optimizer.py  # Optuna-based optimization
 │
 ├── infrastructure/           # 🔌 Concrete adapters
-│   ├── dataset/              # Adapters: NSL-KDD, Iris, CSV, FlexTrees
-│   ├── flex/                 # FLEX Framework primitives (train, aggregate)
-│   └── persistence/          # Results logging and CSV storage
+│   ├── dataset/              # Adapters: CSV, FlexTrees, DatasetFactory
+│   ├── flex/                 # FLEX Framework primitives
+│   ├── persistence/          # Results logging and CSV storage
+│   ├── models/               # Model adapters (RandomForestAdapter)
+│   ├── logging/              # System logging infrastructure
+│   ├── metrics/              # Infrastructure-level metric collection
+│   ├── privacy/              # Privacy-preserving mechanisms
+│   └── serialization/        # State serialization/deserialization
 │
 └── interfaces/               # 🎨 User interfaces
     ├── cli/                  # Command-line interface (main.py)
@@ -285,7 +296,7 @@ src/
 - **PWOrchestrator**: Specialized orchestrator for Progressive Windows strategy
 - **LabelService**: Unified label service for consistent encoding across federation
 - **Early Stopping**: Automatic convergence detection in progressive training
-- **PCD Diversity**: Pairwise Classifier Disagreement diversity measure
+- **IDiversityService**: Standardized PCD (Pairwise Classifier Disagreement) measure
 - **Hybrid Prediction**: Configurable weighted voting between local and global models
 - **No-Repeat Merge**: Prevents duplicate tree selection across rounds
 
@@ -365,7 +376,22 @@ aggregation:
 - `exp_s6_perclient_f1.yaml` - Per-client F1
 - `exp_s7_perclient_f1_pcd.yaml` - Per-client F1 + PCD
 - `exp_pw_progressive_windows.yaml` - Progressive Windows strategy
-- `exp_s9_roulette.yaml` - Global Attribute Roulette strategy
+- `exp_s9_consensus.yaml` - Global Attribute Roulette (Consensus variant)
+- `exp_s9_proactive_pcd.yaml` - Diversity-weighted Roulette (Proactive PCD)
+- `exp_s9_mean.yaml`, `exp_s9_median.yaml`, `exp_s9_weighted.yaml` - Other S9 variants
+
+## 📓 Jupyter Notebooks
+
+The project includes interactive notebooks for detailed analysis and custom optimization located in `src/interfaces/notebooks/`:
+
+### Baseline Comparison
+- `baselines/centralized_baselines_comparison.ipynb`: Compares federated strategies against centralized Random Forest and Proactive Forest baselines.
+
+### Strategy Optimization
+Dedicated notebooks for tuning each strategy using Optuna:
+- `optimization/optuna_s1.ipynb` to `optuna_s7.ipynb`
+- `optimization/optuna_pw.ipynb` (Progressive Windows)
+- `optimization/optuna_s9.ipynb` (Global Roulette variants)
 
 ## ⚙️ Advanced Configuration
 
@@ -519,6 +545,7 @@ If you use this code in your research, please cite:
 | Adaptive stopping | PW (Progressive Windows) | Automatic convergence detection |
 | **Low Bandwidth** | **S9 (Roulette)** | **Extreme communication efficiency** |
 | High Heterogeneity | S9_CONSENSUS | Weights clients by performance |
+| Maximum Selection Diversity | S9_PROACTIVE_PCD | Weights clients by PCD diversity |
 
 ## 🐛 Troubleshooting
 
@@ -615,35 +642,36 @@ python tests/Friedman_test_new_results.py
 
 The project includes several utilities in the `scripts/` directory for experimentation and analysis:
 
-### Benchmarking
-Run comprehensive grid benchmarks across multiple datasets and configurations.
+### Benchmarking & Master Experiments
+Run comprehensive benchmarks across all datasets and strategies.
 ```bash
-# Run comprehensive grid benchmarks
-python scripts/run_grid_benchmark.py --config configs/experiments/benchmark_grid.yaml
+# Run the Master Experiment (compares all 8 strategies + S9 variants across all datasets)
+python master_experiment.py
+```
+*Results are saved automatically to `results_master.csv` with atomic progress tracking.*
 
+```bash
 # Run S9 specific benchmark (Nursery/Iris)
 python scripts/run_s9_benchmark.py
 ```
 
 ### Hyperparameter Optimization
-Using **Optuna**, you can optimize strategy-specific parameters (like the `alpha` parameter for Proactive Forest or the `f1_weight` for aggregation strategies).
+Using **Optuna**, you can optimize strategy-specific parameters. The search spaces are defined in `configs/optimization/search_spaces.yaml`.
 ```bash
-# Run general optimization
-python scripts/run_optimization.py
-
-# Optimize specific S6 alpha strategy
-python scripts/optimize_s6_alpha_pf.py
+# Run optimization via script
+python scripts/run_optimization.py --strategy S7 --dataset letter --n_trials 50
 ```
+*You can also use the specialized notebooks in `src/interfaces/notebooks/optimization/` for interactive tuning.*
 
 ### Analysis Utilities
 ```bash
+# Run statistical analysis (Friedman & Wilcoxon) on results
+python scripts/Friedman_test_new_results.py
+
 # Compare weighted vs uniform voting logic
 python scripts/weighted_vs_uniform.py
 
-# Run robustness test for federated models
-python scripts/test_fl_robustness.py
-
-# Rerun CLI with last used configuration
+# Rerun CLI with last used configuration (from configs/last_config.json)
 python scripts/run_cli_last_config.py
 ```
 

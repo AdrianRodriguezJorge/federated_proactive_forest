@@ -1,0 +1,17 @@
+dataset:
+  type: "Iris"
+  file_path: "data/iris.csv"
+
+federation:
+  n_clients: 5
+  distribution: "iid"
+
+model:
+  n_estimators: 100
+  alpha: 0.1
+
+aggregation:
+  strategy: "s9_proactive_pcd"
+  beta: 0.1
+  window_size: 5
+  max_rounds: 20

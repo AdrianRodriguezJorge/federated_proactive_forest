@@ -139,7 +139,7 @@ def load_search_space(strategy: str) -> dict:
         Search space dict
     """
     project_root = Path(__file__).parent.parent
-    search_spaces_path = project_root / 'configs' / 'experiments' / 'optimization' / 'search_spaces.yaml'
+    search_spaces_path = project_root / 'configs' / 'optimization' / 'search_spaces.yaml'
 
     if not search_spaces_path.exists():
         raise FileNotFoundError(f"Search spaces config not found at: {search_spaces_path}")
