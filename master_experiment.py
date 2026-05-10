@@ -9,7 +9,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
 
-from src.application.orchestrators import FLEXOrchestrator
+from src.application.orchestrators.fl_orchestrator import FLEXOrchestrator
+from src.application.orchestrators.roulette_orchestrator import RouletteOrchestrator
 from src.infrastructure.dataset.dataset_factory import DatasetFactory
 
 # --- CONFIGURACIÓN MAESTRA ---
@@ -49,7 +50,7 @@ def get_completed_experiments():
     completed = set()
     if os.path.exists(RESULTS_FILE):
         try:
-            with open(RESULTS_FILE, "r") as f:
+            with open(RESULTS_FILE, "r", encoding='utf-8') as f:
                 reader = csv.DictReader(f)
                 for row in reader:
                     completed.add((row["strategy"], row["dataset"]))
@@ -63,7 +64,7 @@ def main():
     
     # Escribir cabecera si el archivo es nuevo
     if not os.path.exists(RESULTS_FILE):
-        with open(RESULTS_FILE, "w", newline="") as f:
+        with open(RESULTS_FILE, "w", newline="", encoding='utf-8') as f:
             writer = csv.writer(f)
             writer.writerow(["strategy", "dataset", "avg_f1", "avg_accuracy", "avg_pcd", "n_clients", "timestamp"])
 
@@ -95,22 +96,41 @@ def main():
                 # 2. Cargar Dataset
                 ds = DatasetFactory.load_from_config(cfg["dataset"])
                 
-                # 3. Orquestar
-                orch = FLEXOrchestrator.from_config(cfg)
+                # 3. Selección de Orquestador (S9 requiere RouletteOrchestrator)
+                if strategy.startswith("S9"):
+                    cfg["aggregation"]["variant"] = strategy
+                    cfg["aggregation"]["beta"] = 0.0  # Adopción global por defecto
+                    cfg["aggregation"]["max_rounds"] = 20
+                    cfg["aggregation"]["window_size"] = 5
+                    orch = RouletteOrchestrator(cfg)
+                else:
+                    orch = FLEXOrchestrator(cfg)
+                
                 orch.setup_federation(ds)
                 results = orch.run_federated_round()
                 
                 # 4. Extraer métricas atómicas (Promedio de clientes)
-                c_f1s = [results.client_f1_scores[cid] for cid in results.client_ids]
-                c_accs = [results.client_accuracies[cid] for cid in results.client_ids]
-                c_pcds = [results.client_metadata[cid].pcd for cid in results.client_ids if cid in results.client_metadata]
+                c_ids = [str(cid) for cid in results.client_ids]
+                c_f1s = [results.client_f1_scores[cid] for cid in c_ids]
+                c_accs = [results.client_accuracies[cid] for cid in c_ids]
+                
+                # Extraer PCD manejando tanto objetos como diccionarios
+                c_pcds = []
+                for cid in c_ids:
+                    meta = results.client_metadata.get(cid)
+                    if meta is None:
+                        c_pcds.append(0.0)
+                    elif isinstance(meta, dict):
+                        c_pcds.append(meta.get("pcd", 0.0))
+                    else:
+                        c_pcds.append(getattr(meta, "pcd", 0.0))
                 
                 avg_f1 = np.mean(c_f1s)
                 avg_acc = np.mean(c_accs)
                 avg_pcd = np.mean(c_pcds) if c_pcds else 0.0
                 
                 # 5. Guardar inmediatamente
-                with open(RESULTS_FILE, "a", newline="") as f:
+                with open(RESULTS_FILE, "a", newline="", encoding='utf-8') as f:
                     writer = csv.writer(f)
                     writer.writerow([strategy, ds_name, f"{avg_f1:.4f}", f"{avg_acc:.4f}", f"{avg_pcd:.4f}", N_CLIENTS, time.strftime("%Y-%m-%d %H:%M:%S")])
                 
@@ -118,7 +138,6 @@ def main():
                 
             except Exception as e:
                 print(f"  [ERROR] Falló {strategy} en {ds_name}: {e}")
-                # Continuar con el siguiente para no detener todo el proceso
                 continue
 
     print(f"\n=== EXPERIMENTO FINALIZADO. Resultados en {RESULTS_FILE} ===")

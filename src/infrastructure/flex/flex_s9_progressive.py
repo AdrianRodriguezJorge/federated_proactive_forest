@@ -38,7 +38,7 @@ def train_window_pf_s9(client_flex_model: FlexModel, client_data: Any, active_id
             n_estimators=config.get('n_estimators', 100),
             alpha=config.get('alpha', 0.1),
             class_names=class_names,
-            convergence_threshold=config.get('aggregation', {}).get('convergence', 0.002)
+            convergence_threshold=config.get('model', {}).get('local_convergence_threshold', 0.002)
         )
         # Initialize internal structures
         pf._is_fitted = True # We'll manage fit iteratively

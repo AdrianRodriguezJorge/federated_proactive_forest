@@ -105,9 +105,9 @@ class GlobalProgressiveStrategy(ABC):
             candidate_entries=ranked_entries,
             X_val=X_val,
             y_val_norm=y_val_norm,
-            episode_size=self.EPISODE_SIZE,
+            episode_size=kwargs.get('global_episode_size', self.EPISODE_SIZE),
             t_max=t_max if t_max is not None else self.T_MAX,
-            convergence_threshold=kwargs.get('convergence_threshold', self.CONVERGENCE),
+            convergence_threshold=kwargs.get('global_convergence_threshold', self.CONVERGENCE),
             label_service=label_svc,
             ranker=ranker
         )

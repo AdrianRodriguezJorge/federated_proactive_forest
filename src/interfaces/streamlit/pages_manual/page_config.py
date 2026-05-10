@@ -238,10 +238,8 @@ def render():
             value=current_config["model"].get("use_progressive_stopping", True),
             help="Criterio de parada progresivo durante el entrenamiento LOCAL de cada cliente."
         )
-        convergence = current_config["model"].get("local_convergence_threshold", 
-                                               current_config["model"].get("convergence", 0.002))
-        episode_size = current_config["model"].get("local_episode_size", 
-                                                current_config["model"].get("episode_size", 5))
+        convergence = current_config["model"].get("local_convergence_threshold", 0.002)
+        episode_size = current_config["model"].get("local_episode_size", 5)
         if use_cpf:
             convergence = st.number_input(
                 "Umbral convergencia CPF (local)", 0.0, 1.0, value=convergence, format="%.4f",
@@ -268,7 +266,7 @@ def render():
 
     # ── Progressive strategies (S2-S7) ────────────────────────────────────────
     is_progressive = strategy_key in ("s2_global_accuracy", "s3_global_f1", "s4_global_f1_pcd",
-                                       "s5_perclient_accuracy", "s6_perclient_f1", "s7_perclient_f1_pcd")
+                                       "s5_perclient_accuracy", "s6_perclient_f1", "s7_perclient_f1_pcd", "pw")
 
     # Defaults from config (strategy-agnostic)
     t_max = current_config["aggregation"].get("t_max", current_config["model"].get("n_estimators", 100))
@@ -461,8 +459,8 @@ def render():
                 "t_max": t_max,
                 "f1_weight": f1_weight if strategy_key in ("s4_global_f1_pcd", "s7_perclient_f1_pcd", "pw") else 0.5,
                 "pcd_weight": pcd_weight if strategy_key in ("s4_global_f1_pcd", "s7_perclient_f1_pcd", "pw") else 0.5,
-                "global_convergence_threshold": convergence_agg if is_progressive else convergence,
-                "global_episode_size": episode_size_agg if is_progressive else episode_size,
+                "global_convergence_threshold": convergence_agg,
+                "global_episode_size": episode_size_agg,
                 "window_size": s9_window_size if strategy_key == "s9_roulette" else (window_size if strategy_key == "pw" else 5),
                 "max_rounds": s9_max_rounds if strategy_key == "s9_roulette" else (max_rounds if strategy_key == "pw" else 20),
                 "variant": s9_variant if strategy_key == "s9_roulette" else "",

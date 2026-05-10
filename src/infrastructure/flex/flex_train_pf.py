@@ -53,7 +53,7 @@ def train_pf(client_flex_model: FlexModel, client_data: Any) -> FlexModel:
         alpha=config.get('alpha', 0.1),
         verbose=config.get('verbose', False),
         class_names=class_names,
-        convergence_threshold=config.get('local_convergence_threshold', config.get('convergence', 0.002))
+        convergence_threshold=config.get('model', {}).get('local_convergence_threshold', 0.002)
     )
     
     pf.fit(X_train, y_train)

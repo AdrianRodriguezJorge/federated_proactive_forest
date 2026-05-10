@@ -94,6 +94,7 @@ class ProgressiveWindowsStrategy(IAggregationStrategy):
         self.f1_weight = kwargs.get('f1_weight', self.f1_weight)
         self.window_size = kwargs.get('window_size', self.window_size)
         self.max_rounds = kwargs.get('max_rounds', self.max_rounds)
+        self.convergence_threshold = kwargs.get('global_convergence_threshold', self.convergence_threshold)
         if local_weight is not None:
             self.local_weight = local_weight
 

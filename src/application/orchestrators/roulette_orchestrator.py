@@ -124,7 +124,7 @@ class RouletteOrchestrator:
         self.window_size = int(agg_cfg.get('window_size', 5))
         self.max_rounds = int(agg_cfg.get('max_rounds', 20))
         self.convergence_threshold = float(
-            agg_cfg.get('convergence_threshold', agg_cfg.get('convergence', 0.002))
+            self.config.get('model', {}).get('local_convergence_threshold', 0.002)
         )
         self.t_max = int(agg_cfg.get('t_max', self.config.get('model', {}).get('n_estimators', 100)))
 

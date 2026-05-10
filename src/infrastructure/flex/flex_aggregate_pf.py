@@ -55,8 +55,8 @@ def aggregate_trees_pf(weights: List[Dict[str, Any]], **kwargs: Any) -> Dict[str
         'max_rounds': agg_config.get('max_rounds', 20),
         'f1_weight': agg_config.get('f1_weight', 0.5),
         'pcd_weight': agg_config.get('pcd_weight', 1.0 - agg_config.get('f1_weight', 0.5)),
-        'convergence_threshold': agg_config.get('global_convergence_threshold') or agg_config.get('convergence_threshold') or agg_config.get('convergence', 0.002),
-        'episode_size': agg_config.get('global_episode_size') or agg_config.get('episode_size', 5),
+        'global_convergence_threshold': agg_config.get('global_convergence_threshold', 0.002),
+        'global_episode_size': agg_config.get('global_episode_size', 5),
         'local_weight': server_config.get('prediction', {}).get('local_weight', 0.5)
     })
 
