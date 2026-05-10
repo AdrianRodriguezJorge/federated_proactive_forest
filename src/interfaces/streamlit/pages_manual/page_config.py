@@ -82,7 +82,7 @@ def get_default_config():
     return {
         "dataset": {
             "type": "Iris", "file_path": "", "target_column": "class",
-            "test_size": 0.2, "scale": True, "scaler_type": "standard",
+            "test_size": 0.15, "scale": True, "scaler_type": "standard",
         },
         "federation": {
             "n_clients": 3, "distribution": "iid", "dirichlet_alpha": 0.5,
@@ -134,7 +134,7 @@ def render():
         scaler_type = "none"
 
     # Dataset-specific settings
-    test_size = current_config["dataset"].get("test_size", 0.2)
+    test_size = current_config["dataset"].get("test_size", 0.15)
     target_column = preset["target_column"]
     file_path = preset["file_path"]
     sep = preset["sep"]

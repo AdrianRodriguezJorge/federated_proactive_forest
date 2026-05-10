@@ -28,12 +28,12 @@ class FedDataDistributor:
             try:
                 X_train_fed, X_server_val, y_train_fed, y_server_val = train_test_split(
                     dataset_split.X_train, dataset_split.y_train, 
-                    test_size=0.05, random_state=seed, stratify=dataset_split.y_train
+                    test_size=0.1765, random_state=seed, stratify=dataset_split.y_train
                 )
             except ValueError:
                 X_train_fed, X_server_val, y_train_fed, y_server_val = train_test_split(
                     dataset_split.X_train, dataset_split.y_train, 
-                    test_size=0.05, random_state=seed
+                    test_size=0.1765, random_state=seed
                 )
         else:
             X_train_fed, y_train_fed = dataset_split.X_train, dataset_split.y_train

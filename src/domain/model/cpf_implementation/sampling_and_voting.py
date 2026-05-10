@@ -82,7 +82,12 @@ class MajorityVoter(WeightingVoter):
 class PerformanceWeightingVoter(WeightingVoter):
     def predict(self, x):
         weights = np.array([model.weight for model in self._predictors])
-        weights = weights / np.sum(weights)
+        sum_weights = np.sum(weights)
+        if sum_weights == 0:
+            weights = np.ones(len(weights)) / len(weights)
+        else:
+            weights = weights / sum_weights
+            
         results = {}
         for model, w in zip(self._predictors, weights):
             pred = model.predict(x)
@@ -90,6 +95,28 @@ class PerformanceWeightingVoter(WeightingVoter):
                 results[pred] = 0
             results[pred] += w
         return max(results, key=results.get)
+
+
+class SoftPerformanceWeightingVoter(WeightingVoter):
+    """
+    Weighted Soft Voting: Multiplies each tree's probabilities by its performance weight.
+    This provides better ensemble decisions than hard voting.
+    """
+    def predict(self, x):
+        weights = np.array([model.weight for model in self._predictors])
+        sum_weights = np.sum(weights)
+        if sum_weights == 0:
+            weights = np.ones(len(weights)) / len(weights)
+        else:
+            weights = weights / sum_weights
+            
+        # Accumulate weighted probabilities
+        # results shape: (n_classes,)
+        results = np.zeros(self._n_classes)
+        for model, w in zip(self._predictors, weights):
+            results += model.predict_proba(x) * w
+            
+        return np.argmax(results)
 
 
 class DistributionSummationVoter(WeightingVoter):

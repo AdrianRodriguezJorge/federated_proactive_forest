@@ -5,7 +5,7 @@ class DatasetConfig(BaseModel):
     type: str
     file_path: Optional[str] = None
     target_column: Optional[str] = "target"
-    test_size: float = 0.2
+    test_size: float = 0.15
     scale: bool = True
     scaler_type: str = "standard"
     sep: str = ","

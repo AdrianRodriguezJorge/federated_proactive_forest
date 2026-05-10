@@ -19,7 +19,7 @@ class GenericCsvAdapter(IDatasetAdapter):
                  categorical_features: Optional[List[str]] = None,
                  columns_to_drop: Optional[List[str]] = None,
                  scale: bool = True, scaler_type: str = "standard",
-                 test_size: float = 0.2, seed: int = 42, sep: str = ","):
+                 test_size: float = 0.15, seed: int = 42, sep: str = ","):
         self._name = name
         self.train_path = train_path
         self.test_path = test_path
@@ -71,51 +71,46 @@ class GenericCsvAdapter(IDatasetAdapter):
 
         feat_cols = [c for c in train_df.columns if c != self.target_column]
 
-        # Auto-detect string/object columns in BOTH train and test sets
+        # ── Categorical Encoding (Ordinal) ───────────────────────────────────
         detected_cat = []
         for col in feat_cols:
             if col not in self.categorical_features:
-                is_obj_train = train_df[col].dtype == "object" or train_df[col].dtype.name == "category"
-                is_obj_test = test_df[col].dtype == "object" or test_df[col].dtype.name == "category"
-                if is_obj_train or is_obj_test:
+                if train_df[col].dtype == "object" or train_df[col].dtype.name == "category":
                     detected_cat.append(col)
 
-        # Combine explicit + detected categorical columns
         all_cat_cols = list(dict.fromkeys(self.categorical_features + detected_cat))
 
         if all_cat_cols:
+            # RIGOR: fit only on train, handle unknowns in test gracefully
             enc = OrdinalEncoder(handle_unknown="use_encoded_value", unknown_value=-1)
             train_df[all_cat_cols] = enc.fit_transform(train_df[all_cat_cols].astype(str))
             test_df[all_cat_cols]  = enc.transform(test_df[all_cat_cols].astype(str))
 
-        # Handle target column
+        # ── Label Encoding ───────────────────────────────────────────────────
         le = LabelEncoder()
-        # Ensure target is string for consistent encoding
         y_train_raw = train_df[self.target_column].astype(str).values
         y_test_raw = test_df[self.target_column].astype(str).values
         
-        # Fit on BOTH train and test to guarantee all classes are known
-        le.fit(np.concatenate([y_train_raw, y_test_raw]))
+        # RIGOR: Fit ONLY on training labels
+        le.fit(y_train_raw)
         self._class_names_ = [str(c) for c in le.classes_]
         
         y_train = y_train_raw
+        # Handle unseen labels in test set by mapping to -1 or similar if needed,
+        # but here we keep them as strings for the domain model to handle.
         y_test = y_test_raw
 
-        # Feature validation and conversion
+        # ── Feature Validation and Conversion ───────────────────────────────
         try:
             X_train = train_df[feat_cols].values.astype(np.float64)
             X_test  = test_df[feat_cols].values.astype(np.float64)
         except ValueError as e:
-            # If conversion fails, identify which columns are non-numeric
-            non_numeric = []
-            for col in feat_cols:
-                try:
-                    train_df[col].values.astype(np.float64)
-                except ValueError:
-                    non_numeric.append(col)
-            raise ValueError(f"Feature conversion to float failed. Columns containing non-numeric data without being marked as categorical: {non_numeric}. Original error: {e}")
+            non_numeric = [col for col in feat_cols if not np.issubdtype(train_df[col].dtype, np.number)]
+            raise ValueError(f"Feature conversion failed. Non-numeric columns not marked as categorical: {non_numeric}. Error: {e}")
 
+        # ── Scaling ──────────────────────────────────────────────────────────
         if self.scale:
+            # RIGOR: Fit only on train statistics, transform test
             scaler = StandardScaler() if self.scaler_type == "standard" else MinMaxScaler()
             X_train = scaler.fit_transform(X_train)
             X_test  = scaler.transform(X_test)

@@ -97,8 +97,10 @@ class S9ConsensusStrategy(IRouletteAggregationStrategy):
         ids = list(client_vectors.keys())
         vectors = np.array([client_vectors[cid] for cid in ids])
         metrics = np.array([client_f1_scores[cid] for cid in ids], dtype=np.float64)
-        exp_metrics = np.exp(metrics - np.max(metrics))
-        consensus_weights = exp_metrics / exp_metrics.sum()
+        if metrics.sum() > 0:
+            consensus_weights = metrics / metrics.sum()
+        else:
+            consensus_weights = np.ones(len(metrics)) / len(metrics)
         result = np.average(vectors, axis=0, weights=consensus_weights)
         result /= result.sum()
         return result
@@ -117,9 +119,10 @@ class S9ProactivePCDStrategy(IRouletteAggregationStrategy):
         vectors = np.array([client_vectors[cid] for cid in ids])
         pcds = np.array([client_pcd_scores.get(cid, 0.0) for cid in ids], dtype=np.float64)
         
-        # Softmax over PCD to give more weight to diverse clients
-        exp_pcds = np.exp(pcds - np.max(pcds))
-        weights = exp_pcds / exp_pcds.sum()
+        if pcds.sum() > 0:
+            weights = pcds / pcds.sum()
+        else:
+            weights = np.ones(len(pcds)) / len(pcds)
         
         result = np.average(vectors, axis=0, weights=weights)
         result /= result.sum()

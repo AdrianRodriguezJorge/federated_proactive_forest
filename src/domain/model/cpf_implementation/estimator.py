@@ -12,7 +12,7 @@ from . import utils
 from .selection_and_diversity import PercentageCorrectDiversity, QStatisticDiversity
 
 from .tree_builder import TreeBuilder
-from .sampling_and_voting import PerformanceWeightingVoter
+from .sampling_and_voting import PerformanceWeightingVoter, SoftPerformanceWeightingVoter
 from .sampling_and_voting import SimpleSet, BaggingSet, ProbabilitySet
 from .probabilities import FIProbabilityLedger
 from .criteria_and_splits import resolve_split_selection, resolve_split_criterion
@@ -131,7 +131,7 @@ class DecisionForestClassifier:
     def __init__(self, n_estimators=100, bootstrap=True, max_depth=None,
                  split_chooser='best', split_criterion='gini', min_samples_leaf=1,
                  feature_selection='log', feature_prob=None, min_gain_split=0,
-                 min_samples_split=2, EPISODE=5, random_state=None):
+                 min_samples_split=2, EPISODE=5, voting='soft', random_state=None):
         self._trees = []
         self._n_features = None
         self._n_instances = None
@@ -140,6 +140,7 @@ class DecisionForestClassifier:
         self._encoder = None
         self._bootstrap = bootstrap
         self.EPISODE = EPISODE
+        self.voting = voting
         self.random_state = random_state
 
         if n_estimators is None or n_estimators > 0:
@@ -231,7 +232,11 @@ class DecisionForestClassifier:
     def predict(self, X, check_input=True):
         if check_input:
             X = self._validate(X, check_input=check_input)
-        voter = PerformanceWeightingVoter(self._trees, self._n_classes)
+            
+        if self.voting == 'soft':
+            voter = SoftPerformanceWeightingVoter(self._trees, self._n_classes)
+        else:
+            voter = PerformanceWeightingVoter(self._trees, self._n_classes)
         
         # Performance optimization: list comprehension is faster for large datasets
         result = np.array([voter.predict(x) for x in X])
@@ -254,7 +259,12 @@ class DecisionForestClassifier:
     def predict_proba(self, X, indexs, check_input=True):
         if check_input:
             X = self._validate(X, check_input=check_input)
-        voter = PerformanceWeightingVoter(self._trees, self._n_classes)
+            
+        if self.voting == 'soft':
+            voter = SoftPerformanceWeightingVoter(self._trees, self._n_classes)
+        else:
+            voter = PerformanceWeightingVoter(self._trees, self._n_classes)
+            
         sample_size, _ = X.shape
         result = list(range(sample_size))
         for i in range(sample_size):
@@ -338,7 +348,7 @@ class ProactiveForestClassifier(DecisionForestClassifier):
     def __init__(self, n_estimators=100, bootstrap=True, max_depth=None,
                  split_chooser='best', split_criterion='entropy', min_samples_leaf=1,
                  feature_selection='prob', feature_prob=None, min_gain_split=0,
-                 min_samples_split=2, alpha=0.1, random_state=None):
+                 min_samples_split=2, alpha=0.1, voting='soft', random_state=None):
         if 0 < alpha <= 1:
             self.alpha = alpha
         else:
@@ -347,7 +357,7 @@ class ProactiveForestClassifier(DecisionForestClassifier):
                          split_chooser=split_chooser, split_criterion=split_criterion,
                          min_samples_leaf=min_samples_leaf, feature_selection=feature_selection,
                          feature_prob=feature_prob, min_gain_split=min_gain_split,
-                         min_samples_split=min_samples_split, random_state=random_state)
+                         min_samples_split=min_samples_split, voting=voting, random_state=random_state)
 
     def fit(self, X, y):
         X = np.asarray(X)
