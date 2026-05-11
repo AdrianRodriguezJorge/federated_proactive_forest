@@ -401,4 +401,18 @@ class RouletteOrchestrator:
         )
 
 
+    def cleanup(self):
+        """Release resources and terminate FlexPool actors."""
+        if self.flex_pool:
+            try:
+                if hasattr(self.flex_pool, 'terminate'):
+                    self.flex_pool.terminate()
+                elif hasattr(self.flex_pool, 'close'):
+                    self.flex_pool.close()
+                self.logger.info("FlexPool (Roulette) terminated successfully.")
+            except Exception as e:
+                self.logger.error(f"Error terminating FlexPool: {e}")
+            finally:
+                self.flex_pool = None
+
 __all__ = ['RouletteOrchestrator', 'RouletteResults']

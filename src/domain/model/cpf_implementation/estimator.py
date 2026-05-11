@@ -296,7 +296,7 @@ class DecisionForestClassifier:
         return metric.get_measure(self._trees, X, y)
 
     def _validate(self, X, check_input):
-        if self._trees is None or len(self._trees) == 0:
+        if self._trees is None:
             raise RuntimeError("Estimator not fitted, call `fit` before exploiting the model.")
         if check_input:
             X = np.asarray(X)

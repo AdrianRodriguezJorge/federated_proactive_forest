@@ -40,30 +40,43 @@ class GenericCsvAdapter(IDatasetAdapter):
     @property
     def n_classes(self) -> int:
         return len(self._class_names_)
-
     def load(self) -> DatasetSplit:
         """
-        Load datasets from CSV paths and prepare for federated training.
-        Includes categorical encoding, label encoding, and feature scaling.
+        Load datasets from CSV paths and prepare for federated training using a 3-way split.
+        Implements Enfoque B (Atomic Triple Split): 70% Train, 15% Val, 15% Test.
+        All preprocessing fitting occurs ONLY on the training set.
         """
         try:
-            train_df = pd.read_csv(self.train_path, sep=self.sep)
-            if self.test_path:
-                test_df = pd.read_csv(self.test_path, sep=self.sep)
-            else:
-                train_df, test_df = train_test_split(
-                    train_df, 
-                    test_size=self.test_size, 
-                    random_state=self.seed,
-                    stratify=train_df[self.target_column]
-                )
+            full_df = pd.read_csv(self.train_path, sep=self.sep)
+            
+            # 1. Atomic 3-Way Split (70/15/15)
+            # First split: Separate Test (15%) from the rest (85%)
+            train_val_df, test_df = train_test_split(
+                full_df, 
+                test_size=self.test_size, # 0.15
+                random_state=self.seed,
+                stratify=full_df[self.target_column]
+            )
+            
+            # Second split: Separate Val (15% total) from Train (70% total)
+            # We need 15/85 = 17.647% of the train_val_df
+            val_relative_size = 0.15 / (1.0 - self.test_size) # 0.15 / 0.85 approx 0.1765
+            
+            train_df, val_df = train_test_split(
+                train_val_df,
+                test_size=val_relative_size,
+                random_state=self.seed,
+                stratify=train_val_df[self.target_column]
+            )
+            
         except Exception as e:
             raise RuntimeError(f"Error loading CSV from {self.train_path}: {e}")
 
-        # Drop specified columns (e.g., metadata columns that shouldn't be features)
+        # Drop specified columns
         cols_to_drop = [c for c in self.columns_to_drop if c in train_df.columns]
         if cols_to_drop:
             train_df = train_df.drop(columns=cols_to_drop)
+            val_df = val_df.drop(columns=cols_to_drop)
             test_df = test_df.drop(columns=cols_to_drop)
 
         if self.target_column not in train_df.columns:
@@ -81,28 +94,26 @@ class GenericCsvAdapter(IDatasetAdapter):
         all_cat_cols = list(dict.fromkeys(self.categorical_features + detected_cat))
 
         if all_cat_cols:
-            # RIGOR: fit only on train, handle unknowns in test gracefully
+            # RIGOR ENFOQUE B: fit ONLY on train
             enc = OrdinalEncoder(handle_unknown="use_encoded_value", unknown_value=-1)
             train_df[all_cat_cols] = enc.fit_transform(train_df[all_cat_cols].astype(str))
+            val_df[all_cat_cols]   = enc.transform(val_df[all_cat_cols].astype(str))
             test_df[all_cat_cols]  = enc.transform(test_df[all_cat_cols].astype(str))
 
         # ── Label Encoding ───────────────────────────────────────────────────
         le = LabelEncoder()
-        y_train_raw = train_df[self.target_column].astype(str).values
-        y_test_raw = test_df[self.target_column].astype(str).values
-        
-        # RIGOR: Fit ONLY on training labels
-        le.fit(y_train_raw)
+        # RIGOR ENFOQUE B: Fit ONLY on training labels
+        le.fit(train_df[self.target_column].astype(str))
         self._class_names_ = [str(c) for c in le.classes_]
         
-        y_train = y_train_raw
-        # Handle unseen labels in test set by mapping to -1 or similar if needed,
-        # but here we keep them as strings for the domain model to handle.
-        y_test = y_test_raw
+        y_train = train_df[self.target_column].astype(str).values
+        y_val   = val_df[self.target_column].astype(str).values
+        y_test  = test_df[self.target_column].astype(str).values
 
         # ── Feature Validation and Conversion ───────────────────────────────
         try:
             X_train = train_df[feat_cols].values.astype(np.float64)
+            X_val   = val_df[feat_cols].values.astype(np.float64)
             X_test  = test_df[feat_cols].values.astype(np.float64)
         except ValueError as e:
             non_numeric = [col for col in feat_cols if not np.issubdtype(train_df[col].dtype, np.number)]
@@ -110,14 +121,19 @@ class GenericCsvAdapter(IDatasetAdapter):
 
         # ── Scaling ──────────────────────────────────────────────────────────
         if self.scale:
-            # RIGOR: Fit only on train statistics, transform test
+            # RIGOR ENFOQUE B: Fit ONLY on train statistics
             scaler = StandardScaler() if self.scaler_type == "standard" else MinMaxScaler()
             X_train = scaler.fit_transform(X_train)
+            X_val   = scaler.transform(X_val)
             X_test  = scaler.transform(X_test)
 
         return DatasetSplit(
-            X_train=X_train, X_test=X_test,
-            y_train=y_train, y_test=y_test,
+            X_train=X_train, 
+            X_val=X_val,
+            X_test=X_test,
+            y_train=y_train, 
+            y_val=y_val,
+            y_test=y_test,
             feature_names=feat_cols,
             class_names=self._class_names_,
             dataset_name=self._name,

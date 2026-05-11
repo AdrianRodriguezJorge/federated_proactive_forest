@@ -113,8 +113,9 @@ class SoftPerformanceWeightingVoter(WeightingVoter):
         # Accumulate weighted probabilities
         # results shape: (n_classes,)
         results = np.zeros(self._n_classes)
+        class_indices = list(range(self._n_classes))
         for model, w in zip(self._predictors, weights):
-            results += model.predict_proba(x) * w
+            results += np.array(model.predict_proba(x, class_indices)) * w
             
         return np.argmax(results)
 
@@ -122,6 +123,7 @@ class SoftPerformanceWeightingVoter(WeightingVoter):
 class DistributionSummationVoter(WeightingVoter):
     def predict(self, x):
         results = np.zeros(self._n_classes)
+        class_indices = list(range(self._n_classes))
         for model in self._predictors:
-            results += model.predict_proba(x)
+            results += np.array(model.predict_proba(x, class_indices))
         return np.argmax(results)

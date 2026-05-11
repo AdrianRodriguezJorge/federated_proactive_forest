@@ -21,10 +21,19 @@ class FedDataDistributor:
 
     def distribute(self, dataset_split: DatasetSplit, seed: int = 42) -> Tuple[DatasetSplit, Any]:
         """
-        Creates server validation split and distributes training data.
+        Distributes training data. Uses pre-existing server validation split if available (Enfoque B),
+        otherwise creates one (legacy fallback).
         Returns the updated dataset_split and the federated_data (FedDataDistribution).
         """
-        if len(dataset_split.X_train) > 20:
+        # RIGOR ENFOQUE B: If the adapter already provided X_val, we use it directly
+        # to ensure the zero-leakage guarantee (fitted ONLY on X_train).
+        if dataset_split.X_val is not None:
+            X_train_fed = dataset_split.X_train
+            y_train_fed = dataset_split.y_train
+            X_server_val = dataset_split.X_val
+            y_server_val = dataset_split.y_val
+        elif len(dataset_split.X_train) > 20:
+            # Fallback for legacy adapters or cases where validation wasn't pre-split
             try:
                 X_train_fed, X_server_val, y_train_fed, y_server_val = train_test_split(
                     dataset_split.X_train, dataset_split.y_train, 
@@ -35,14 +44,15 @@ class FedDataDistributor:
                     dataset_split.X_train, dataset_split.y_train, 
                     test_size=0.1765, random_state=seed
                 )
+            dataset_split.X_val = X_server_val
+            dataset_split.y_val = y_server_val
+            dataset_split.X_train = X_train_fed  
+            dataset_split.y_train = y_train_fed
         else:
             X_train_fed, y_train_fed = dataset_split.X_train, dataset_split.y_train
             X_server_val, y_server_val = dataset_split.X_train, dataset_split.y_train
-
-        dataset_split.X_val = X_server_val
-        dataset_split.y_val = y_server_val
-        dataset_split.X_train = X_train_fed  
-        dataset_split.y_train = y_train_fed
+            dataset_split.X_val = X_server_val
+            dataset_split.y_val = y_server_val
         
         # Create FLEX Dataset
         centralized_dataset = Dataset.from_array(X_array=X_train_fed, y_array=y_train_fed)

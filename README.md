@@ -1,24 +1,23 @@
 # 🌲 Federated Proactive Forest
 
-**Federated Proactive Forest** is an advanced **horizontal federated learning** system that implements and compares **9 aggregation strategies** based on **Proactive Forest** (Cepero, 2023). The project combines a pure FL framework (no external FL library dependencies) with modern interactive interfaces, enabling systematic investigation of how different tree selection and ranking criteria affect performance in distributed non-IID environments.
+**Federated Proactive Forest** is a high-performance **horizontal federated learning** framework based on the **Proactive Forest** algorithm (Cepero, 2023). It enables the systematic study of tree aggregation strategies in distributed, non-IID environments, focusing on balancing **accuracy** and **diversity** through advanced ranking and selection criteria.
+
+The system implements **9 distinct aggregation strategies**, ranging from simple pool baselines to adaptive progressive windows and communication-efficient attribute roulettes.
 
 [![Python Version](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![Framework](https://img.shields.io/badge/framework-FLEX-orange.svg)](https://github.com/nik-f-v/flex-framework)
 
-## 🎯 Main Features
+## 🎯 Key Capabilities
 
-- ✅ **9 aggregation strategies** (S1-S7, PW, S9) with varied tree selection and feature exploration criteria
-- ✅ **Horizontal Federated Learning** with configurable N clients and unified synchronization
-- ✅ **Complete non-IID heterogeneity support** (Dirichlet distributions)
-- ✅ **Robust Label Handling**: Unified encoding via `LabelService` to ensure consistency across clients
-- ✅ **Weighted Hybrid Prediction**: Optimized local/global voting logic with biased-prediction fixes
-- ✅ **Statistical Validation**: Built-in Friedman and Wilcoxon tests for rigorous performance comparison
-- ✅ **Modern Web UI**: Streamlit interface with real-time ranking and confusion matrices
-- ✅ **Clean Hexagonal Architecture**: Strict separation between Domain, Application, and Infrastructure
-- ✅ **Hyperparameter Optimization**: Integrated Optuna support with YAML-based search spaces
-- ✅ **Interactive Notebooks**: Complete pipelines for baseline comparison and strategy optimization
-- ✅ **FLEX Framework Integration**: Advanced FL orchestration support
-- ✅ **Professional Documentation**: Auto-generated documentation site with MkDocs
+- 🌳 **9 Aggregation Strategies**: S1-S7 (Ranking), PW (Progressive Windows), and S9 (Global Roulette).
+- 📡 **Native FLEX Integration**: Built on top of the FLEX Framework for robust FL orchestration and data distribution.
+- 📉 **Non-IID Heterogeneity**: Full support for Dirichlet-based data partitioning to simulate real-world data skew.
+- ⚖️ **Weighted Hybrid Prediction**: Intelligent voting mechanism that combines local expertise with global generalizability.
+- 🎰 **S9 Global Roulette**: Ultra-low bandwidth strategy exchanging attribute importance vectors instead of full trees.
+- 🔄 **Label Normalization**: Integrated `LabelService` to ensure consistent class encoding across heterogeneous clients.
+- 📊 **Interactive Analysis**: Comprehensive Streamlit UI with real-time ranking, metrics, and roulette evolution heatmaps.
+- 🧪 **Research-Ready**: Automated benchmarking scripts (`master_experiment.py`) and statistical validation (Friedman/Wilcoxon).
 
 ## 📖 Documentation
 
@@ -231,21 +230,18 @@ aggregation:
   episode_size: 5
 
 ### Global Attribute Roulette (S9)
-A radically different approach for low-bandwidth environments:
-- **Vector-based aggregation**: Instead of trees, clients exchange **probability vectors** of attributes.
-- **Privacy-preserving**: No model weights or trees are sent, only statistical feature importance.
-- **Fused Learning**: Clients combine the Global Roulette with their Local Roulette via a $\beta$ balance parameter.
-- **Extreme Efficiency**: Reduces communication cost by **>99%** (typical payload < 2KB per round).
+The **S9 strategy** is designed for environments where communication bandwidth is extremely limited:
+- **Vector-based exchange**: Instead of transmitting complex tree structures, clients only exchange **attribute probability vectors**.
+- **Privacy-preserving**: No individual split points or tree structures are shared, only statistical feature importance.
+- **Dynamic Heatmaps**: The Streamlit UI includes a dedicated "Roulette Evolution" page to visualize how attribute importance shifts across rounds.
+- **High Efficiency**: Reduces payload size by over **99%** compared to traditional tree-based aggregation.
 
-```yaml
-aggregation:
-  strategy: s9_roulette
-  variant: S9_CONSENSUS  # MEAN, WEIGHTED, MEDIAN, CONSENSUS, PROACTIVE_PCD
-  beta: 0.1             # 0=Adopt global, 1=Stay local
-  window_size: 5        # Trees per window
-  max_rounds: 20
-```
-```
+**Variants available:**
+- `S9_MEAN`: Simple average of client vectors.
+- `S9_WEIGHTED`: Weighted average based on local dataset size.
+- `S9_MEDIAN`: Robust aggregation to mitigate the effect of outliers.
+- `S9_CONSENSUS`: Performance-weighted aggregation.
+- `S9_PROACTIVE_PCD`: Diversity-weighted aggregation using Pairwise Classifier Disagreement.
 
 ## 🏗️ System Architecture
 
@@ -253,40 +249,29 @@ aggregation:
 
 ```
 src/
-├── domain/                    # 📦 Business core (no external dependencies)
-│   ├── model/                # ML models: ProactiveForest, strategies
-│   │   ├── cpf_implementation/  # CPF algorithm tree components
-│   │   ├── proactive_forest.py
-│   │   └── progressive_forest.py
-│   ├── aggregation/          # Aggregation logic S1-S7 + PW
-│   │   ├── strategies/       # S1-S7 and Progressive Windows
-│   │   ├── tree_ranker.py    # Tree ranking for S2-S7
-│   │   └── aggregation_factory.py
-│   ├── metrics/              # Model evaluation (ForestEvaluator)
-│   ├── services/             # LabelService (Unified encoding)
-│   ├── prediction/           # Weighted Hybrid Prediction
-│   ├── update/               # No-Repeat Merge logic
-│   ├── config/               # Domain-specific configuration
-│   └── dataset/              # Domain dataset abstractions
+├── domain/                    # 📦 Business Logic (Framework-agnostic)
+│   ├── model/                # PF Algorithm & Tree Components
+│   ├── aggregation/          # Selection Logic (S1-S7, PW, S9)
+│   │   └── strategies/       # Implementation of all 9 strategies
+│   ├── metrics/              # ForestEvaluator & Domain Metrics
+│   ├── services/             # LabelService & Diversity Logic
+│   └── prediction/           # Hybrid & Weighted Voting Logic
 │
-├── application/              # 🎯 Use cases and orchestration
-│   ├── orchestrators/        # FLEXOrchestrator, PWOrchestrator
-│   ├── commands/             # Command pattern implementations
-│   └── hyperparam_optimizer.py  # Optuna-based optimization
+├── application/              # 🎯 Orchestration & Use Cases
+│   ├── orchestrators/        # FLEX, PW, and Roulette Orchestrators
+│   ├── commands/             # CLI & App Commands
+│   └── hyperparam_optimizer.py
 │
-├── infrastructure/           # 🔌 Concrete adapters
-│   ├── dataset/              # Adapters: CSV, FlexTrees, DatasetFactory
-│   ├── flex/                 # FLEX Framework primitives
-│   ├── persistence/          # Results logging and CSV storage
-│   ├── models/               # Model adapters (RandomForestAdapter)
-│   ├── logging/              # System logging infrastructure
-│   ├── metrics/              # Infrastructure-level metric collection
-│   ├── privacy/              # Privacy-preserving mechanisms
-│   └── serialization/        # State serialization/deserialization
+├── infrastructure/           # 🔌 Concrete Adapters & Frameworks
+│   ├── dataset/              # CSV & FlexTrees Adapters
+│   ├── flex/                 # Native FLEX Framework Primitives
+│   ├── persistence/          # CSV Result Logging
+│   └── metrics/              # Sklearn Implementation
 │
-└── interfaces/               # 🎨 User interfaces
-    ├── cli/                  # Command-line interface (main.py)
-    └── streamlit/            # Streamlit multi-page application
+└── interfaces/               # 🎨 Presentation Layer
+    ├── cli/                  # Command Line Interface
+    ├── streamlit/            # Web UI (app.py)
+    └── notebooks/            # Research & Optimization Notebooks
 ```
 
 ### Key Components
@@ -328,7 +313,11 @@ The web interface provides a complete experimentation experience:
 - Interactive confusion matrices
 - Per-client metrics
 - Strategy comparison
-- **🎰 Roulette Evolution**: Dynamic heatmap of attribute importance over rounds (S9 only)
+
+### Page 5: 🎰 Roulette Evolution (S9 Only)
+- Dynamic heatmap of attribute importance over rounds
+- Real-time visualization of global vs local knowledge adoption
+- Analysis of feature selection convergence
 
 ## 💻 CLI
 
@@ -571,25 +560,14 @@ pip install -e .
 ## 🧪 Testing
 
 ```bash
-# Run all tests
+# Run all tests (requires development dependencies)
 pytest tests/
-
-# Run with coverage
-pytest --cov=src tests/
-
-# Run specific test
-pytest tests/test_hybrid_inference.py -v
 ```
 
-### Available Tests
-- `test_hybrid_inference.py` - Hybrid prediction tests
-- `test_rr_ds_explicit.py` - Round-robin dataset selection tests
-- `test_rr_ds_rounds.py` - Round-robin rounds tests
-- `test_exhaustive_domain_pytest.py` - Exhaustive validation for domain core logic
-- `test_label_normalization_system.py` - Cross-client label normalization and translation
-- `test_label_service.py` - Unit tests for LabelService
-- `test_pw_orchestrator.py` - Progressive Windows orchestrator testing
-- `test_iris_adapter_scaler_isolation.py` - Scaler isolation tests for Dataset Adapters
+### Infrastructure Tests
+- **Label System**: Validation of cross-client label normalization.
+- **Dataset Adapters**: Tests for scaler isolation and data leakage prevention.
+- **Orchestration**: Verification of FLEX and Progressive Windows round logic.
 
 ## 🔌 FLEX Framework Integration
 
@@ -641,8 +619,8 @@ The project includes several utilities in the `scripts/` directory for experimen
 ### Benchmarking & Master Experiments
 Run comprehensive benchmarks across all datasets and strategies.
 ```bash
-# Run the Master Experiment (compares all 8 strategies + S9 variants across all datasets)
-python master_experiment.py
+# Run the Master Experiment (compares all 9 strategies + S9 variants across all datasets)
+python scripts/master_experiment.py
 ```
 *Results are saved automatically to `results_master.csv` with atomic progress tracking.*
 

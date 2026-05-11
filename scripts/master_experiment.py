@@ -44,7 +44,7 @@ STRATEGIES = [
 
 DATASETS = ["iris", "car", "nursery", "vowel", "letter", "optdigits", "sonar", "spambase"]
 
-RESULTS_FILE = "results_master.csv"
+RESULTS_FILE = "results/results_master.csv"
 
 def get_completed_experiments():
     completed = set()

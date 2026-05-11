@@ -174,18 +174,21 @@ class FLEXOrchestrator:
 
         self.step_callback("Iniciando ronda federada nativa FLEX...", 5)
 
-        # 1. DEPLOY configuration
+        print("      [DEBUG] Deploying configuration...")
         self.flex_pool.servers.map(deploy_server_config_pf, self.flex_pool.clients)
 
         # 2. TRAIN local models
+        print("      [DEBUG] Local training...")
         self.step_callback("Entrenamiento local (FLEX map)...", 20)
         self.flex_pool.clients.map(train_pf)
 
         # 3. COLLECT trees
+        print("      [DEBUG] Collecting weights...")
         self.step_callback("Recolección de pesos (FLEX run)...", 45)
         self.flex_pool.aggregators.map(collect_clients_trees_pf, self.flex_pool.clients)
 
         # 4. AGGREGATE
+        print("      [DEBUG] Aggregating...")
         self.step_callback("Agregación global (FLEX aggregate)...", 60)
         strategy_name = self._get_strategy_name()
         n_estimators = self._get_config_value('model', 'n_estimators', default=100)
@@ -227,5 +230,20 @@ class FLEXOrchestrator:
             dataset_split=self.dataset_split,
             server_eval=server_eval
         )
+
+    def cleanup(self):
+        """Release resources and terminate FlexPool actors."""
+        if self.flex_pool:
+            try:
+                # Depending on FLEX version, it might be terminate() or close()
+                if hasattr(self.flex_pool, 'terminate'):
+                    self.flex_pool.terminate()
+                elif hasattr(self.flex_pool, 'close'):
+                    self.flex_pool.close()
+                self.logger.info("FlexPool terminated successfully.")
+            except Exception as e:
+                self.logger.error(f"Error terminating FlexPool: {e}")
+            finally:
+                self.flex_pool = None
 
 __all__ = ['FLEXOrchestrator', 'FLResults']
