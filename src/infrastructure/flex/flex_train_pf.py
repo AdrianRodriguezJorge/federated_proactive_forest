@@ -23,8 +23,10 @@ def train_pf(client_flex_model: FlexModel, client_data: Any) -> FlexModel:
     """
     Train Proactive Forest on client data with local validation.
     """
+    import logging
+    logger = logging.getLogger("FLEX_Client")
     actor_id = getattr(client_flex_model, 'actor_id', 'unknown')
-    print(f"      [CLIENT DEBUG] Client {actor_id} starting training...")
+    logger.debug(f"Client {actor_id} starting training...")
     from sklearn.model_selection import train_test_split
     from src.application.commands.train_command import TrainCommand
     from src.domain.model.proactive_forest import ProactiveForest

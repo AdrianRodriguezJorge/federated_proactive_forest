@@ -13,6 +13,7 @@ sys.path.append(os.getcwd())
 from src.domain.dataset.base_adapter import DatasetSplit
 from src.application.orchestrators.fl_orchestrator import FLEXOrchestrator
 from src.application.orchestrators.roulette_orchestrator import RouletteOrchestrator
+from src.application.orchestrators.progressive_tree_orchestrator import ProgressiveTreeOrchestrator
 from src.interfaces.streamlit.components.constants import DATASET_PRESETS
 
 # ===========================================================================
@@ -29,7 +30,7 @@ STRATEGIES = [
 ]
 
 DATASETS = ["Iris", "Car", "Nursery", "Vowel", "Letter", "Optdigits", "Sonar", "Spambase"]
-RESULTS_FILE = "results_final_benchmark.csv"
+RESULTS_FILE = "results/results_final_benchmark.csv"
 
 def get_completed_work():
     """Identifica qué combinaciones de (repetición, estrategia, dataset) ya terminaron."""
@@ -86,18 +87,29 @@ def run_final_benchmark():
                     if X_raw[col].dtype == 'object' and col not in cat_cols:
                         cat_cols.append(col)
 
+                # Inicializar y ajustar LabelEncoder con todos los datos
+                le = LabelEncoder()
+                le.fit(y_raw)
+
                 # SKF con semilla dependiente de la repetición para variabilidad
                 skf = StratifiedKFold(n_splits=K_FOLDS, shuffle=True, random_state=42 * rep)
                 fold_results = []
                 
                 for fold_idx, (train_val_idx, test_idx) in enumerate(skf.split(X_raw, y_raw)):
+                    print(f"  - Fold {fold_idx+1}/{K_FOLDS}... ", end="", flush=True)
+                    
                     X_train_val_raw, X_test_raw = X_raw.iloc[train_val_idx], X_raw.iloc[test_idx]
                     y_train_val_raw, y_test_raw = y_raw[train_val_idx], y_raw[test_idx]
                     
+                    # Verificación de seguridad para estratificación (evitar error en clases raras)
+                    unique_y, counts_y = np.unique(y_train_val_raw, return_counts=True)
+                    can_stratify = np.min(counts_y) >= 2
+
                     from sklearn.model_selection import train_test_split
                     X_train_raw, X_val_raw, y_train_raw, y_val_raw = train_test_split(
                         X_train_val_raw, y_train_val_raw, 
-                        test_size=0.1111, random_state=42 + fold_idx, stratify=y_train_val_raw
+                        test_size=0.1111, random_state=42 + fold_idx, 
+                        stratify=y_train_val_raw if can_stratify else None
                     )
                     
                     # Preprocesamiento
@@ -115,8 +127,8 @@ def run_final_benchmark():
                         X_val[num_cols] = scaler.transform(X_val[num_cols])
                         X_test[num_cols] = scaler.transform(X_test[num_cols])
                     
-                    le = LabelEncoder()
-                    y_train = le.fit_transform(y_train_raw)
+                    # Label Encoding (Clases) ya está pre-ajustado globalmente, solo transformamos
+                    y_train = le.transform(y_train_raw)
                     y_val = le.transform(y_val_raw)
                     y_test = le.transform(y_test_raw)
                     
@@ -139,20 +151,27 @@ def run_final_benchmark():
                     if strategy.startswith("s9_"):
                         config["aggregation"]["variant"] = strategy.replace("s9_", "S9_").upper()
                         orch = RouletteOrchestrator(config)
+                    elif strategy == "pw":
+                        orch = ProgressiveTreeOrchestrator(config)
                     else:
                         orch = FLEXOrchestrator(config)
                     
                     orch.setup_federation(split)
                     res = orch.run_federated_round()
                     
+                    # Extraer el promedio de los reportes de los clientes (Modelos Híbridos)
+                    # Esto es lo correcto metodológicamente, no el modelo global del servidor.
+                    client_reports = list(res.client_reports.values())
+                    
                     fold_results.append({
-                        "f1": res.global_macro_f1,
-                        "acc": res.global_accuracy,
-                        "recall": res.global_report.macro_recall if res.global_report else 0.0,
-                        "prec": res.global_report.macro_precision if res.global_report else 0.0,
-                        "pcd": res.global_report.pcd if res.global_report else 0.0
+                        "f1": np.mean([r.macro_f1 for r in client_reports]),
+                        "acc": np.mean([r.accuracy for r in client_reports]),
+                        "recall": np.mean([r.macro_recall for r in client_reports]),
+                        "prec": np.mean([r.macro_precision for r in client_reports]),
+                        "pcd": np.mean([r.pcd for r in client_reports])
                     })
                     orch.cleanup() if hasattr(orch, 'cleanup') else None
+                    print(f"ok (F1: {fold_results[-1]['f1']:.4f}, PCD: {fold_results[-1]['pcd']:.4f})")
 
                 # Consolidar Repetición
                 with open(RESULTS_FILE, "a", newline="", encoding='utf-8') as f:

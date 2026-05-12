@@ -241,7 +241,7 @@ The **S9 strategy** is designed for environments where communication bandwidth i
 - `S9_WEIGHTED`: Weighted average based on local dataset size.
 - `S9_MEDIAN`: Robust aggregation to mitigate the effect of outliers.
 - `S9_CONSENSUS`: Performance-weighted aggregation.
-- `S9_PROACTIVE_PCD`: Diversity-weighted aggregation using Pairwise Classifier Disagreement.
+- `S9_PROACTIVE_PCD`: Diversity-weighted aggregation using Percentage Correct Diversity.
 
 ## 🏗️ System Architecture
 
@@ -281,7 +281,7 @@ src/
 - **PWOrchestrator**: Specialized orchestrator for Progressive Windows strategy
 - **LabelService**: Unified label service for consistent encoding across federation
 - **Early Stopping**: Automatic convergence detection in progressive training
-- **IDiversityService**: Standardized PCD (Pairwise Classifier Disagreement) measure
+- **IDiversityService**: Standardized PCD (Percentage Correct Diversity) measure
 - **Hybrid Prediction**: Configurable weighted voting between local and global models
 - **No-Repeat Merge**: Prevents duplicate tree selection across rounds
 

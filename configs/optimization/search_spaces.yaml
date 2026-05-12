@@ -323,12 +323,6 @@ S9:
     high: 0.01
     log: true
 
-  t_max:
-    type: int
-    low: 50
-    high: 200
-    step: 10
-
   local_convergence:
     type: float
     low: 0.0001

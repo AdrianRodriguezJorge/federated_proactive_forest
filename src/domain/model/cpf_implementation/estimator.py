@@ -193,14 +193,17 @@ class DecisionForestClassifier:
         X = np.asarray(X)
         y = np.asarray(y)
         
-        # Pure Python basic label encoder
-        self.classes_ = np.unique(y)
-        self._encoder_dict = {val: idx for idx, val in enumerate(self.classes_)}
-        self._decoder_dict = {idx: val for idx, val in enumerate(self.classes_)}
+        # Pure Python basic label encoder (preserve if already set by ProactiveForest)
+        if not hasattr(self, '_encoder_dict') or self._encoder_dict is None:
+            self.classes_ = np.unique(y)
+            self._encoder_dict = {val: idx for idx, val in enumerate(self.classes_)}
+            self._decoder_dict = {idx: val for idx, val in enumerate(self.classes_)}
+        
+        # Safe transform to internal indices
         y = np.array([self._encoder_dict[val] for val in y])
         
         self._n_instances, self._n_features = X.shape
-        self._n_classes = utils.count_classes(y)
+        self._n_classes = len(self._encoder_dict)
         self._trees = []
 
         if self.random_state is not None:

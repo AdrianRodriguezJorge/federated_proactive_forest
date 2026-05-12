@@ -46,6 +46,7 @@ from src.domain.aggregation.strategies.s9_roulette_strategy import create_roulet
 from src.infrastructure.metrics.sklearn_metrics_service import SklearnMetricsService
 from src.infrastructure.metrics.diversity_service import PredictionBasedDiversityService
 from src.infrastructure.flex.flex_pool_factory import FlexPoolFactory
+from src.infrastructure.logging.logger_setup import setup_project_logger
 
 # FLEX primitives — reuse training + evaluation from existing PF primitives
 from src.infrastructure.flex.flex_train_pf import init_server_model_pf, train_pf
@@ -126,24 +127,21 @@ class RouletteOrchestrator:
         self.convergence_threshold = float(
             self.config.get('model', {}).get('local_convergence_threshold', 0.002)
         )
-        self.t_max = int(agg_cfg.get('t_max', self.config.get('model', {}).get('n_estimators', 100)))
+        
+        # En estrategias progresivas, la capacidad máxima teórica es rondas * ventana
+        calculated_n_estimators = self.max_rounds * self.window_size
+        if 'model' not in self.config: self.config['model'] = {}
+        self.config['model']['n_estimators'] = calculated_n_estimators
+        self.t_max = calculated_n_estimators
 
         self._setup_logging()
 
     # ── Setup ──────────────────────────────────────────────────────────────
 
     def _setup_logging(self):
-        log_dir = 'results/logs'
-        if not os.path.exists(log_dir):
-            os.makedirs(log_dir)
-        self.logger = logging.getLogger("RouletteOrchestrator")
-        self.logger.setLevel(logging.DEBUG)
-        if not self.logger.handlers:
-            fh = logging.FileHandler(os.path.join(log_dir, 'S9_roulette_debug.log'))
-            fh.setFormatter(logging.Formatter(
-                '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-            ))
-            self.logger.addHandler(fh)
+        # Usar el sistema de logs centralizado del proyecto
+        log_name = f"Roulette_{self.variant.lower()}"
+        self.logger = setup_project_logger(log_name)
 
     def setup_federation(self, dataset_split: DatasetSplit, seed: int = 42):
         """Distribute data and initialise FlexPool."""
@@ -210,7 +208,6 @@ class RouletteOrchestrator:
 
             # 1. Deploy config (only to active clients if possible, but FLEX map is easier on all)
             # We'll rely on the primitive to skip if converged if we can't filter
-            self.config['model']['n_estimators'] = self.t_max # Total capacity
             self.flex_pool.servers.map(deploy_server_config_pf, self.flex_pool.clients)
 
             # 2. Local training (ONLY active clients build a window)
@@ -222,10 +219,11 @@ class RouletteOrchestrator:
             for cid in active_client_ids:
                 client_model = self.flex_pool._models[cid]
                 meta = client_model.get('metadata', {})
+                
                 if meta.get('has_converged', False):
                     newly_converged.append(cid)
                     convergence_round_map[cid] = round_idx
-                    self.logger.info(f"Cliente {cid} ha convergido en la ronda {round_idx}")
+                    self.logger.info(f"Cliente {cid} detuvo su entrenamiento en ronda {round_idx} (Convergencia local alcanzada).")
 
             # 3. Collect roulette vectors (from ALL clients to maintain global stability)
             self.flex_pool.aggregators.map(collect_client_roulette, self.flex_pool.clients)
@@ -270,18 +268,7 @@ class RouletteOrchestrator:
                 'global_roulette': global_roulette_list,
             })
 
-            # Check T_max Technical Stop (If ANY client reached it, STOP ALL)
-            t_max_reached = False
-            for cid in self.flex_pool.clients.actor_ids:
-                pf = self.flex_pool._models[cid].get('model')
-                if pf is not None and len(pf.get_trees()) >= self.t_max:
-                    self.logger.info(f"Parada técnica: Cliente {cid} alcanzó T_max={self.t_max}")
-                    t_max_reached = True
-                    break
-            
             final_round = round_idx
-            if t_max_reached:
-                break
 
         # ── Final evaluation & Results Consolidation ───────────────────────────────
         self.step_callback("Consolidando resultados S9...", 90)
@@ -409,7 +396,7 @@ class RouletteOrchestrator:
                     self.flex_pool.terminate()
                 elif hasattr(self.flex_pool, 'close'):
                     self.flex_pool.close()
-                self.logger.info("FlexPool (Roulette) terminated successfully.")
+                self.logger.debug("FlexPool (Roulette) terminated successfully.")
             except Exception as e:
                 self.logger.error(f"Error terminating FlexPool: {e}")
             finally:

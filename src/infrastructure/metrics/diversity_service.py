@@ -47,18 +47,3 @@ class PredictionBasedDiversityService(IDiversityService):
         diverse = np.sum((hits_per_sample >= lower) & (hits_per_sample <= upper))
         return float(diverse / n_samples)
 
-    def calculate_disagreement(self, predictions_matrix: np.ndarray) -> float:
-        """
-        Calculate Pairwise Classifier Disagreement.
-        """
-        n_samples, n_classifiers = predictions_matrix.shape
-        if n_classifiers < 2:
-            return 0.0
-        disagreement_sum = 0.0
-        n_pairs = 0
-        for i in range(n_classifiers):
-            for j in range(i + 1, n_classifiers):
-                diff = np.mean(predictions_matrix[:, i] != predictions_matrix[:, j])
-                disagreement_sum += diff
-                n_pairs += 1
-        return float(disagreement_sum / n_pairs) if n_pairs > 0 else 0.0

@@ -217,8 +217,14 @@ def render():
 
     col3, col4 = st.columns(2)
     with col3:
-        n_estimators = st.slider("Árboles máximos por cliente", 10, 500,
-                                 value=current_config["model"].get("n_estimators", 100), step=10)
+        is_pw_s9 = (strategy_key in ("pw", "s9_roulette"))
+        if is_pw_s9:
+            st.info("💡 **n_estimators** se calculará automáticamente: `ventana * rondas`.")
+            n_estimators = current_config["model"].get("n_estimators", 50)
+        else:
+            n_estimators = st.slider("Árboles máximos por cliente", 10, 500,
+                                     value=current_config["model"].get("n_estimators", 100), step=10)
+        
         alpha_pf = st.slider("α diversidad Proactive Forest", 0.05, 0.5,
                              value=current_config["model"].get("alpha", 0.1), step=0.05)
         split_opts = ["entropy", "gini"]
@@ -280,11 +286,16 @@ def render():
     episode_size_agg = current_config["aggregation"].get("global_episode_size", 
                          current_config["aggregation"].get("episode_size", episode_size))
 
-    # T_MAX: always visible
-    t_max = st.number_input(
-        "T_MAX (máx. árboles en bosque global)", 10, 500, value=t_max, step=10,
-        help="Número máximo de árboles que tendrá el bosque global tras la agregación."
-    )
+    # T_MAX: always visible EXCEPT for PW and S9 where it's redundant
+    if not is_pw_s9:
+        t_max = st.number_input(
+            "T_MAX (máx. árboles en bosque global)", 10, 500, value=t_max, step=10,
+            help="Número máximo de árboles que tendrá el bosque global tras la agregación."
+        )
+    else:
+        # Auto-calculate t_max for UI consistency
+        t_max = (s9_window_size * s9_max_rounds) if strategy_key == "s9_roulette" else (window_size * max_rounds)
+        st.caption(f"📏 T_MAX teórico: {t_max} árboles.")
 
     # Progressive strategies: convergence + episode_size for GLOBAL aggregation
     if is_progressive:
@@ -456,7 +467,7 @@ def render():
             },
             "aggregation": {
                 "strategy": strategy_key,
-                "t_max": t_max,
+                "t_max": (s9_window_size * s9_max_rounds) if strategy_key == "s9_roulette" else (window_size * max_rounds if strategy_key == "pw" else t_max),
                 "f1_weight": f1_weight if strategy_key in ("s4_global_f1_pcd", "s7_perclient_f1_pcd", "pw") else 0.5,
                 "pcd_weight": pcd_weight if strategy_key in ("s4_global_f1_pcd", "s7_perclient_f1_pcd", "pw") else 0.5,
                 "global_convergence_threshold": convergence_agg,

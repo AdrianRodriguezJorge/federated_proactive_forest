@@ -96,7 +96,10 @@ class DecisionTree:
                 leaf_found = True
                 samp = []
                 for i in indexs:
-                    samp.append(self._nodes[current_node].samples[i])
+                    if i < len(self._nodes[current_node].samples):
+                        samp.append(self._nodes[current_node].samples[i])
+                    else:
+                        samp.append(0)
                 class_proba = [n + 1 for n in samp] / (np.sum(samp) + len(samp))
             else:
                 current_node = self._nodes[current_node].result_branch(x)

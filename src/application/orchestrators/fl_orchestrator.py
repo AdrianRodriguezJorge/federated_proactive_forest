@@ -32,6 +32,7 @@ from src.domain.dataset.base_adapter import DatasetSplit
 from src.domain.metadata.client_metadata import ClientMetadata
 from src.application.orchestrators.result_consolidator import ResultConsolidator
 from src.application.orchestrators.fed_data_distributor import FedDataDistributor
+from src.infrastructure.logging.logger_setup import setup_project_logger
 
 # PF FLEX primitives
 from src.infrastructure.flex.flex_train_pf import (
@@ -104,19 +105,10 @@ class FLEXOrchestrator:
         return cls(config, step_callback=step_callback, use_flex_pool=use_flex_pool)
 
     def _setup_logging(self):
-        log_dir = 'results/logs'
-        if not os.path.exists(log_dir): os.makedirs(log_dir)
-        
-        # Choose log filename based on strategy
+        # Usar el sistema de logs centralizado del proyecto
         strategy = str(self.config.get('aggregation', {}).get('strategy', 'S1')).lower()
-        log_filename = 'PW_federated_debug.log' if 'pw' in strategy else 'S1_S7_federated_debug.log'
-        
-        self.logger = logging.getLogger("FLEXOrchestrator")
-        self.logger.setLevel(logging.DEBUG)
-        if not self.logger.handlers:
-            fh = logging.FileHandler(os.path.join(log_dir, log_filename))
-            fh.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
-            self.logger.addHandler(fh)
+        log_name = f"FLEX_{strategy}"
+        self.logger = setup_project_logger(log_name)
 
     def _get_config_value(self, *keys: str, default=None):
         val = self.config
@@ -174,21 +166,21 @@ class FLEXOrchestrator:
 
         self.step_callback("Iniciando ronda federada nativa FLEX...", 5)
 
-        print("      [DEBUG] Deploying configuration...")
+        self.logger.debug("Deploying configuration to clients...")
         self.flex_pool.servers.map(deploy_server_config_pf, self.flex_pool.clients)
 
         # 2. TRAIN local models
-        print("      [DEBUG] Local training...")
+        self.logger.debug("Starting local training round...")
         self.step_callback("Entrenamiento local (FLEX map)...", 20)
         self.flex_pool.clients.map(train_pf)
 
         # 3. COLLECT trees
-        print("      [DEBUG] Collecting weights...")
+        self.logger.debug("Collecting trees from clients...")
         self.step_callback("Recolección de pesos (FLEX run)...", 45)
         self.flex_pool.aggregators.map(collect_clients_trees_pf, self.flex_pool.clients)
 
         # 4. AGGREGATE
-        print("      [DEBUG] Aggregating...")
+        self.logger.debug(f"Aggregating models using strategy: {self._get_strategy_name()}")
         self.step_callback("Agregación global (FLEX aggregate)...", 60)
         strategy_name = self._get_strategy_name()
         n_estimators = self._get_config_value('model', 'n_estimators', default=100)
@@ -240,7 +232,7 @@ class FLEXOrchestrator:
                     self.flex_pool.terminate()
                 elif hasattr(self.flex_pool, 'close'):
                     self.flex_pool.close()
-                self.logger.info("FlexPool terminated successfully.")
+                self.logger.debug("FlexPool terminated successfully.")
             except Exception as e:
                 self.logger.error(f"Error terminating FlexPool: {e}")
             finally:
