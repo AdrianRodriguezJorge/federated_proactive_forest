@@ -35,7 +35,6 @@ def check_array_sum_one(x):
 def get_instances(features_id, sample_size, probabilities):
     # OPT-5: Use NumPy's optimized weighted random sampling
     if (len(features_id) == len(probabilities) and
-            sample_size <= len(features_id) and
             len(features_id) > 0 and sample_size > 0):
         probs = np.array(probabilities, dtype=np.float64)
         probs = probs / probs.sum()  # Normalize to ensure sum == 1.0
