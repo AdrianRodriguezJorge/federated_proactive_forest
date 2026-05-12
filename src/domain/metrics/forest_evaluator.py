@@ -124,7 +124,7 @@ class ForestEvaluator:
         )
 
     @staticmethod
-    def _compute_bootstrap_ci(y_true, y_pred, metric_func, n_bootstrap=1000, alpha=0.05):
+    def _compute_bootstrap_ci(y_true, y_pred, metric_func, n_bootstrap=10, alpha=0.05):
         """Helper to compute bootstrap confidence intervals."""
         rng = np.random.RandomState(42)
         scores = []

@@ -78,16 +78,17 @@ def train_pf(client_flex_model: FlexModel, client_data: Any) -> FlexModel:
     y_val_norm = label_svc.transform(y_val)
     
     tree_metrics = []
-    for tree in pf.get_trees():
-        y_p = tree.predict(X_val)
-        y_p_norm = label_svc.transform(y_p)
+    trees = pf.get_trees()
+    if trees:
+        # Predicción vectorizada en bloque para todos los árboles de una sola vez
+        all_preds = np.array([tree.predict(X_val) for tree in trees])
+        all_preds_norm = np.array([label_svc.transform(preds) for preds in all_preds])
         
-        tree_metrics.append({
-            'accuracy': metrics_svc.accuracy_score(y_val_norm, y_p_norm),
-            'macro_f1': metrics_svc.f1_score(y_val_norm, y_p_norm, average='macro')
-        })
-
-
+        for preds_norm in all_preds_norm:
+            tree_metrics.append({
+                'accuracy': float(np.mean(y_val_norm == preds_norm)),
+                'macro_f1': metrics_svc.f1_score(y_val_norm, preds_norm, average='macro')
+            })
 
     # 4. Create and store metadata
     # Use actor_id to ensure consistency

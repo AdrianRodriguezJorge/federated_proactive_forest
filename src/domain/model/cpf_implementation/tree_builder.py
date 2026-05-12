@@ -110,15 +110,79 @@ class TreeBuilder:
         return cur_node
 
     def _find_split(self, X, y, n_features):
-        splits_info = []
+        best_overall_split = None
         features = self._feature_selection.get_features(n_features, self._feature_prob)
+        impurity_y = self._split_criterion.impurity(y)
+        
         for feature_id in features:
-            for split_value in compute_split_values(X[:, feature_id]):
-                splits_info.append(
-                    compute_split_info(self._split_criterion, X, y, feature_id, split_value, self._min_samples_leaf))
-        splits = []
-        for split_info in splits_info:
-            if split_info is not None:
-                gain, feature_id, split_value = split_info
-                splits.append(Split(feature_id, value=split_value, gain=gain))
-        return self._split_chooser.get_split(splits)
+            x_f = X[:, feature_id]
+            is_categorical = utils.categorical_data(x_f)
+            
+            if is_categorical:
+                # Fallback to loop for categorical (usually few categories)
+                for split_value in compute_split_values(x_f):
+                    split_info = compute_split_info(self._split_criterion, X, y, feature_id, split_value, self._min_samples_leaf, impurity_y)
+                    if split_info:
+                        gain, f_id, val = split_info
+                        if best_overall_split is None or gain > best_overall_split.gain:
+                            best_overall_split = Split(f_id, val, gain)
+            else:
+                # VECTORIZED PATH for numerical features
+                # 1. Sort data by feature value
+                sort_idx = np.argsort(x_f)
+                x_sorted = x_f[sort_idx]
+                y_sorted = y[sort_idx]
+                
+                # 2. Find potential split points (where value changes)
+                diff_idx = np.where(x_sorted[:-1] != x_sorted[1:])[0]
+                if len(diff_idx) == 0:
+                    continue
+                    
+                # Limit thresholds to MAX_BINS for consistency with original behavior
+                MAX_BINS = 100
+                if len(diff_idx) > MAX_BINS:
+                    step = len(diff_idx) // MAX_BINS
+                    diff_idx = diff_idx[::step][:MAX_BINS]
+                
+                # 3. Calculate left/right counts for all thresholds at once
+                # We use a one-hot encoding of y to use cumsum
+                n_samples = len(y)
+                y_one_hot = np.zeros((n_samples, self._n_classes))
+                y_one_hot[np.arange(n_samples), y_sorted] = 1
+                
+                left_counts = np.cumsum(y_one_hot, axis=0)[diff_idx]
+                right_counts = np.sum(y_one_hot, axis=0) - left_counts
+                
+                left_total = diff_idx + 1
+                right_total = n_samples - left_total
+                
+                # Filter by min_samples_leaf
+                mask = (left_total >= self._min_samples_leaf) & (right_total >= self._min_samples_leaf)
+                if not np.any(mask):
+                    continue
+                
+                left_counts, right_counts = left_counts[mask], right_counts[mask]
+                left_total, right_total = left_total[mask], right_total[mask]
+                diff_idx_masked = diff_idx[mask]
+                
+                # 4. Calculate impurities and gains
+                if hasattr(self._split_criterion, 'impurity_vectorized'):
+                    left_impurity = self._split_criterion.impurity_vectorized(left_counts, left_total)
+                    right_impurity = self._split_criterion.impurity_vectorized(right_counts, right_total)
+                else:
+                    # Fallback if method missing (shouldn't happen with my changes)
+                    left_impurity = np.array([self._split_criterion.impurity(y_sorted[:idx+1]) for idx in diff_idx_masked])
+                    right_impurity = np.array([self._split_criterion.impurity(y_sorted[idx+1:]) for idx in diff_idx_masked])
+                
+                gains = impurity_y - (left_impurity * left_total / n_samples) - (right_impurity * right_total / n_samples)
+                
+                if len(gains) > 0:
+                    best_idx = np.argmax(gains)
+                    max_gain = gains[best_idx]
+                    
+                    if best_overall_split is None or max_gain > best_overall_split.gain:
+                        # Midpoint split value
+                        val = (x_sorted[diff_idx_masked[best_idx]] + x_sorted[diff_idx_masked[best_idx] + 1]) / 2
+                        best_overall_split = Split(feature_id, val, max_gain)
+                        
+        return best_overall_split

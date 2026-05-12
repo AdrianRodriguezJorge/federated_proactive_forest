@@ -24,6 +24,17 @@ class GiniCriterion(SplitCriterion):
         prob = counts / float(len(x))
         return 1.0 - np.sum(prob * prob)
 
+    def impurity_vectorized(self, counts, total):
+        """
+        Calculates Gini for a matrix of counts.
+        counts: (n_thresholds, n_classes)
+        total: (n_thresholds,)
+        """
+        # Avoid division by zero
+        total_safe = np.where(total > 0, total, 1)
+        probs = counts / total_safe[:, np.newaxis]
+        return 1.0 - np.sum(probs * probs, axis=1)
+
 
 class EntropyCriterion(SplitCriterion):
     @property
@@ -35,7 +46,23 @@ class EntropyCriterion(SplitCriterion):
             return 0.0
         counts = np.bincount(x)
         prob = counts / float(len(x))
-        return -sum(p * np.log2(p) for p in prob if p != 0)
+        prob = prob[prob > 0]
+        return -np.sum(prob * np.log2(prob))
+
+    def impurity_vectorized(self, counts, total):
+        """
+        Calculates entropy for a matrix of counts.
+        counts: (n_thresholds, n_classes)
+        total: (n_thresholds,)
+        """
+        # Avoid division by zero
+        total_safe = np.where(total > 0, total, 1)
+        probs = counts / total_safe[:, np.newaxis]
+        # Mask zero probabilities for log
+        log_probs = np.zeros_like(probs)
+        mask = probs > 0
+        log_probs[mask] = np.log2(probs[mask])
+        return -np.sum(probs * log_probs, axis=1)
 
 
 def resolve_split_criterion(name):
@@ -52,16 +79,21 @@ def compute_split_values(x):
         return np.unique(x)
     else:
         uniques = np.unique(x)
+        MAX_BINS = 100
+        if len(uniques) > MAX_BINS:
+            uniques = np.unique(np.quantile(x, np.linspace(0, 1, MAX_BINS)))
         return np.array([(uniques[i] + uniques[i + 1]) / 2 for i in range(len(uniques) - 1)])
 
 
-def compute_split_info(split_criterion, X, y, feature_id, split_value, n_leaf_min):
+def compute_split_info(split_criterion, X, y, feature_id, split_value, n_leaf_min, impurity_y=None):
     y_left, y_right = split_target(X, y, feature_id, split_value)
     n_left, n_right = len(y_left), len(y_right)
     n_min = np.min([n_left, n_right])
     if n_min == 0 or n_min < n_leaf_min:
         return None
-    gain = compute_split_gain(split_criterion, y, y_left, y_right)
+    if impurity_y is None:
+        impurity_y = split_criterion.impurity(y)
+    gain = compute_split_gain(split_criterion, y, y_left, y_right, impurity_y)
     return gain, feature_id, split_value
 
 
@@ -93,8 +125,10 @@ def split_numerical_data(X, y, feature_id, value):
     return X[mask], X[~mask], y[mask], y[~mask]
 
 
-def compute_split_gain(split_criterion, y, y_left, y_right):
-    return (split_criterion.impurity(y)
+def compute_split_gain(split_criterion, y, y_left, y_right, impurity_y=None):
+    if impurity_y is None:
+        impurity_y = split_criterion.impurity(y)
+    return (impurity_y
             - split_criterion.impurity(y_left) * len(y_left) / len(y)
             - split_criterion.impurity(y_right) * len(y_right) / len(y))
 

@@ -40,7 +40,9 @@ class BaggingSet(SetGenerator):
         return self._set_ids
 
     def oob_ids(self):
-        return [i for i in range(self._n_instances) if i not in self._set_ids]
+        # OPT-3: Convert to set for O(1) lookups instead of O(n) per element on numpy array
+        bag_set = set(self._set_ids)
+        return [i for i in range(self._n_instances) if i not in bag_set]
 
 
 class ProbabilitySet(SetGenerator):
@@ -51,7 +53,9 @@ class ProbabilitySet(SetGenerator):
         return self._set_ids
 
     def oob_ids(self):
-        return [i for i in range(self._n_instances) if i not in self._set_ids]
+        # OPT-12: Same O(n²) → O(n) fix as BaggingSet
+        bag_set = set(self._set_ids)
+        return [i for i in range(self._n_instances) if i not in bag_set]
 
 
 class WeightingVoter(ABC):
@@ -72,15 +76,27 @@ class WeightingVoter(ABC):
 
 
 class MajorityVoter(WeightingVoter):
-    def predict(self, x):
-        results = np.zeros(self._n_classes)
+    def predict(self, X):
+        X = np.asarray(X)
+        if X.ndim == 1:
+            results = np.zeros(self._n_classes)
+            for model in self._predictors:
+                results[model.predict(X)] += 1
+            return np.argmax(results)
+        
+        # Batch mode
+        n_samples = X.shape[0]
+        votes = np.zeros((n_samples, self._n_classes))
         for model in self._predictors:
-            results[model.predict(x)] += 1
-        return np.argmax(results)
+            preds = model.predict(X).astype(int)
+            # Use advanced indexing to increment votes
+            votes[np.arange(n_samples), preds] += 1
+        return np.argmax(votes, axis=1)
 
 
 class PerformanceWeightingVoter(WeightingVoter):
-    def predict(self, x):
+    def predict(self, X):
+        X = np.asarray(X)
         weights = np.array([model.weight for model in self._predictors])
         sum_weights = np.sum(weights)
         if sum_weights == 0:
@@ -88,13 +104,20 @@ class PerformanceWeightingVoter(WeightingVoter):
         else:
             weights = weights / sum_weights
             
-        results = {}
+        if X.ndim == 1:
+            results = {}
+            for model, w in zip(self._predictors, weights):
+                pred = model.predict(X)
+                results[pred] = results.get(pred, 0) + w
+            return max(results, key=results.get)
+
+        # Batch mode
+        n_samples = X.shape[0]
+        weighted_votes = np.zeros((n_samples, self._n_classes))
         for model, w in zip(self._predictors, weights):
-            pred = model.predict(x)
-            if pred not in results:
-                results[pred] = 0
-            results[pred] += w
-        return max(results, key=results.get)
+            preds = model.predict(X).astype(int)
+            weighted_votes[np.arange(n_samples), preds] += w
+        return np.argmax(weighted_votes, axis=1)
 
 
 class SoftPerformanceWeightingVoter(WeightingVoter):
@@ -102,7 +125,8 @@ class SoftPerformanceWeightingVoter(WeightingVoter):
     Weighted Soft Voting: Multiplies each tree's probabilities by its performance weight.
     This provides better ensemble decisions than hard voting.
     """
-    def predict(self, x):
+    def predict(self, X):
+        X = np.asarray(X)
         weights = np.array([model.weight for model in self._predictors])
         sum_weights = np.sum(weights)
         if sum_weights == 0:
@@ -110,14 +134,26 @@ class SoftPerformanceWeightingVoter(WeightingVoter):
         else:
             weights = weights / sum_weights
             
-        # Accumulate weighted probabilities
-        # results shape: (n_classes,)
-        results = np.zeros(self._n_classes)
         class_indices = list(range(self._n_classes))
+        
+        if X.ndim == 1:
+            results = np.zeros(self._n_classes)
+            for model, w in zip(self._predictors, weights):
+                results += np.array(model.predict_proba(X, class_indices)) * w
+            return np.argmax(results)
+
+        # Batch mode: tree.predict_proba is NOT vectorized yet, 
+        # so we loop over samples but use tree results efficiently.
+        # Note: Ideally tree.predict_proba should be vectorized too.
+        n_samples = X.shape[0]
+        accumulated_probs = np.zeros((n_samples, self._n_classes))
         for model, w in zip(self._predictors, weights):
-            results += np.array(model.predict_proba(x, class_indices)) * w
-            
-        return np.argmax(results)
+            # model is a DecisionTree. We still have to loop samples for predict_proba
+            # but we do it inside here to avoid re-calculating weights.
+            for i in range(n_samples):
+                accumulated_probs[i] += np.array(model.predict_proba(X[i], class_indices)) * w
+                
+        return np.argmax(accumulated_probs, axis=1)
 
 
 class DistributionSummationVoter(WeightingVoter):

@@ -96,8 +96,8 @@ class DecisionTreeClassifier:
         if check_input:
             X = self._validate_predict(X, check_input=check_input)
         
-        # Performance optimization: list comprehension is faster than manual loops over np.zeros
-        result = np.array([self._tree.predict(x) for x in X])
+        # Performance optimization: Use batch prediction path (tree.predict handles 2D via push_samples)
+        result = self._tree.predict(X)
             
         if hasattr(self, '_decoder_dict'):
             return np.array([self._decoder_dict[val] for val in result])
@@ -241,8 +241,8 @@ class DecisionForestClassifier:
         else:
             voter = PerformanceWeightingVoter(self._trees, self._n_classes)
         
-        # Performance optimization: list comprehension is faster for large datasets
-        result = np.array([voter.predict(x) for x in X])
+        # Batch prediction: Use vectorized path in voter
+        result = voter.predict(X)
 
         if not hasattr(self, '_decoder_dict'):
             return result
@@ -255,7 +255,6 @@ class DecisionForestClassifier:
         try:
             return np.array([self._decoder_dict[val] for val in result])
         except KeyError:
-            # Por seguridad, limitar
             safe_result = np.clip(result, 0, max_label)
             return np.array([self._decoder_dict[val] for val in safe_result])
 
@@ -314,8 +313,8 @@ class DecisionForestClassifier:
         if check_input:
             X = self._validate(X, check_input=check_input)
         
-        # Performance optimization
-        return np.array([tree.predict(x) for x in X])
+        # OPT-2: Use batch prediction path (tree.predict handles 2D via push_samples)
+        return tree.predict(X)
 
     def clean_trees(self):
         self._trees = []

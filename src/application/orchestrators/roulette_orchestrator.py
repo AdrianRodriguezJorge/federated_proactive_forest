@@ -29,6 +29,7 @@ from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional, Union
 
 import numpy as np
+from scipy import stats
 
 try:
     from flex.model import FlexModel
@@ -343,7 +344,6 @@ class RouletteOrchestrator:
         # 4. Global ensemble (just for reference in logs, not returned in table)
         if all_local_preds:
             stacked = np.stack(all_local_preds, axis=0)
-            from scipy import stats
             global_preds, _ = stats.mode(stacked, axis=0, keepdims=False)
             global_preds = global_preds.flatten().astype(int)
         else:

@@ -88,7 +88,9 @@ class SimpleLabelService(ILabelService):
         if labels is None:
             return np.array([], dtype=np.int64)
 
-        if isinstance(labels, (list, np.ndarray, pd.Series)):
+        if isinstance(labels, pd.Series):
+            labels_list = labels.values
+        elif isinstance(labels, (list, np.ndarray)):
             labels_list = labels
         else:
             labels_list = [labels]
@@ -100,6 +102,13 @@ class SimpleLabelService(ILabelService):
         if n_classes == 0:
             # Fallback for unexpected empty state
             return np.zeros(len(labels_list), dtype=np.int64)
+
+        # --- OPTIMIZATION: FAST PATH ---
+        # If input is already an integer numpy array (e.g. from tree.predict)
+        if isinstance(labels_list, np.ndarray) and np.issubdtype(labels_list.dtype, np.integer):
+            # Clip invalid indices to 0 to prevent crashes
+            safe_labels = np.where((labels_list >= 0) & (labels_list < n_classes), labels_list, 0)
+            return safe_labels.astype(np.int64)
 
         result = []
         for lab in labels_list:

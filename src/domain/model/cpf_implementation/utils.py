@@ -14,10 +14,8 @@ def categorical_data(x):
 
 
 def bin_count(x, length):
-    results = np.zeros(length, dtype=int)
-    for i in x:
-        results[i] += 1
-    return results.tolist()
+    # OPT-4: Use NumPy's C-optimized bincount instead of Python loop
+    return np.bincount(x, minlength=length).tolist()
 
 
 def count_classes(x):
@@ -35,20 +33,11 @@ def check_array_sum_one(x):
 
 
 def get_instances(features_id, sample_size, probabilities):
-    selected = None
+    # OPT-5: Use NumPy's optimized weighted random sampling
     if (len(features_id) == len(probabilities) and
             sample_size <= len(features_id) and
             len(features_id) > 0 and sample_size > 0):
-        selected = [0] * sample_size
-        distribution = [0.0] * len(probabilities)
-        total = 0
-        for i in range(len(probabilities)):
-            total += probabilities[i]
-            distribution[i] = total
-        for i in range(len(selected)):
-            rd = random.random() * total
-            for j in range(len(distribution)):
-                if rd <= distribution[j]:
-                    selected[i] = features_id[j]
-                    break
-    return selected
+        probs = np.array(probabilities, dtype=np.float64)
+        probs = probs / probs.sum()  # Normalize to ensure sum == 1.0
+        return list(np.random.choice(features_id, size=sample_size, replace=True, p=probs))
+    return None
