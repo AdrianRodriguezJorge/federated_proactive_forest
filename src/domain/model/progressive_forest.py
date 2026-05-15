@@ -66,21 +66,26 @@ class ComparativeProgressiveForest:
             max_accuracy = max(self._classifier._m_progressive_accuracy)
             episode_accuracy = max_accuracy - min_accuracy
 
-            if previous_episode_accuracy is not None:
-                episode_accuracy_dif = episode_accuracy - previous_episode_accuracy
-
-            if episode_accuracy_dif < self.CONVERGENCE or episode_accuracy < self.CONVERGENCE:
+            # Convergence check based strictly on Thesis (Algoritmo 5): 
+            # Spread (Max - Min) <= Valor_Convergencia (0.002)
+            if episode_accuracy <= self.CONVERGENCE:
                 stop_counter += 1
-                self.EPISODE = max(1, self.EPISODE - 1)
                 if self.verbose:
-                    print(f"  [CPF] Condición de parada cumplida (stop_counter={stop_counter})")
+                    print(f"  [CPF] Condición de convergencia alcanzada (spread={episode_accuracy:.5f}, counter={stop_counter})")
                 if stop_counter == 2:
+                    # Truncate ensemble to the point of maximum efficiency in the last episode
+                    best_idx_in_episode = np.argmax(self._classifier._m_progressive_accuracy)
+                    # Number of trees to keep: trees before this episode + (best_idx + 1)
+                    trees_to_keep = (models_built - new_trees) + (best_idx_in_episode + 1)
+                    self._classifier._trees = self._classifier._trees[:trees_to_keep]
+                    if self.verbose:
+                        print(f"  [CPF] Convergencia final alcanzada. Truncando bosque a {trees_to_keep} árboles.")
                     break
             else:
                 stop_counter = 0
-                self.EPISODE += 1
+                self.EPISODE += 1  # Standard progressive behavior
                 if self.verbose:
-                    print(f"  [CPF] No converge, siguiente episodio={self.EPISODE}")
+                    print(f"  [CPF] No converge (spread={episode_accuracy:.5f}), aumentando episodio a {self.EPISODE}")
 
             if models_built + self.EPISODE > self._classifier.n_estimators:
                 self.EPISODE = self._classifier.n_estimators - models_built
