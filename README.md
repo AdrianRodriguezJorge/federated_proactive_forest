@@ -2,7 +2,7 @@
 
 **Federated Proactive Forest** is a high-performance **horizontal federated learning** framework based on the **Proactive Forest** algorithm (Cepero, 2023). It enables the systematic study of tree aggregation strategies in distributed, non-IID environments, focusing on balancing **accuracy** and **diversity** through advanced ranking and selection criteria.
 
-The system implements **9 distinct aggregation strategies**, ranging from simple pool baselines to adaptive progressive windows and communication-efficient attribute roulettes.
+The system implements **13 distinct aggregation strategies**, ranging from simple pool baselines to adaptive progressive windows and communication-efficient attribute roulettes.
 
 [![Python Version](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
@@ -10,14 +10,14 @@ The system implements **9 distinct aggregation strategies**, ranging from simple
 
 ## 🎯 Key Capabilities
 
-- 🌳 **9 Aggregation Strategies**: S1-S7 (Ranking), PW (Progressive Windows), and S9 (Global Roulette).
+- 🌳 **13 Aggregation Strategies**: S1-S7 (Ranking), PW (Progressive Windows), and 5 variants of S9 (Global Roulette).
 - 📡 **Native FLEX Integration**: Built on top of the FLEX Framework for robust FL orchestration and data distribution.
 - 📉 **Non-IID Heterogeneity**: Full support for Dirichlet-based data partitioning to simulate real-world data skew.
 - ⚖️ **Weighted Hybrid Prediction**: Intelligent voting mechanism that combines local expertise with global generalizability.
 - 🎰 **S9 Global Roulette**: Ultra-low bandwidth strategy exchanging attribute importance vectors instead of full trees.
 - 🔄 **Label Normalization**: Integrated `LabelService` to ensure consistent class encoding across heterogeneous clients.
 - 📊 **Interactive Analysis**: Comprehensive Streamlit UI with real-time ranking, metrics, and roulette evolution heatmaps.
-- 🧪 **Research-Ready**: Automated benchmarking scripts (`master_experiment.py`) and statistical validation (Friedman/Wilcoxon).
+- 🧪 **Research-Ready**: Automated benchmarking scripts (`final_benchmark.py`) and statistical validation (Friedman/Wilcoxon).
 
 ## 📖 Documentation
 
@@ -185,7 +185,7 @@ print(f"✅ Total trees in global model: {results.n_trees_global}")
 
 ## 🏆 Aggregation Strategies
 
-The project implements **9 strategies** for tree selection and feature exploration in federated environments:
+The project implements **13 strategies** for tree selection and feature exploration in federated environments:
 
 | Strategy | Scope | Criterion | Description |
 |----------|-------|-----------|-------------|
@@ -228,6 +228,17 @@ aggregation:
   alpha: 1.0
   convergence: 0.002
   episode_size: 5
+
+## ☁️ Google Colab Support
+
+The project is optimized for running in Google Colab environments (Free and Pro):
+
+- **Automatic Parallelism**: The main benchmark script uses `n_jobs=-1`, which automatically detects if you have 2 cores (Colab Free) or more (Colab Pro) and adjusts the workload.
+- **Memory Management**: Parallel execution is handled via `joblib` with checkpointing to prevent progress loss if the session disconnects.
+- **Checkpoints**: Results are saved atomically to CSV after each strategy completion, allowing you to resume experiments seamlessly.
+
+> [!TIP]
+> If you encounter "Out of Memory" errors in Colab Free, you can manually set `n_workers = 1` in `scripts/final_benchmark.py` to run strategies sequentially.
 
 ### Global Attribute Roulette (S9)
 The **S9 strategy** is designed for environments where communication bandwidth is extremely limited:
@@ -588,7 +599,7 @@ FLEX is a federated learning framework that provides:
 pip install -e ".[flex]"
 
 # Or manually
-pip install flex-framework flex-trees
+pip install flexible-fl flextrees
 ```
 
 ### FLEX Components Used
@@ -607,6 +618,9 @@ Located in `scripts/Friedman_test_new_results.py`, this script performs:
 2.  **Wilcoxon Post-hoc**: Conducts pairwise comparisons (PF vs each S1-S7/PW strategy) with **Bonferroni correction**.
 3.  **Maximum Impact Ranking**: Identifies which datasets show the largest performance gain when moving from standalone to federated models.
 
+### Comparison vs Centralized Baseline
+The script `scripts/statistical_comparison.py` allows comparing your federated results against the original centralized results from Nayma Cepero's thesis.
+
 ```bash
 # Run statistical analysis on current results
 python scripts/Friedman_test_new_results.py
@@ -616,17 +630,23 @@ python scripts/Friedman_test_new_results.py
 
 The project includes several utilities in the `scripts/` directory for experimentation and analysis:
 
-### Benchmarking & Master Experiments
+### Benchmarking & Rigorous Experiments
 Run comprehensive benchmarks across all datasets and strategies.
 ```bash
-# Run the Master Experiment (compares all 9 strategies + S9 variants across all datasets)
-python scripts/master_experiment.py
+# Run the Final Benchmark (compares 13 strategies across all datasets with 10-fold CV)
+python scripts/final_benchmark.py
 ```
-*Results are saved automatically to `results_master.csv` with atomic progress tracking.*
+*Results are saved automatically to `results/results_final_benchmark.csv` with atomic progress tracking and support for parallel execution (`n_jobs=-1`).*
 
 ```bash
-# Run S9 specific benchmark (Nursery/Iris)
-python scripts/run_s9_benchmark.py
+# Run Local vs Federated S9 Robust Experiment
+# Specifically designed to validate the "federation gain" by neutralizing server influence (Beta=1.0)
+python scripts/local_vs_s9_experiment.py
+```
+
+```bash
+# Run S9 specifically? (It is included in final_benchmark.py)
+# If you want to run only S9, modify the STRATEGIES list in final_benchmark.py
 ```
 
 ### Hyperparameter Optimization

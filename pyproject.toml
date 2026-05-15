@@ -1,6 +1,6 @@
 [build-system]
 requires = ["setuptools>=68", "wheel"]
-build-backend = "setuptools.backends.legacy:build"
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "federated-proactive-forest"
@@ -30,8 +30,8 @@ opt = [
     "tensorly>=0.8",
 ]
 flex = [
-    "flex-framework>=0.1.0",
-    "flex-trees>=0.1.0",
+    "flexible-fl>=0.6.1",
+    "flextrees>=0.1.0",
 ]
 
 [tool.setuptools.packages.find]

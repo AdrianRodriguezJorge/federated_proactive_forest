@@ -109,6 +109,52 @@ def render():
     default_config = get_default_config()
     current_config = {**default_config, **saved_config}
 
+    # ── Initialization of all variables to avoid UnboundLocalError ──────────
+    # This ensures all variables are available regardless of UI execution order
+    
+    # 1. Strategy & Basic aggregation params
+    strategy_key = current_config["aggregation"].get("strategy", "s6_perclient_f1")
+    window_size = current_config["aggregation"].get("window_size", 5)
+    max_rounds = current_config["aggregation"].get("max_rounds", 20)
+    
+    # 2. S9-specific params (mapping to aggregation keys)
+    s9_variant = current_config.get("aggregation", {}).get("variant", "S9_MEAN")
+    s9_beta = float(current_config.get("aggregation", {}).get("beta", 0.0))
+    s9_window_size = int(current_config.get("aggregation", {}).get("window_size", 5))
+    s9_max_rounds = int(current_config.get("aggregation", {}).get("max_rounds", 20))
+    
+    # 3. Model & Convergence
+    convergence = current_config["model"].get("local_convergence_threshold", 0.002)
+    episode_size = current_config["model"].get("local_episode_size", 5)
+    convergence_agg = current_config["aggregation"].get("global_convergence_threshold", 
+                        current_config["aggregation"].get("convergence", convergence))
+    episode_size_agg = current_config["aggregation"].get("global_episode_size", 
+                         current_config["aggregation"].get("episode_size", episode_size))
+    
+    # 4. Weighting
+    f1_weight = current_config["aggregation"].get("f1_weight", 0.5)
+    pcd_weight = current_config["aggregation"].get("pcd_weight", 0.5)
+    pw_local_weight = current_config.get("prediction", {}).get("local_weight", 0.5)
+    use_weighted = current_config.get("prediction", {}).get("use_weighted", True)
+    local_w = current_config.get("prediction", {}).get("local_weight", 0.4)
+    
+    # 5. Model
+    n_estimators = current_config["model"].get("n_estimators", 100)
+    alpha_pf = current_config["model"].get("alpha", 0.1)
+    split_crit = current_config["model"].get("split_criterion", "entropy")
+    feat_sel = current_config["model"].get("feature_selection", "prob")
+    use_cpf = current_config["model"].get("use_progressive_stopping", True)
+    verbose_cpf = current_config.get("verbose", False)
+    
+    # 6. Global params
+    t_max = current_config["aggregation"].get("t_max", n_estimators)
+    seed = current_config.get("seed", 42)
+    
+    is_pw_s9 = (strategy_key in ("pw", "s9_roulette"))
+    is_progressive = strategy_key in ("s2_global_accuracy", "s3_global_f1", "s4_global_f1_pcd",
+                                       "s5_perclient_accuracy", "s6_perclient_f1", "s7_perclient_f1_pcd", "pw")
+
+
     # ── Dataset ───────────────────────────────────────────────────────────────
     st.subheader("📂 Dataset")
     dataset_options = list(DATASET_PRESETS.keys())
@@ -217,7 +263,6 @@ def render():
 
     col3, col4 = st.columns(2)
     with col3:
-        is_pw_s9 = (strategy_key in ("pw", "s9_roulette"))
         if is_pw_s9:
             st.info("💡 **n_estimators** se calculará automáticamente: `ventana * rondas`.")
             n_estimators = current_config["model"].get("n_estimators", 50)
@@ -226,7 +271,7 @@ def render():
                                      value=current_config["model"].get("n_estimators", 100), step=10)
         
         alpha_pf = st.slider("α diversidad Proactive Forest", 0.05, 0.5,
-                             value=current_config["model"].get("alpha", 0.1), step=0.05)
+                             value=alpha_pf, step=0.05)
         split_opts = ["entropy", "gini"]
         split_crit = st.selectbox(
             "Criterio de split", split_opts,
@@ -241,11 +286,9 @@ def render():
     with col4:
         use_cpf = st.checkbox(
             "Usar Progressive Forest (CPF)",
-            value=current_config["model"].get("use_progressive_stopping", True),
+            value=use_cpf,
             help="Criterio de parada progresivo durante el entrenamiento LOCAL de cada cliente."
         )
-        convergence = current_config["model"].get("local_convergence_threshold", 0.002)
-        episode_size = current_config["model"].get("local_episode_size", 5)
         if use_cpf:
             convergence = st.number_input(
                 "Umbral convergencia CPF (local)", 0.0, 1.0, value=convergence, format="%.4f",
@@ -262,29 +305,14 @@ def render():
     # ── Agregación ────────────────────────────────────────────────────────────
     st.subheader("🔀 Estrategia de Agregación")
     strategy_options = list(STRATEGY_LABELS.keys())
-    current_strategy = current_config["aggregation"].get("strategy", "s6_perclient_f1")
     strategy_key = st.selectbox(
         "Estrategia", strategy_options,
-        index=strategy_options.index(current_strategy) if current_strategy in strategy_options else 0,
+        index=strategy_options.index(strategy_key) if strategy_key in strategy_options else 0,
         format_func=lambda k: STRATEGY_LABELS[k],
         help="S1: Pool simple · S2-S4: Global progresivo · S5-S7: Per-client progresivo · PW: Progressive Windows"
     )
 
-    # ── Progressive strategies (S2-S7) ────────────────────────────────────────
-    is_progressive = strategy_key in ("s2_global_accuracy", "s3_global_f1", "s4_global_f1_pcd",
-                                       "s5_perclient_accuracy", "s6_perclient_f1", "s7_perclient_f1_pcd", "pw")
-
-    # Defaults from config (strategy-agnostic)
-    t_max = current_config["aggregation"].get("t_max", current_config["model"].get("n_estimators", 100))
-    f1_weight = current_config["aggregation"].get("f1_weight", 0.5)
-    pcd_weight = current_config["aggregation"].get("pcd_weight", 0.5)
-    window_size = current_config["aggregation"].get("window_size", 5)
-    max_rounds = current_config["aggregation"].get("max_rounds", 20)
-    # For progressive strategies, use aggregation convergence; fallback to model convergence
-    convergence_agg = current_config["aggregation"].get("global_convergence_threshold", 
-                        current_config["aggregation"].get("convergence", convergence))
-    episode_size_agg = current_config["aggregation"].get("global_episode_size", 
-                         current_config["aggregation"].get("episode_size", episode_size))
+    # T_MAX: always visible EXCEPT for PW and S9 where it's redundant
 
     # T_MAX: always visible EXCEPT for PW and S9 where it's redundant
     if not is_pw_s9:
@@ -324,9 +352,6 @@ def render():
             pcd_weight = round(1.0 - f1_weight, 4)
             st.metric("Peso PCD (β)", f"{pcd_weight:.2f}")
 
-    # PW: Progressive Windows
-    pw_local_weight = current_config.get("prediction", {}).get("local_weight", 0.5)  # always defined
-    use_weighted = current_config.get("prediction", {}).get("use_weighted", True)
     if strategy_key == "pw":
         st.info("🔄 **Progressive Windows**: Entrenamiento por ventanas + selección secuencial con score dinámico")
         col5, col6, col7 = st.columns(3)
@@ -361,11 +386,6 @@ def render():
         else:
             st.caption("⚖️ Cada árbol vota con el mismo peso, sin importar si es local o global.")
 
-    # S9: Global Attribute Roulette
-    s9_variant = current_config.get("aggregation", {}).get("variant", "S9_MEAN")
-    s9_beta = float(current_config.get("aggregation", {}).get("beta", 0.0))
-    s9_window_size = int(current_config.get("aggregation", {}).get("window_size", 5))
-    s9_max_rounds = int(current_config.get("aggregation", {}).get("max_rounds", 20))
     if strategy_key == "s9_roulette":
         st.info("🎰 **Ruleta Global de Atributos**: Intercambio de vectores de probabilidad de features en lugar de árboles.")
         col_s9a, col_s9b = st.columns(2)
@@ -414,7 +434,7 @@ def render():
             with col8:
                 local_w = st.slider(
                     "Peso votos locales", 0.0, 1.0,
-                    value=current_config["prediction"].get("local_weight", 0.4), step=0.05,
+                    value=local_w, step=0.05,
                     help="Proporción de votos de árboles locales en la predicción híbrida."
                 )
             with col9:
