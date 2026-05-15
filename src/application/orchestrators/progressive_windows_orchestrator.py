@@ -14,6 +14,7 @@ from flex.model import FlexModel
 from flex.data import Dataset, FedDataDistribution
 
 from src.application.orchestrators.fl_orchestrator import FLResults, FLEXOrchestrator
+from src.application.orchestrators.result_consolidator import ResultConsolidator
 from src.infrastructure.flex.flex_pool_factory import FlexPoolFactory
 
 # PF FLEX primitives
@@ -42,7 +43,7 @@ class ProgressiveWindowsOrchestrator(FLEXOrchestrator):
         self.max_rounds = agg_cfg.get('max_rounds', 20)
         self.convergence_threshold = agg_cfg.get('convergence_threshold', 0.002)
 
-    def run_federated_round(self) -> ProgressiveWindowsResults:
+    def run_federated_round(self, n_bootstrap: int = 0) -> ProgressiveWindowsResults:
         """
         Executes a multi-round incremental PW experiment using FlexPool mapping.
         """
@@ -104,7 +105,7 @@ class ProgressiveWindowsOrchestrator(FLEXOrchestrator):
             # 5. Evaluate Convergence
             # Server-side evaluation on validation set
             server_val_dataset = Dataset.from_array(X_val, y_val)
-            self.flex_pool.servers.map(evaluate_global_pf_model, test_data=server_val_dataset)
+            server_eval = self.flex_pool.servers.map(evaluate_global_pf_model, test_data=server_val_dataset)
             
             current_accuracy = self.flex_pool["server"].get('global_accuracy', 0.0)
             
@@ -134,9 +135,15 @@ class ProgressiveWindowsOrchestrator(FLEXOrchestrator):
         self.flex_pool.servers.map(deploy_server_model_pf, self.flex_pool.clients)
         self.flex_pool.clients.map(evaluate_global_pf_model_at_clients)
 
-        # 7. Build final results (using the helper from parent)
-        # Note: we need to adapt _build_results or reuse it carefully
-        final_results_basic = self._build_results("PW", server_val_dataset)
+        # 7. Build final results
+        consolidator = ResultConsolidator(self.label_svc, self.config)
+        final_results_basic = consolidator.consolidate(
+            strategy_name="PW",
+            flex_pool=self.flex_pool,
+            dataset_split=self.dataset_split,
+            server_eval=server_eval,
+            n_bootstrap=n_bootstrap
+        )
         
         # Merge properties
         results.global_accuracy = final_results_basic.global_accuracy

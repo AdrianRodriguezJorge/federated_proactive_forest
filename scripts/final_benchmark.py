@@ -85,10 +85,6 @@ def run_final_benchmark():
                 if X_raw[col].dtype == 'object' and col not in cat_cols:
                     cat_cols.append(col)
 
-            # Inicializar y ajustar LabelEncoder con todos los datos
-            le = LabelEncoder()
-            le.fit(y_raw)
-            
             # --- PRE-COMPUTE FOLDS FOR THIS REP AND DATASET ---
             # Esto garantiza zero-data-leakage y elimina las 130 copias redundantes
             print(f"\n>>> [REP {rep}/{REPETITIONS}] {ds_name} | Pre-calculando {K_FOLDS} Folds (Aislamiento en Memoria)...")
@@ -109,6 +105,10 @@ def run_final_benchmark():
                     test_size=0.1111, random_state=42 + fold_idx, 
                     stratify=y_train_val_raw if can_stratify else None
                 )
+
+                # Inicializar y ajustar LabelEncoder solo con el entrenamiento del fold
+                le = LabelEncoder()
+                le.fit(y_train_raw)
 
                 # Extraer como numpy arrays desconectados del dataframe original
                 X_train = X_train_raw.values.copy()
@@ -169,7 +169,7 @@ def run_final_benchmark():
                         orch = FLEXOrchestrator(config)
                     
                     orch.setup_federation(split)
-                    res = orch.run_federated_round()
+                    res = orch.run_federated_round(n_bootstrap=0)
                     client_reports = list(res.client_reports.values())
                     
                     fold_results.append({

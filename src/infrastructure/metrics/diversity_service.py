@@ -41,6 +41,7 @@ class PredictionBasedDiversityService(IDiversityService):
         """Helper to calculate PCD from hit counts."""
         if n_trees == 0: return 0.0
         n_samples = hits_per_sample.shape[0]
+        if n_samples == 0: return 0.0
         
         lower = 0.1 * n_trees
         upper = 0.9 * n_trees

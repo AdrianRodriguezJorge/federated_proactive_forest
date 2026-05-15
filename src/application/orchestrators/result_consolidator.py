@@ -19,7 +19,8 @@ class ResultConsolidator:
                     strategy_name: str, 
                     flex_pool: Any, 
                     dataset_split: Any, 
-                    server_eval: dict = None) -> FLResults:
+                    server_eval: dict = None,
+                    n_bootstrap: int = 0) -> FLResults:
         server_id = "server"
         server_model = flex_pool._models[server_id]
         
@@ -83,14 +84,23 @@ class ResultConsolidator:
             local_trees = client_model.get('trees', [])
             external_global_trees = [t for t in global_trees if not any(t is lt for lt in local_trees)]
             
-            hybrid_preds = predictor.predict(X_test, local_trees, external_global_trees)
+            # Use the new HybridForest object for consistent metrics
+            hybrid_forest = predictor.create_forest(local_trees, external_global_trees)
+            hybrid_preds = hybrid_forest.predict(X_test)
+            
+            # Calculate REAL PCD on the same test set
+            try:
+                real_pcd = hybrid_forest.diversity_measure(X_test, y_test_numeric, diversity='pcd')
+            except Exception:
+                real_pcd = 0.0
+
             client_hybrid_predictions[cid] = hybrid_preds
             forest_size = len(local_trees) + len(external_global_trees)
             client_hybrid_forest_sizes[cid] = forest_size
             
-            # Generate pre-calculated report for UI
+            # Generate pre-calculated report with the REAL test-set PCD and configurable Bootstrap
             client_reports[cid] = ForestEvaluator.evaluate_from_predictions(
-                hybrid_preds, y_test_numeric, class_names, forest_size, pcd=meta.pcd
+                hybrid_preds, y_test_numeric, class_names, forest_size, pcd=real_pcd, n_bootstrap=n_bootstrap
             )
 
         global_model = server_model.get('model')
@@ -102,7 +112,7 @@ class ResultConsolidator:
                 global_pcd = 0.0
                 
             global_report = ForestEvaluator.evaluate_from_predictions(
-                global_preds, y_test_numeric, class_names, len(global_trees), pcd=global_pcd
+                global_preds, y_test_numeric, class_names, len(global_trees), pcd=global_pcd, n_bootstrap=n_bootstrap
             )
         else:
             global_report = ForestReport(

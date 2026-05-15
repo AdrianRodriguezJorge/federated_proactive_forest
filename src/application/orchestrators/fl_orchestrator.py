@@ -153,7 +153,7 @@ class FLEXOrchestrator:
 
         self.step_callback("Federación FLEX configurada", 10)
 
-    def run_federated_round(self) -> FLResults:
+    def run_federated_round(self, n_bootstrap: int = 0) -> FLResults:
         """
         Execute federated round using native FLEX orchestration.
         """
@@ -220,7 +220,8 @@ class FLEXOrchestrator:
             strategy_name=strategy_name,
             flex_pool=self.flex_pool,
             dataset_split=self.dataset_split,
-            server_eval=server_eval
+            server_eval=server_eval,
+            n_bootstrap=n_bootstrap
         )
 
     def cleanup(self):

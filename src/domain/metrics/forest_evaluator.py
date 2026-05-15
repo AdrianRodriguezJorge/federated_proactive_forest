@@ -54,7 +54,8 @@ class ForestEvaluator:
     @staticmethod
     def evaluate(forest, X: np.ndarray, y: np.ndarray,
                  class_names: List[str], 
-                 metrics_svc: IMetricsService = None) -> ForestReport:
+                 metrics_svc: IMetricsService = None,
+                 n_bootstrap: int = 0) -> ForestReport:
         
         # If no metrics service provided, we can't perform high-level evaluation
         if metrics_svc is None:
@@ -104,8 +105,8 @@ class ForestEvaluator:
         except (AttributeError, TypeError, ValueError):
             pcd = 0.0
 
-        accuracy_ci = ForestEvaluator._compute_bootstrap_ci(y, y_pred, lambda yt, yp: metrics_svc.accuracy_score(yt, yp))
-        macro_f1_ci = ForestEvaluator._compute_bootstrap_ci(y, y_pred, lambda yt, yp: metrics_svc.f1_score(yt, yp, average='macro'))
+        accuracy_ci = ForestEvaluator._compute_bootstrap_ci(y, y_pred, lambda yt, yp: metrics_svc.accuracy_score(yt, yp), n_bootstrap=n_bootstrap)
+        macro_f1_ci = ForestEvaluator._compute_bootstrap_ci(y, y_pred, lambda yt, yp: metrics_svc.f1_score(yt, yp, average='macro'), n_bootstrap=n_bootstrap)
 
         return ForestReport(
             accuracy=metrics_svc.accuracy_score(y, y_pred),
@@ -124,8 +125,11 @@ class ForestEvaluator:
         )
 
     @staticmethod
-    def _compute_bootstrap_ci(y_true, y_pred, metric_func, n_bootstrap=10, alpha=0.05):
+    def _compute_bootstrap_ci(y_true, y_pred, metric_func, n_bootstrap=0, alpha=0.05):
         """Helper to compute bootstrap confidence intervals."""
+        if n_bootstrap <= 1:
+            return (0.0, 0.0)
+            
         rng = np.random.RandomState(42)
         scores = []
         for _ in range(n_bootstrap):
@@ -140,7 +144,7 @@ class ForestEvaluator:
     @staticmethod
     def evaluate_from_predictions(y_pred: np.ndarray, y_true: np.ndarray,
                                   class_names: List[str], forest_size: int,
-                                  pcd: float = 0.0) -> ForestReport:
+                                  pcd: float = 0.0, n_bootstrap: int = 0) -> ForestReport:
         """Evalúa métricas a partir de predicciones ya calculadas (útil para inferencia híbrida)."""
 
         # Convert to numpy array to handle pandas Series with non-default index
@@ -166,8 +170,8 @@ class ForestEvaluator:
         per_prec = precision_score(y_true, y_pred, labels=labels, average=None, zero_division=0)
         per_rec  = recall_score(y_true, y_pred, labels=labels, average=None, zero_division=0)
 
-        accuracy_ci = ForestEvaluator._compute_bootstrap_ci(y_true, y_pred, lambda yt, yp: accuracy_score(yt, yp))
-        macro_f1_ci = ForestEvaluator._compute_bootstrap_ci(y_true, y_pred, lambda yt, yp: f1_score(yt, yp, average='macro', zero_division=0))
+        accuracy_ci = ForestEvaluator._compute_bootstrap_ci(y_true, y_pred, lambda yt, yp: accuracy_score(yt, yp), n_bootstrap=n_bootstrap)
+        macro_f1_ci = ForestEvaluator._compute_bootstrap_ci(y_true, y_pred, lambda yt, yp: f1_score(yt, yp, average='macro', zero_division=0), n_bootstrap=n_bootstrap)
 
         return ForestReport(
             accuracy=float(accuracy_score(y_true, y_pred)),

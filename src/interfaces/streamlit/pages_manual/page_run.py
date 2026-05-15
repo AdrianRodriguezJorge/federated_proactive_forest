@@ -113,13 +113,13 @@ def render():
                 orch = RouletteOrchestrator(cfg, step_callback=step_cb)
                 ds = cfg.get('_dataset_split')
                 orch.setup_federation(ds, seed=cfg.get("seed", 42))
-                results = orch.run_federated_round()
+                results = orch.run_federated_round(n_bootstrap=100)
             else:
                 from src.application.orchestrators import FLEXOrchestrator
                 orch    = FLEXOrchestrator(cfg, step_callback=step_cb)
                 ds = cfg.get('_dataset_split')
                 orch.setup_federation(ds)
-                results = orch.run_federated_round()
+                results = orch.run_federated_round(n_bootstrap=100)
 
             st.session_state["fl_results"] = results
             progress.progress(1.0, text="Completado")

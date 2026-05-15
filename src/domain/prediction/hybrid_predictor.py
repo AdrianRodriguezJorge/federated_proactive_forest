@@ -29,83 +29,38 @@ class HybridPredictor:
     def predict(self, X: np.ndarray,
                 local_trees: List[Any],
                 global_trees: List[Any]) -> np.ndarray:
-        n_samples = X.shape[0]
-        # Probabilities matrix for each sample and class
-        combined = np.zeros((n_samples, self.n_classes))
+        """
+        Perform prediction using the HybridForest domain model.
+        """
+        forest = self.create_forest(local_trees, global_trees)
+        return forest.predict(X)
+
+    def create_forest(self, local_trees: List[Any], global_trees: List[Any]) -> Any:
+        """
+        Factory method to create a HybridForest instance with current configuration.
+        """
+        from src.domain.model.hybrid_forest import HybridForest
         
-        # Track votes for debugging
-        self._last_votes = {
-            'local': np.zeros((n_samples, self.n_classes)),
-            'global': np.zeros((n_samples, self.n_classes))
-        }
-
-        def accumulate_vectorized(trees, weight, source_key):
-            if not trees:
-                return
-            w_per_tree = weight / len(trees)
-            
-            # No manual mapping needed, we use LabelService.transform for robustness
-
-            
-            for tree in trees:
-                # Use batch prediction which returns array of predictions (labels)
-                preds_raw = tree.predict(X)
-
-                # Map labels to unified indices using LabelService if available
-                if self.label_svc:
-                    preds = self.label_svc.transform(preds_raw)
-                else:
-                    # Fallback if no service: try to convert to numeric directly
-                    try:
-                        preds = np.asarray(preds_raw, dtype=np.int64)
-                    except (ValueError, TypeError):
-                        # If strings and no service, we might have issues, but this shouldn't happen in our current architecture
-                        preds = np.zeros(n_samples, dtype=np.int64)
-
-
-
-                # Validate indices
-                valid_mask = (preds >= 0) & (preds < self.n_classes)
-
-                # Report mapping failures if any
-                num_invalid = np.sum(~valid_mask)
-                if num_invalid > 0:
-                    import logging
-                    logger = logging.getLogger("HybridPredictor")
-                    logger.warning(f"Found {num_invalid} invalid predictions in tree from source {source_key}. "
-                                   f"Sample of invalid values: {preds[~valid_mask][:5]}")
-
-                # Vectorized accumulation
-                for c in range(self.n_classes):
-                    mask = (preds == c) & valid_mask
-                    combined[mask, c] += w_per_tree
-                    self._last_votes[source_key][mask, c] += w_per_tree
-
-        # Compute effective weights
+        # Determine effective weights based on use_weighted flag
         if self.use_weighted:
-            effective_lw = self.lw
-            effective_gw = self.gw
+            lw, gw = self.lw, self.gw
         else:
-            # Uniform: each tree has equal weight regardless of origin
             total = len(local_trees) + len(global_trees)
             if total > 0:
-                effective_lw = len(local_trees) / total
-                effective_gw = len(global_trees) / total
+                lw, gw = len(local_trees) / total, len(global_trees) / total
             else:
-                effective_lw, effective_gw = 0.0, 0.0
+                lw, gw = 0.0, 0.0
 
-        accumulate_vectorized(local_trees, effective_lw, 'local')
-        accumulate_vectorized(global_trees, effective_gw, 'global')
-        return np.argmax(combined, axis=1)
+        return HybridForest(
+            local_trees=local_trees,
+            global_trees=global_trees,
+            local_weight=lw,
+            global_weight=gw,
+            n_classes=self.n_classes,
+            class_names=self.class_names,
+            label_service=self.label_svc
+        )
 
     def get_debug_stats(self) -> dict:
-        """Return statistics about the last prediction call."""
-        if not hasattr(self, '_last_votes'):
-            return {}
-        
-        return {
-            'local_vote_sum': self._last_votes['local'].sum(axis=0).tolist(),
-            'global_vote_sum': self._last_votes['global'].sum(axis=0).tolist(),
-            'n_classes': self.n_classes,
-            'class_names': self.class_names
-        }
+        # Note: Debug stats might need to be moved to HybridForest if still required
+        return {}

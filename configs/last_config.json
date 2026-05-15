@@ -11,7 +11,7 @@
     "sep": ","
   },
   "federation": {
-    "n_clients": 2,
+    "n_clients": 3,
     "distribution": "iid",
     "dirichlet_alpha": 0.5
   },
@@ -25,20 +25,20 @@
     "local_episode_size": 5
   },
   "aggregation": {
-    "strategy": "s9_roulette",
-    "t_max": 50,
+    "strategy": "s6_perclient_f1",
+    "t_max": 100,
     "f1_weight": 0.5,
     "pcd_weight": 0.5,
     "global_convergence_threshold": 0.005,
     "global_episode_size": 5,
     "window_size": 5,
-    "max_rounds": 10,
-    "variant": "S9_MEAN",
+    "max_rounds": 20,
+    "variant": "",
     "beta": 0.0
   },
   "prediction": {
-    "local_weight": 0.0,
-    "global_weight": 1.0,
+    "local_weight": 0.3,
+    "global_weight": 0.7,
     "use_weighted": true
   },
   "verbose": false,

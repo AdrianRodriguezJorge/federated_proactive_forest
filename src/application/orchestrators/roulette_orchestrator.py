@@ -172,7 +172,7 @@ class RouletteOrchestrator:
 
     # ── Main federated loop ────────────────────────────────────────────────
 
-    def run_federated_round(self) -> RouletteResults:
+    def run_federated_round(self, n_bootstrap: int = 0) -> RouletteResults:
         """Execute the full multi-round S9 federated experiment."""
         if self.flex_pool is None or self.dataset_split is None:
             raise RuntimeError("Federation not set up. Call setup_federation() first.")
@@ -336,7 +336,7 @@ class RouletteOrchestrator:
                     all_local_preds.append(preds_numeric)
                     
                     client_reports[s_cid] = ForestEvaluator.evaluate_from_predictions(
-                        preds_numeric, y_test_numeric, class_names, forest_size, pcd=meta.get('pcd', 0.0)
+                        preds_numeric, y_test_numeric, class_names, forest_size, pcd=meta.get('pcd', 0.0), n_bootstrap=n_bootstrap
                     )
                 except Exception as e:
                     self.logger.error(f"Error en predicción final cliente {cid}: {e}")
@@ -353,7 +353,7 @@ class RouletteOrchestrator:
         global_f1 = float(self.metrics_svc.f1_score(y_test_numeric, global_preds, average='macro'))
 
         global_report = ForestEvaluator.evaluate_from_predictions(
-            global_preds, y_test_numeric, class_names, total_trees, pcd=0.0
+            global_preds, y_test_numeric, class_names, total_trees, pcd=0.0, n_bootstrap=n_bootstrap
         )
 
         self.step_callback("S9 Roulette completada", 100)

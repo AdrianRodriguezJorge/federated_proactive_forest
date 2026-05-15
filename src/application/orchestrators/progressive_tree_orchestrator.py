@@ -78,7 +78,7 @@ class ProgressiveTreeOrchestrator:
             config=self.config
         )
 
-    def run_federated_round(self) -> FLResults:
+    def run_federated_round(self, n_bootstrap: int = 0) -> FLResults:
         if not self.federated_data or self.dataset_split is None:
             raise ValueError("Federation not setup.")
             
@@ -210,7 +210,8 @@ class ProgressiveTreeOrchestrator:
             strategy_name="PW",
             flex_pool=self.flex_pool,
             dataset_split=self.dataset_split,
-            server_eval=server_eval
+            server_eval=server_eval,
+            n_bootstrap=n_bootstrap
         )
 
     def cleanup(self):
@@ -224,3 +225,5 @@ class ProgressiveTreeOrchestrator:
                 self.logger.error(f"Error terminating FlexPool: {e}")
             finally:
                 self.flex_pool = None
+
+__all__ = ['ProgressiveTreeOrchestrator']
