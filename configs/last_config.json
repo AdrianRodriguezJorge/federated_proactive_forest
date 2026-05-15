@@ -21,21 +21,20 @@
     "split_criterion": "gini",
     "feature_selection": "prob",
     "use_progressive_stopping": true,
-    "convergence": 0.005,
-    "episode_size": 5
+    "local_convergence_threshold": 0.002,
+    "local_episode_size": 5
   },
   "aggregation": {
     "strategy": "s9_roulette",
-    "t_max": 250,
+    "t_max": 50,
     "f1_weight": 0.5,
     "pcd_weight": 0.5,
-    "convergence": 0.005,
-    "episode_size": 5,
+    "global_convergence_threshold": 0.005,
+    "global_episode_size": 5,
     "window_size": 5,
     "max_rounds": 10,
     "variant": "S9_MEAN",
-    "beta": 0.0,
-    "convergence_threshold": 0.005
+    "beta": 0.0
   },
   "prediction": {
     "local_weight": 0.0,
