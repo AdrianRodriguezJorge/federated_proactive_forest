@@ -204,10 +204,11 @@ def run_final_benchmark():
             if not pending_strategies:
                 continue
 
-            print(f"  [PARALLEL] Ejecutando {len(pending_strategies)} estrategias en 4 hilos (Checkpoint Activo)...")
+            n_workers = -1  # Usa todos los núcleos disponibles (Ideal para Colab/PC)
+            print(f"  [PARALLEL] Ejecutando {len(pending_strategies)} estrategias en {os.cpu_count() if n_workers == -1 else n_workers} hilos (Checkpoint Activo)...")
             
             # Usar return_as='generator' para escribir en el CSV segun van terminando
-            results_generator = Parallel(n_jobs=4, return_as="generator")(
+            results_generator = Parallel(n_jobs=n_workers, return_as="generator")(
                 delayed(run_single_strategy)(strat, ds_name, rep, precomputed_splits) 
                 for strat in pending_strategies
             )
