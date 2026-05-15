@@ -142,6 +142,11 @@ outputs/
 *.pkl
 *.joblib
 
+# Proyecto Específico
+venv_py312/
+scratch/
+configs/last_config.json
+
 # Temporal
 *.tmp
 *.temp

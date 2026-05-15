@@ -4,7 +4,7 @@
 
 The system implements **13 distinct aggregation strategies**, ranging from simple pool baselines to adaptive progressive windows and communication-efficient attribute roulettes.
 
-[![Python Version](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/)
+[![Python Version](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Framework](https://img.shields.io/badge/framework-FLEX-orange.svg)](https://github.com/nik-f-v/flex-framework)
 
@@ -48,7 +48,7 @@ The project includes comprehensive documentation generated from the code's docst
 ## 🚀 Installation
 
 ### System Requirements
-- **Python**: 3.8 or higher
+- **Python**: 3.12 or higher
 - **RAM**: Minimum 4GB, recommended 8GB+ for large datasets
 - **Space**: 2GB free for datasets and models
 - **OS**: Windows 10+, macOS 10.15+, Ubuntu 18.04+
@@ -63,9 +63,9 @@ The project includes comprehensive documentation generated from the code's docst
 
 2. **Create virtual environment** (highly recommended)
    ```bash
-   # Windows
-   python -m venv venv
-   venv\Scripts\activate
+   # Windows (Using Python 3.12)
+   py -3.12 -m venv venv_py312
+   venv_py312\Scripts\activate
 
    # Linux/macOS
    python -m venv venv

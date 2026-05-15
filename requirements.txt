@@ -1,11 +1,11 @@
 # Core dependencies (must match pyproject.toml)
-numpy>=1.24
-pandas>=2.0
-scikit-learn>=1.3
+numpy>=1.26.0
+pandas>=2.1.1
+scikit-learn>=1.3.2
 pyyaml>=6.0
 pydantic>=2.0
-scipy>=1.10
-matplotlib>=3.7
+scipy>=1.11
+matplotlib>=3.8
 
 # UI (optional: pip install -e ".[ui]")
 streamlit>=1.35
@@ -21,6 +21,6 @@ joblib>=1.3
 tensorly>=0.8
 
 # FLEX Framework (for full FL orchestration)
-flexible-fl
+flexible-fl>=0.7.0
 flex
-flextrees
+flextrees>=0.1.0
