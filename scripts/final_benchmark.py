@@ -168,7 +168,7 @@ def run_final_benchmark():
                         distributor = FedDataDistributor(config, use_flex_pool=False)
                         _, fed_data = distributor.distribute(split)
                         client_reports = []
-                        for _, client_dataset in fed_data.datasets.items():
+                        for _, client_dataset in fed_data.items():
                             X_c, y_c = client_dataset.to_numpy()
                             model = ProactiveForest(
                                 n_estimators=100, alpha=0.1, 
