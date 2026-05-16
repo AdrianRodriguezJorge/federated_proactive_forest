@@ -14,6 +14,9 @@ from src.domain.dataset.base_adapter import DatasetSplit
 from src.application.orchestrators.fl_orchestrator import FLEXOrchestrator
 from src.application.orchestrators.roulette_orchestrator import RouletteOrchestrator
 from src.application.orchestrators.progressive_tree_orchestrator import ProgressiveTreeOrchestrator
+from src.domain.model.proactive_forest import ProactiveForest
+from src.domain.metrics.forest_evaluator import ForestEvaluator
+from src.application.orchestrators.fed_data_distributor import FedDataDistributor
 from src.interfaces.streamlit.components.constants import DATASET_PRESETS
 
 # ===========================================================================
@@ -24,6 +27,7 @@ K_FOLDS = 10     # Protocolo 10-Fold CV
 N_CLIENTS = 3    # Configuración de clientes federados
 
 STRATEGIES = [
+    "local_isolation",
     "s1_simple_pool", "s2_global_accuracy", "s3_global_f1", "s4_global_f1_pcd", 
     "s5_perclient_accuracy", "s6_perclient_f1", "s7_perclient_f1_pcd", "pw", 
     "s9_weighted_average", "s9_simple_mean", "s9_median", "s9_consensus", "s9_proactive_pcd"
@@ -160,17 +164,36 @@ def run_final_benchmark():
                         "aggregation": {"strategy": strategy, "max_rounds": 20}
                     }
                     
-                    if strategy.startswith("s9_"):
-                        config["aggregation"]["variant"] = strategy.replace("s9_", "S9_").upper()
-                        orch = RouletteOrchestrator(config)
-                    elif strategy == "pw":
-                        orch = ProgressiveTreeOrchestrator(config)
+                    if strategy == "local_isolation":
+                        distributor = FedDataDistributor(config, use_flex_pool=False)
+                        _, fed_data = distributor.distribute(split)
+                        client_reports = []
+                        for _, client_dataset in fed_data.datasets.items():
+                            X_c, y_c = client_dataset.to_numpy()
+                            model = ProactiveForest(
+                                n_estimators=100, alpha=0.1, 
+                                class_names=split.class_names,
+                                convergence_threshold=0.002
+                            )
+                            model.fit(X_c, y_c)
+                            preds = model.predict(split.X_test)
+                            client_reports.append(ForestEvaluator.evaluate_from_predictions(
+                                preds, split.y_test, split.class_names, len(model.get_trees())
+                            ))
                     else:
-                        orch = FLEXOrchestrator(config)
-                    
-                    orch.setup_federation(split)
-                    res = orch.run_federated_round(n_bootstrap=0)
-                    client_reports = list(res.client_reports.values())
+                        if strategy.startswith("s9_"):
+                            config["aggregation"]["variant"] = strategy.replace("s9_", "S9_").upper()
+                            orch = RouletteOrchestrator(config)
+                        elif strategy == "pw":
+                            orch = ProgressiveTreeOrchestrator(config)
+                        else:
+                            orch = FLEXOrchestrator(config)
+                        
+                        orch.setup_federation(split)
+                        res = orch.run_federated_round(n_bootstrap=0)
+                        client_reports = list(res.client_reports.values())
+                        if hasattr(orch, 'cleanup'):
+                            orch.cleanup()
                     
                     fold_results.append({
                         "f1": np.mean([r.macro_f1 for r in client_reports]),
@@ -179,8 +202,6 @@ def run_final_benchmark():
                         "prec": np.mean([r.macro_precision for r in client_reports]),
                         "pcd": np.mean([r.pcd for r in client_reports])
                     })
-                    if hasattr(orch, 'cleanup'):
-                        orch.cleanup()
                 
                 return {
                     "rep": rep,

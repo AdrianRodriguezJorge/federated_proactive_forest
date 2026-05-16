@@ -53,7 +53,7 @@ class SimpleLabelService(ILabelService):
             return
             
         # Ensure we have a flat array/list
-        if isinstance(labels, (list, np.ndarray, pd.Series)):
+        if isinstance(labels, (list, np.ndarray, pd.Series)) or hasattr(labels, '__array__') or (hasattr(labels, '__len__') and not isinstance(labels, (str, bytes, dict))):
             labels_list = labels
         else:
             labels_list = [labels]
@@ -90,7 +90,7 @@ class SimpleLabelService(ILabelService):
 
         if isinstance(labels, pd.Series):
             labels_list = labels.values
-        elif isinstance(labels, (list, np.ndarray)):
+        elif isinstance(labels, (list, np.ndarray)) or hasattr(labels, '__array__') or (hasattr(labels, '__len__') and not isinstance(labels, (str, bytes, dict))):
             labels_list = labels
         else:
             labels_list = [labels]

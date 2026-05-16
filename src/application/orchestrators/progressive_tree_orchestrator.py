@@ -131,8 +131,10 @@ class ProgressiveTreeOrchestrator:
                 w_metrics = window_data.get('metrics', [])
                 
                 if not w_trees:
-                    self.logger.warning(f"No se recibieron árboles del cliente {cid_str}")
-                    continue
+                    raise RuntimeError(
+                        f"CRITICAL: Active client {cid_str} returned no trees in round {round_idx+1}. "
+                        "This usually indicates a failure in the local training process or data corruption."
+                    )
                 
                 best_tree = None
                 best_score = -1e9

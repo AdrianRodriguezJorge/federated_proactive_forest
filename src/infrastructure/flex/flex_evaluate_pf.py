@@ -119,10 +119,9 @@ def evaluate_global_pf_model(server_flex_model: FlexModel, test_data: Any = None
             'confusion_matrix': conf_mat.tolist()
         }
     except Exception as e:
-        warnings.warn(f"evaluate_global_pf_model failed: {e}")
-        import traceback
-        traceback.print_exc()
-        return {'accuracy': 0.0, 'macro_f1': 0.0, 'pcd': 0.0, 'per_class_metrics': {}, 'confusion_matrix': []}
+        import logging
+        logging.getLogger("FLEX_Eval").error(f"CRITICAL: evaluate_global_pf_model failed: {e}")
+        raise
 
 
 def evaluate_global_pf_model_at_clients(client_flex_model: FlexModel, client_data: Any, *args, **kwargs: Any) -> Dict[str, float]:
@@ -143,7 +142,9 @@ def evaluate_global_pf_model_at_clients(client_flex_model: FlexModel, client_dat
         client_flex_model['global_f1'] = macro_f1
         return {'accuracy': accuracy, 'macro_f1': macro_f1}
     except Exception as e:
-        return {'accuracy': 0.0, 'macro_f1': 0.0}
+        import logging
+        logging.getLogger("FLEX_Eval_Client").error(f"Error evaluating global model at client: {e}")
+        raise
 
 
 def evaluate_local_pf_model_at_clients(client_flex_model: FlexModel, client_data: Any, *args, **kwargs: Any) -> Dict[str, float]:
@@ -164,7 +165,9 @@ def evaluate_local_pf_model_at_clients(client_flex_model: FlexModel, client_data
         client_flex_model['local_f1'] = macro_f1
         return {'accuracy': accuracy, 'macro_f1': macro_f1}
     except Exception as e:
-        return {'accuracy': 0.0, 'macro_f1': 0.0}
+        import logging
+        logging.getLogger("FLEX_Eval_Client").error(f"Error evaluating local model at client: {e}")
+        raise
 
 
 __all__ = [

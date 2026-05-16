@@ -16,6 +16,11 @@ def train_window_pf_pw(client_flex_model: FlexModel, client_data: Any, active_id
     """
     logger = logging.getLogger("FLEX_Client_PW")
     actor_id = str(getattr(client_flex_model, 'actor_id', 'unknown'))
+    
+    # Always clear previous window results to avoid stale data
+    client_flex_model['new_trees'] = []
+    client_flex_model['tree_metrics'] = []
+
     if active_ids is not None:
         active_ids_str = [str(aid) for aid in active_ids]
         if actor_id not in active_ids_str:

@@ -88,12 +88,37 @@ def aggregate_roulettes(weights: List[Dict[str, Any]], **kwargs) -> Dict[str, An
 
     for w in weights:
         cid = str(w.get('client_id', 'unknown'))
-        vec = np.array(w['roulette'], dtype=np.float64)
+        print(f"   [Aggregation] Processing roulette from client {cid}...")
+        raw_vec = w.get('roulette', [])
+        
+        if not raw_vec:
+            raise ValueError(f"CRITICAL: Client {cid} returned an empty roulette vector. Federation cannot proceed.")
+            
+        vec = np.array(raw_vec, dtype=np.float64)
+        
+        # Consistent dimension check
+        if client_vectors:
+            expected_shape = next(iter(client_vectors.values())).shape
+            if vec.shape != expected_shape:
+                raise ValueError(
+                    f"CRITICAL: Dimension mismatch for client {cid}. "
+                    f"Expected {expected_shape}, but got {vec.shape}. Check dataset consistency."
+                )
+            
         client_vectors[cid] = vec
         client_sizes[cid] = w.get('n_samples', 0)
         client_f1[cid] = w.get('macro_f1', 0.0)
         client_pcd[cid] = w.get('pcd', 0.0)
         total_upload_bytes += vec.nbytes
+
+    if not client_vectors:
+        return {
+            'global_roulette': [],
+            'variant': variant,
+            'upload_bytes': 0,
+            'download_bytes': 0,
+            'total_bytes': 0,
+        }
 
     global_roulette = strategy.aggregate_vectors(
         client_vectors=client_vectors,

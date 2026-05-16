@@ -437,7 +437,8 @@ class ProactiveForestClassifier(DecisionForestClassifier):
 
         self._n_classes = len(self.classes_)
         self.set_generator = ProbabilitySet(self._n_instances)
-        self._m_progressive_accuracy = []
+        if not hasattr(self, '_m_progressive_accuracy') or self._m_progressive_accuracy is None:
+            self._m_progressive_accuracy = []
 
         if len(self._trees) > 0 and EPISODE == self.n_estimators:
             # Only reset if we are building the full forest from scratch

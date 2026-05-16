@@ -252,12 +252,27 @@ class RouletteOrchestrator:
             if global_roulette_list:
                 global_vec = np.array(global_roulette_list, dtype=np.float64)
                 for cid in active_client_ids:
-                    client_model = self.flex_pool._models[cid]
+                    # Robust state retrieval
+                    s_cid = str(cid)
+                    client_model = self.flex_pool._models.get(s_cid)
+                    if client_model is None and s_cid.isdigit():
+                        client_model = self.flex_pool._models.get(int(s_cid))
+                    if client_model is None:
+                        client_model = self.flex_pool._models.get(cid)
+
+                    if client_model is None:
+                        raise RuntimeError(f"CRITICAL: Could not find model state for active client {cid} in FlexPool.")
+
                     pf_model = client_model.get('model')
-                    if pf_model is not None:
-                        local_vec = pf_model.get_feature_probabilities()
-                        fused = updater.fuse(local_vec, global_vec)
-                        pf_model.set_feature_probabilities(fused)
+                    if pf_model is None:
+                         raise RuntimeError(f"CRITICAL: Client {cid} state is missing the 'model' object.")
+
+                    local_vec = pf_model.get_feature_probabilities()
+                    if local_vec.shape != global_vec.shape:
+                         raise ValueError(f"CRITICAL: Dimension mismatch in client {cid}: local {local_vec.shape} vs global {global_vec.shape}")
+
+                    fused = updater.fuse(local_vec, global_vec)
+                    pf_model.set_feature_probabilities(fused)
 
             # Update active list for next round
             for cid in newly_converged:
@@ -322,24 +337,23 @@ class RouletteOrchestrator:
             client_hybrid_forest_sizes[s_cid] = forest_size
 
             # 3. Prediction & Reporting
-            if pf is not None:
-                try:
-                    preds = pf.predict(X_test)
-                    preds_numeric = self.label_svc.transform(preds)
-                    
-                    acc = float(self.metrics_svc.accuracy_score(y_test_numeric, preds_numeric))
-                    f1 = float(self.metrics_svc.f1_score(y_test_numeric, preds_numeric, average='macro'))
-                    
-                    client_accuracies[s_cid] = acc
-                    client_f1_scores[s_cid] = f1
-                    client_hybrid_predictions[s_cid] = preds_numeric
-                    all_local_preds.append(preds_numeric)
-                    
-                    client_reports[s_cid] = ForestEvaluator.evaluate_from_predictions(
-                        preds_numeric, y_test_numeric, class_names, forest_size, pcd=meta.get('pcd', 0.0), n_bootstrap=n_bootstrap
-                    )
-                except Exception as e:
-                    self.logger.error(f"Error en predicción final cliente {cid}: {e}")
+            if pf is None:
+                raise RuntimeError(f"CRITICAL: Model for client {cid} is None during final evaluation.")
+
+            preds = pf.predict(X_test)
+            preds_numeric = self.label_svc.transform(preds)
+            
+            acc = float(self.metrics_svc.accuracy_score(y_test_numeric, preds_numeric))
+            f1 = float(self.metrics_svc.f1_score(y_test_numeric, preds_numeric, average='macro'))
+            
+            client_accuracies[s_cid] = acc
+            client_f1_scores[s_cid] = f1
+            client_hybrid_predictions[s_cid] = preds_numeric
+            all_local_preds.append(preds_numeric)
+            
+            client_reports[s_cid] = ForestEvaluator.evaluate_from_predictions(
+                preds_numeric, y_test_numeric, class_names, forest_size, pcd=meta.get('pcd', 0.0), n_bootstrap=n_bootstrap
+            )
 
         # 4. Global ensemble (just for reference in logs, not returned in table)
         if all_local_preds:
