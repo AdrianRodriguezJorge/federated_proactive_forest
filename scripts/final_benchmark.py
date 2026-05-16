@@ -90,7 +90,10 @@ def run_final_benchmark():
                     cat_cols.append(col)
 
             # --- PRE-COMPUTE FOLDS FOR THIS REP AND DATASET ---
-            # Esto garantiza zero-data-leakage y elimina las 130 copias redundantes
+            # Ajustar el encoder globalmente para el dataset garantiza consistencia de IDs entre folds
+            le = LabelEncoder()
+            le.fit(y_raw)
+
             print(f"\n>>> [REP {rep}/{REPETITIONS}] {ds_name} | Pre-calculando {K_FOLDS} Folds (Aislamiento en Memoria)...")
             skf = StratifiedKFold(n_splits=K_FOLDS, shuffle=True, random_state=42 * rep)
             precomputed_splits = []
@@ -110,9 +113,8 @@ def run_final_benchmark():
                     stratify=y_train_val_raw if can_stratify else None
                 )
 
-                # Inicializar y ajustar LabelEncoder solo con el entrenamiento del fold
-                le = LabelEncoder()
-                le.fit(y_train_raw)
+                # Usar el LabelEncoder global pre-ajustado para evitar errores con clases minoritarias
+
 
                 # Extraer como numpy arrays desconectados del dataframe original
                 X_train = X_train_raw.values.copy()
