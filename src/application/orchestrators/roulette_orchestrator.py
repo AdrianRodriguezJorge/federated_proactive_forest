@@ -1,81 +1,61 @@
-"""Roulette Orchestrator — Federated orchestrator for S9 Global Attribute Roulette.
+"""Roulette Orchestrator — S9 Global Attribute Roulette strategy.
 
-This orchestrator implements a multi-round federated loop where, instead of
-exchanging *trees*, clients and server exchange *feature-probability vectors*
-(roulettes).  The lifecycle of each round is:
-
-  1. Deploy server config to clients.
-  2. Clients train a local window of trees (buildEpisode).
-  3. Collect the local roulette vector from each client.
-  4. Aggregate roulettes on the server (4 variant strategies).
-  5. Deploy the global roulette back to clients.
-  6. Clients fuse local ↔ global roulettes using the β formula.
-  7. Repeat until convergence or T_max.
-  8. Final evaluation of each client's locally-trained forest.
-
-Design decision: this orchestrator does NOT extend ``FLEXOrchestrator``
-because the data flow (vectors vs. trees) is fundamentally different.
-However, it reuses the same ``FlexPool``, ``FedDataDistributor``,
-``ResultConsolidator``, and FLEX primitives infrastructure.
+Implements a multi-round federated loop where, instead of exchanging trees,
+clients and server exchange feature-probability vectors (roulettes).
 """
 
 from __future__ import annotations
-
-import logging
-import os
-import warnings
-from copy import deepcopy
 from dataclasses import dataclass, field
+import logging
 from typing import Any, Callable, Dict, List, Optional, Union
 
 import numpy as np
 from scipy import stats
 
 try:
-    from flex.model import FlexModel
     from flex.data import Dataset, FedDataDistribution
+    from flex.model import FlexModel
 except ImportError:
     FlexModel = Any
     Dataset = Any
 
-from src.domain.model.proactive_forest import ProactiveForest
+from src.application.orchestrators.fed_data_distributor import (
+    FedDataDistributor,
+)
+from src.application.orchestrators.fl_results import FLResults
+from src.application.orchestrators.result_consolidator import (
+    ResultConsolidator,
+)
 from src.domain.dataset.base_adapter import DatasetSplit
+from src.domain.metrics.forest_evaluator import ForestEvaluator
+from src.domain.model.proactive_forest import ProactiveForest
 from src.domain.services.label_service import SimpleLabelService
 from src.domain.update.roulette_updater import RouletteUpdater
-from src.domain.aggregation.strategies.s9_roulette_strategy import create_roulette_strategy
-
-from src.infrastructure.metrics.sklearn_metrics_service import SklearnMetricsService
-from src.infrastructure.metrics.diversity_service import PredictionBasedDiversityService
+from src.infrastructure.flex.flex_deploy_model_pf import (
+    deploy_server_config_pf,
+)
 from src.infrastructure.flex.flex_pool_factory import FlexPoolFactory
-from src.infrastructure.logging.logger_setup import setup_project_logger
-
-# FLEX primitives — reuse training + evaluation from existing PF primitives
-from src.infrastructure.flex.flex_train_pf import init_server_model_pf, train_pf
-from src.infrastructure.flex.flex_deploy_model_pf import deploy_server_config_pf
-from src.infrastructure.flex.flex_evaluate_pf import (
-    evaluate_global_pf_model,
-    evaluate_local_pf_model_at_clients,
+from src.infrastructure.flex.flex_roulette_pf import (
+    aggregate_roulettes,
+    collect_client_roulette,
+    deploy_global_roulette,
+    set_global_roulette,
 )
 from src.infrastructure.flex.flex_s9_progressive import (
+    check_convergence_s9,
     train_window_pf_s9,
-    check_convergence_s9
 )
-
-# S9-specific FLEX primitives
-from src.infrastructure.flex.flex_roulette_pf import (
-    collect_client_roulette,
-    aggregate_roulettes,
-    set_global_roulette,
-    deploy_global_roulette,
+from src.infrastructure.flex.flex_train_pf import (
+    init_server_model_pf,
+    train_pf,
 )
-
-from src.application.orchestrators.fl_results import FLResults
-from src.application.orchestrators.fed_data_distributor import FedDataDistributor
-
-
-# ---------------------------------------------------------------------------
-# Results dataclass
-# ---------------------------------------------------------------------------
+from src.infrastructure.logging.logger_setup import setup_project_logger
+from src.infrastructure.metrics.diversity_service import (
+    PredictionBasedDiversityService,
+)
+from src.infrastructure.metrics.sklearn_metrics_service import (
+    SklearnMetricsService,
+)
 
 
 @dataclass
@@ -91,23 +71,20 @@ class RouletteResults(FLResults):
     roulette_history: List[Dict[str, Any]] = field(default_factory=list)
 
 
-# ---------------------------------------------------------------------------
-# Orchestrator
-# ---------------------------------------------------------------------------
-
-
 class RouletteOrchestrator:
-    """Federated Learning orchestrator for the S9 Global Attribute Roulette.
-
-    Manages a multi-round loop where only feature-probability vectors
-    are exchanged between clients and server.
-    """
+    """Federated Learning orchestrator for S9 Global Attribute Roulette."""
 
     def __init__(
         self,
         config: Union[dict, Any],
-        step_callback: Optional[Callable] = None,
+        step_callback: Optional[Callable[..., Any]] = None,
     ):
+        """Initializes RouletteOrchestrator.
+
+        Args:
+            config (Union[dict, Any]): Configuration dictionary or object.
+            step_callback (Optional[Callable]): Progress reporting callback.
+        """
         self.config = config if isinstance(config, dict) else config.dict()
         self.step_callback = step_callback or (lambda *a, **kw: None)
 
@@ -120,44 +97,53 @@ class RouletteOrchestrator:
         self.label_svc = SimpleLabelService()
 
         # S9-specific config
-        agg_cfg = self.config.get('aggregation', {})
-        self.variant = agg_cfg.get('variant', 'S9_MEAN')
-        self.beta = float(agg_cfg.get('beta', 0.0))
-        self.window_size = int(agg_cfg.get('window_size', 5))
-        self.max_rounds = int(agg_cfg.get('max_rounds', 20))
+        agg_cfg = self.config.get("aggregation", {})
+        self.variant = agg_cfg.get("variant", "S9_MEAN")
+        self.beta = float(agg_cfg.get("beta", 0.0))
+        self.window_size = int(agg_cfg.get("window_size", 5))
+        self.max_rounds = int(agg_cfg.get("max_rounds", 20))
         self.convergence_threshold = float(
-            self.config.get('model', {}).get('local_convergence_threshold', 0.002)
+            self.config.get("model", {}).get(
+                "local_convergence_threshold", 0.002
+            )
         )
-        
-        # En estrategias progresivas, la capacidad máxima teórica es rondas * ventana
+
         calculated_n_estimators = self.max_rounds * self.window_size
-        if 'model' not in self.config: self.config['model'] = {}
-        self.config['model']['n_estimators'] = calculated_n_estimators
+        if "model" not in self.config:
+            self.config["model"] = {}
+        self.config["model"]["n_estimators"] = calculated_n_estimators
         self.t_max = calculated_n_estimators
 
         self._setup_logging()
 
-    # ── Setup ──────────────────────────────────────────────────────────────
-
-    def _setup_logging(self):
-        # Usar el sistema de logs centralizado del proyecto
+    def _setup_logging(self) -> None:
+        """Sets up project logger using centralized logging system."""
         log_name = f"Roulette_{self.variant.lower()}"
         self.logger = setup_project_logger(log_name)
 
-    def setup_federation(self, dataset_split: DatasetSplit, seed: int = 42):
-        """Distribute data and initialise FlexPool."""
-        distributor = FedDataDistributor(self.config, use_flex_pool=True)
-        self.dataset_split, self.federated_data = distributor.distribute(dataset_split, seed)
+    def setup_federation(
+        self, dataset_split: DatasetSplit, seed: int = 42
+    ) -> None:
+        """Distribute data and initialize FlexPool.
 
-        self.label_svc.fit(
-            self.dataset_split.class_names or self.dataset_split.get_all_labels()
+        Args:
+            dataset_split (DatasetSplit): Target dataset adapter split.
+            seed (int): Stable random seed.
+        """
+        distributor = FedDataDistributor(self.config, use_flex_pool=True)
+        self.dataset_split, self.federated_data = distributor.distribute(
+            dataset_split, seed
         )
 
-        model_config = self.config.setdefault('model', {})
-        if self.dataset_split.class_names:
-            model_config['class_names'] = self.dataset_split.class_names
+        self.label_svc.fit(
+            self.dataset_split.class_names
+            or self.dataset_split.get_all_labels()
+        )
 
-        # Initialise FlexPool using the same factory as FLEXOrchestrator
+        model_config = self.config.setdefault("model", {})
+        if self.dataset_split.class_names:
+            model_config["class_names"] = self.dataset_split.class_names
+
         try:
             self.flex_pool = FlexPoolFactory.create_client_server_pool(
                 federated_data=self.federated_data,
@@ -170,15 +156,28 @@ class RouletteOrchestrator:
             self.logger.error(f"Error al inicializar FlexPool: {e}")
             raise
 
-    # ── Main federated loop ────────────────────────────────────────────────
-
     def run_federated_round(self, n_bootstrap: int = 0) -> RouletteResults:
-        """Execute the full multi-round S9 federated experiment."""
+        """Execute the full multi-round S9 federated experiment.
+
+        Args:
+            n_bootstrap (int): Bootstrap repetitions for statistical CI.
+
+        Returns:
+            RouletteResults: Consolidated FL results from this strategy.
+
+        Raises:
+            RuntimeError: If federation not setup or client model state is missing.
+            ValueError: If validation dataset is missing under consensus strategies.
+        """
         if self.flex_pool is None or self.dataset_split is None:
-            raise RuntimeError("Federation not set up. Call setup_federation() first.")
+            raise RuntimeError(
+                "Federation not set up. Call setup_federation() first."
+            )
 
         self.step_callback("Iniciando S9 Roulette Federada...", 5)
-        self.logger.info(f"Starting S9 with variant={self.variant}, beta={self.beta}")
+        self.logger.info(
+            f"Starting S9 with variant={self.variant}, beta={self.beta}"
+        )
 
         updater = RouletteUpdater(beta=self.beta)
 
@@ -194,65 +193,147 @@ class RouletteOrchestrator:
 
         # Track which clients are still training
         active_client_ids = list(self.flex_pool.clients.actor_ids)
-        convergence_round_map = {} # cid -> round
+        convergence_round_map = {}
 
         for round_num in range(self.max_rounds):
             round_idx = round_num + 1
             progress = 10 + int(round_num * 75 / self.max_rounds)
-            self.step_callback(f"S9 Ronda {round_idx}/{self.max_rounds} (Activos: {len(active_client_ids)})...", progress)
-            self.logger.info(f"--- Round {round_idx} | Active: {len(active_client_ids)} ---")
+            self.step_callback(
+                f"S9 Ronda {round_idx}/{self.max_rounds} "
+                f"(Activos: {len(active_client_ids)})...",
+                progress,
+            )
+            self.logger.info(
+                f"--- Round {round_idx} | Active: {len(active_client_ids)} ---"
+            )
 
             if not active_client_ids:
                 self.logger.info("Todos los clientes han convergido localmente.")
                 final_round = round_idx - 1
                 break
 
-            # 1. Deploy config (only to active clients if possible, but FLEX map is easier on all)
-            # We'll rely on the primitive to skip if converged if we can't filter
-            self.flex_pool.servers.map(deploy_server_config_pf, self.flex_pool.clients)
+            self.flex_pool.servers.map(
+                deploy_server_config_pf, self.flex_pool.clients
+            )
 
-            # 2. Local training (ONLY active clients build a window)
-            # We use a software filter: pass the active IDs to the primitive
-            self.flex_pool.clients.map(train_window_pf_s9, active_ids=active_client_ids)
+            # Local training
+            self.flex_pool.clients.map(
+                train_window_pf_s9, active_ids=active_client_ids
+            )
 
             # Check convergence for just-trained clients
             newly_converged = []
             for cid in active_client_ids:
-                client_model = self.flex_pool._models[cid]
-                meta = client_model.get('metadata', {})
-                
-                if meta.get('has_converged', False):
+                client_model = None
+                if cid in self.flex_pool._models:
+                    client_model = self.flex_pool._models[cid]
+                elif str(cid) in self.flex_pool._models:
+                    client_model = self.flex_pool._models[str(cid)]
+                elif (
+                    isinstance(cid, str)
+                    and cid.isdigit()
+                    and int(cid) in self.flex_pool._models
+                ):
+                    client_model = self.flex_pool._models[int(cid)]
+
+                if client_model is not None:
+                    meta = client_model.get("metadata", {})
+
+                if meta.get("has_converged", False):
                     newly_converged.append(cid)
                     convergence_round_map[cid] = round_idx
-                    self.logger.info(f"Cliente {cid} detuvo su entrenamiento en ronda {round_idx} (Convergencia local alcanzada).")
+                    self.logger.info(
+                        f"Cliente {cid} detuvo su entrenamiento en ronda "
+                        f"{round_idx} (Convergencia local alcanzada)."
+                    )
 
-            # 3. Collect roulette vectors (from ALL clients to maintain global stability)
-            self.flex_pool.aggregators.map(collect_client_roulette, self.flex_pool.clients)
-
-            # 4. Aggregate
+            # Collect roulette vectors from ALL clients
             self.flex_pool.aggregators.map(
-                aggregate_roulettes, variant=self.variant
+                collect_client_roulette, self.flex_pool.clients
             )
-            self.flex_pool.aggregators.map(set_global_roulette, self.flex_pool.servers)
+
+            # Evaluate client models directly on server's validation dataset
+            server_eval_f1 = {}
+            server_eval_pcd = {}
+
+            X_val = self.dataset_split.X_val
+            y_val = self.dataset_split.y_val
+
+            is_consensus_var = self.variant in (
+                "S9_CONSENSUS",
+                "S9_PROACTIVE_PCD",
+            )
+            if is_consensus_var and (X_val is None or y_val is None):
+                raise ValueError(
+                    f"CRITICAL: Server-side validation dataset "
+                    f"(X_val, y_val) must be provided for strategy "
+                    f"{self.variant}."
+                )
+
+            if X_val is not None and y_val is not None:
+                y_val_numeric = self.label_svc.transform(y_val)
+                for cid in active_client_ids:
+                    s_cid = str(cid)
+                    client_model = self.flex_pool._models.get(s_cid)
+                    if client_model is None and s_cid.isdigit():
+                        client_model = self.flex_pool._models.get(int(s_cid))
+                    if client_model is None:
+                        client_model = self.flex_pool._models.get(cid)
+
+                    if client_model is not None:
+                        pf = client_model.get("model")
+                        if pf is not None:
+                            preds = pf.predict(X_val)
+                            preds_numeric = self.label_svc.transform(preds)
+                            f1 = float(
+                                self.metrics_svc.f1_score(
+                                    y_val_numeric,
+                                    preds_numeric,
+                                    average="macro",
+                                )
+                            )
+                            server_eval_f1[s_cid] = f1
+
+                            try:
+                                pcd = float(
+                                    pf.diversity_measure(
+                                        X_val, y_val_numeric, diversity="pcd"
+                                    )
+                                )
+                            except Exception:
+                                pcd = 0.0
+                            server_eval_pcd[s_cid] = pcd
+
+            # Aggregate
+            self.flex_pool.aggregators.map(
+                aggregate_roulettes,
+                variant=self.variant,
+                server_eval_f1=server_eval_f1,
+                server_eval_pcd=server_eval_pcd,
+            )
+            self.flex_pool.aggregators.map(
+                set_global_roulette, self.flex_pool.servers
+            )
 
             # Track communication cost
             server_model = self.flex_pool._models["server"]
-            round_up = server_model.get('roulette_upload_bytes', 0)
-            round_down = server_model.get('roulette_download_bytes', 0)
+            round_up = server_model.get("roulette_upload_bytes", 0)
+            round_down = server_model.get("roulette_download_bytes", 0)
             total_upload += round_up
             total_download += round_down
             upload_per_round.append(round_up)
             download_per_round.append(round_down)
 
-            # 5. Deploy global roulette back to clients
-            self.flex_pool.servers.map(deploy_global_roulette, self.flex_pool.clients)
+            # Deploy global roulette back to clients
+            self.flex_pool.servers.map(
+                deploy_global_roulette, self.flex_pool.clients
+            )
 
-            # 6. Clients fuse local ↔ global roulettes (only if still active)
-            global_roulette_list = server_model.get('global_roulette', [])
+            # Clients fuse local <-> global roulettes
+            global_roulette_list = server_model.get("global_roulette", [])
             if global_roulette_list:
                 global_vec = np.array(global_roulette_list, dtype=np.float64)
                 for cid in active_client_ids:
-                    # Robust state retrieval
                     s_cid = str(cid)
                     client_model = self.flex_pool._models.get(s_cid)
                     if client_model is None and s_cid.isdigit():
@@ -261,15 +342,25 @@ class RouletteOrchestrator:
                         client_model = self.flex_pool._models.get(cid)
 
                     if client_model is None:
-                        raise RuntimeError(f"CRITICAL: Could not find model state for active client {cid} in FlexPool.")
+                        raise RuntimeError(
+                            f"CRITICAL: Could not find model state for "
+                            f"active client {cid} in FlexPool."
+                        )
 
-                    pf_model = client_model.get('model')
+                    pf_model = client_model.get("model")
                     if pf_model is None:
-                         raise RuntimeError(f"CRITICAL: Client {cid} state is missing the 'model' object.")
+                        raise RuntimeError(
+                            f"CRITICAL: Client {cid} state is missing "
+                            f"the 'model' object."
+                        )
 
                     local_vec = pf_model.get_feature_probabilities()
                     if local_vec.shape != global_vec.shape:
-                         raise ValueError(f"CRITICAL: Dimension mismatch in client {cid}: local {local_vec.shape} vs global {global_vec.shape}")
+                        raise ValueError(
+                            f"CRITICAL: Dimension mismatch in client {cid}: "
+                            f"local {local_vec.shape} vs global "
+                            f"{global_vec.shape}"
+                        )
 
                     fused = updater.fuse(local_vec, global_vec)
                     pf_model.set_feature_probabilities(fused)
@@ -279,23 +370,23 @@ class RouletteOrchestrator:
                 active_client_ids.remove(cid)
 
             # Record roulette snapshot
-            roulette_history.append({
-                'round': round_idx,
-                'global_roulette': global_roulette_list,
-            })
+            roulette_history.append(
+                {
+                    "round": round_idx,
+                    "global_roulette": global_roulette_list,
+                }
+            )
 
             final_round = round_idx
 
-        # ── Final evaluation & Results Consolidation ───────────────────────────────
+        # ── Final evaluation & Results Consolidation ─────────────────────────
         self.step_callback("Consolidando resultados S9...", 90)
-        
+
         X_test = self.dataset_split.X_test
         y_test = self.dataset_split.y_test
         y_test_numeric = self.label_svc.transform(y_test)
         class_names = self.label_svc.classes
         client_ids = list(self.flex_pool.clients.actor_ids)
-        
-        from src.domain.metrics.forest_evaluator import ForestEvaluator
 
         client_accuracies = {}
         client_f1_scores = {}
@@ -307,55 +398,59 @@ class RouletteOrchestrator:
         total_trees = 0
 
         for cid in client_ids:
-            # 1. Robust state retrieval
             s_cid = str(cid)
             state = self.flex_pool._models.get(s_cid)
             if state is None and s_cid.isdigit():
                 state = self.flex_pool._models.get(int(s_cid))
             if state is None:
                 state = self.flex_pool._models.get(cid)
-            
+
             if state is None:
                 continue
 
-            # 2. Extract model and meta
-            pf = state.get('model')
-            meta = state.get('metadata', {})
-            
-            # Normalize meta to dict
+            pf = state.get("model")
+            meta = state.get("metadata", {})
+
             if not isinstance(meta, dict):
-                meta = {
-                    'accuracy': getattr(meta, 'accuracy', 0.0),
-                    'macro_f1': getattr(meta, 'macro_f1', 0.0),
-                    'n_trees': getattr(meta, 'n_trees', 0),
-                    'pcd': getattr(meta, 'pcd', 0.0)
-                }
+                meta = {"n_trees": getattr(meta, "n_trees", 0)}
 
             client_metadata_dict[s_cid] = meta
-            forest_size = meta.get('n_trees', 0)
+            forest_size = meta.get("n_trees", 0)
             total_trees += forest_size
             client_hybrid_forest_sizes[s_cid] = forest_size
 
-            # 3. Prediction & Reporting
             if pf is None:
-                raise RuntimeError(f"CRITICAL: Model for client {cid} is None during final evaluation.")
+                raise RuntimeError(
+                    f"CRITICAL: Model for client {cid} is None during "
+                    f"final evaluation."
+                )
 
             preds = pf.predict(X_test)
             preds_numeric = self.label_svc.transform(preds)
-            
-            acc = float(self.metrics_svc.accuracy_score(y_test_numeric, preds_numeric))
-            f1 = float(self.metrics_svc.f1_score(y_test_numeric, preds_numeric, average='macro'))
-            
+
+            acc = float(
+                self.metrics_svc.accuracy_score(y_test_numeric, preds_numeric)
+            )
+            f1 = float(
+                self.metrics_svc.f1_score(
+                    y_test_numeric, preds_numeric, average="macro"
+                )
+            )
+
             client_accuracies[s_cid] = acc
             client_f1_scores[s_cid] = f1
             client_hybrid_predictions[s_cid] = preds_numeric
             all_local_preds.append(preds_numeric)
-            
+
             client_reports[s_cid] = ForestEvaluator.evaluate_from_predictions(
-                preds_numeric, y_test_numeric, class_names, forest_size, pcd=meta.get('pcd', 0.0), n_bootstrap=n_bootstrap
+                preds_numeric,
+                y_test_numeric,
+                class_names,
+                forest_size,
+                pcd=meta.get("pcd", 0.0),
+                n_bootstrap=n_bootstrap,
             )
 
-        # 4. Global ensemble (just for reference in logs, not returned in table)
         if all_local_preds:
             stacked = np.stack(all_local_preds, axis=0)
             global_preds, _ = stats.mode(stacked, axis=0, keepdims=False)
@@ -363,11 +458,22 @@ class RouletteOrchestrator:
         else:
             global_preds = np.zeros(len(y_test_numeric), dtype=int)
 
-        global_acc = float(self.metrics_svc.accuracy_score(y_test_numeric, global_preds))
-        global_f1 = float(self.metrics_svc.f1_score(y_test_numeric, global_preds, average='macro'))
+        global_acc = float(
+            self.metrics_svc.accuracy_score(y_test_numeric, global_preds)
+        )
+        global_f1 = float(
+            self.metrics_svc.f1_score(
+                y_test_numeric, global_preds, average="macro"
+            )
+        )
 
         global_report = ForestEvaluator.evaluate_from_predictions(
-            global_preds, y_test_numeric, class_names, total_trees, pcd=0.0, n_bootstrap=n_bootstrap
+            global_preds,
+            y_test_numeric,
+            class_names,
+            total_trees,
+            pcd=0.0,
+            n_bootstrap=n_bootstrap,
         )
 
         self.step_callback("S9 Roulette completada", 100)
@@ -401,19 +507,21 @@ class RouletteOrchestrator:
             roulette_history=roulette_history,
         )
 
-
-    def cleanup(self):
+    def cleanup(self) -> None:
         """Release resources and terminate FlexPool actors."""
         if self.flex_pool:
             try:
-                if hasattr(self.flex_pool, 'terminate'):
+                if hasattr(self.flex_pool, "terminate"):
                     self.flex_pool.terminate()
-                elif hasattr(self.flex_pool, 'close'):
+                elif hasattr(self.flex_pool, "close"):
                     self.flex_pool.close()
-                self.logger.debug("FlexPool (Roulette) terminated successfully.")
+                self.logger.debug(
+                    "FlexPool (Roulette) terminated successfully."
+                )
             except Exception as e:
                 self.logger.error(f"Error terminating FlexPool: {e}")
             finally:
                 self.flex_pool = None
 
-__all__ = ['RouletteOrchestrator', 'RouletteResults']
+
+__all__ = ["RouletteOrchestrator", "RouletteResults"]

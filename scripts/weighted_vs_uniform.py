@@ -1,44 +1,78 @@
-"""
-Experiment: use_weighted=True vs False on 2 datasets.
+"""Experiment: use_weighted=True vs False on 2 datasets.
+
 Compares hybrid prediction metrics when weighting by origin (local/global)
 vs uniform tree voting.
 """
+
+import os
 import sys
 import time
-import numpy as np
 from pathlib import Path
+from typing import Any, Dict
+import numpy as np
 from sklearn.metrics import accuracy_score, f1_score
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
+from src.application.orchestrators import FLEXOrchestrator
 from src.infrastructure.dataset.dataset_factory import DatasetFactory
-from src.application.orchestrators.fl_orchestrator import FLEXOrchestrator
 
 
-def run_experiment(dataset_cfg, use_weighted, strategy="s6_perclient_f1", seed=42):
-    """Run a single federated experiment and return metrics."""
+def run_experiment(
+    dataset_cfg: Dict[str, Any],
+    use_weighted: bool,
+    strategy: str = "s6_perclient_f1",
+    seed: int = 42,
+) -> Dict[str, Any]:
+    """Runs a single federated experiment and returns comparative metrics.
+
+    Args:
+        dataset_cfg (Dict[str, Any]): Config map for the dataset adapter.
+        use_weighted (bool): Whether to weigh global vs local trees.
+        strategy (str): Aggregation strategy identifier.
+        seed (int): Random number generator seed.
+
+    Returns:
+        Dict[str, Any]: Dict containing global and per-client metrics.
+    """
     config = {
         "dataset": dataset_cfg,
-        "federation": {"n_clients": 3, "distribution": "iid", "dirichlet_alpha": 0.5},
+        "federation": {
+            "n_clients": 3,
+            "distribution": "iid",
+            "dirichlet_alpha": 0.5,
+        },
         "model": {
-            "n_estimators": 50, "alpha": 0.1,
-            "split_criterion": "entropy", "feature_selection": "prob",
-            "use_progressive_stopping": True, "convergence": 0.002, "episode_size": 5,
+            "n_estimators": 50,
+            "alpha": 0.1,
+            "split_criterion": "entropy",
+            "feature_selection": "prob",
+            "use_progressive_stopping": True,
+            "local_convergence_threshold": 0.002,
+            "episode_size": 5,
         },
         "aggregation": {
-            "strategy": strategy, "f1_weight": 0.5, "pcd_weight": 0.5,
-            "convergence": 0.002, "episode_size": 5,
-            "window_size": 5, "max_rounds": 20,
+            "strategy": strategy,
+            "f1_weight": 0.5,
+            "pcd_weight": 0.5,
+            "global_convergence_threshold": 0.002,
+            "episode_size": 5,
+            "window_size": 5,
+            "max_rounds": 20,
         },
         "prediction": {
-            "local_weight": 0.4, "global_weight": 0.6,
+            "local_weight": 0.4,
+            "global_weight": 0.6,
             "use_weighted": use_weighted,
         },
-        "verbose": False, "seed": seed,
+        "verbose": False,
+        "seed": seed,
     }
 
-    ds = DatasetFactory.load_from_config(config["dataset"], project_root=PROJECT_ROOT)
+    ds = DatasetFactory.load_from_config(
+        config["dataset"], project_root=PROJECT_ROOT
+    )
     orchestrator = FLEXOrchestrator(config)
     orchestrator.setup_federation(ds, seed=seed)
 
@@ -54,7 +88,13 @@ def run_experiment(dataset_cfg, use_weighted, strategy="s6_perclient_f1", seed=4
         if preds is not None:
             y = results.y_test
             hybrid_accs.append(float(accuracy_score(y, preds)))
-            hybrid_f1s.append(float(f1_score(y, preds, average='macro', zero_division=0)))
+            hybrid_f1s.append(
+                float(
+                    f1_score(
+                        y, preds, average="macro", zero_division=0
+                    )
+                )
+            )
 
     # Per-client local tree counts and global tree count
     local_counts = []
@@ -80,70 +120,128 @@ def run_experiment(dataset_cfg, use_weighted, strategy="s6_perclient_f1", seed=4
 # ── Datasets ──────────────────────────────────────────────────────────────────
 DATASETS = {
     "Iris": {
-        "type": "Iris", "file_path": "data/iris.csv",
-        "target_column": "class", "test_size": 0.2,
-        "scale": True, "sep": ",",
+        "type": "Iris",
+        "file_path": "data/iris.csv",
+        "target_column": "class",
+        "test_size": 0.2,
+        "scale": True,
+        "sep": ",",
     },
     "Spambase": {
-        "type": "Spambase", "file_path": "data/spambase.csv",
-        "target_column": "class", "test_size": 0.2,
-        "scale": True, "sep": ",",
+        "type": "Spambase",
+        "file_path": "data/spambase.csv",
+        "target_column": "class",
+        "test_size": 0.2,
+        "scale": True,
+        "sep": ",",
     },
 }
 
-# ── Run experiments ───────────────────────────────────────────────────────────
-results_table = []
 
-for ds_name, ds_cfg in DATASETS.items():
-    print(f"\n{'='*60}")
-    print(f"  Dataset: {ds_name}")
-    print(f"{'='*60}")
+def main() -> None:
+    """Executes the comparative weighted vs uniform experiment."""
+    results_table = []
 
-    for weighted in [True, False]:
-        label = "Ponderado (lambda)" if weighted else "Uniforme (1/N)"
-        print(f"\n  >> {label} (use_weighted={weighted})...")
-        try:
-            r = run_experiment(ds_cfg, use_weighted=weighted)
-            results_table.append({
-                "dataset": ds_name,
-                "mode": label,
-                "use_weighted": weighted,
-                **r,
-            })
-            print(f"     Global:  Acc={r['global_acc']:.4f}  F1={r['global_f1']:.4f}  Trees={r['n_global_trees']}")
-            print(f"     Hybrid:  Acc={r['avg_hybrid_acc']:.4f}  F1={r['avg_hybrid_f1']:.4f}")
-            print(f"     Local trees per client: {r['local_tree_counts']}")
-            print(f"     Convergence round: {r['convergence_round']}")
-            print(f"     Time: {r['elapsed_s']:.1f}s")
-        except Exception as e:
-            import traceback
-            print(f"     ERROR: {e}")
-            traceback.print_exc()
+    for ds_name, ds_cfg in DATASETS.items():
+        print(f"\n{'=' * 60}")
+        print(f"  Dataset: {ds_name}")
+        print(f"{'=' * 60}")
 
-# ── Summary table ─────────────────────────────────────────────────────────────
-print(f"\n\n{'='*80}")
-print("  RESULTS SUMMARY")
-print(f"{'='*80}")
-print(f"{'Dataset':<12} {'Mode':<22} {'Global Acc':>10} {'Global F1':>10} {'Hybrid Acc':>10} {'Hybrid F1':>10} {'#Trees':>7}")
-print("-" * 83)
+        for weighted in [True, False]:
+            label = "Ponderado (lambda)" if weighted else "Uniforme (1/N)"
+            print(f"\n  >> {label} (use_weighted={weighted})...")
+            try:
+                r = run_experiment(ds_cfg, use_weighted=weighted)
+                results_table.append(
+                    {
+                        "dataset": ds_name,
+                        "mode": label,
+                        "use_weighted": weighted,
+                        **r,
+                    }
+                )
+                print(
+                    f"     Global:  Acc={r['global_acc']:.4f}  "
+                    f"F1={r['global_f1']:.4f}  Trees={r['n_global_trees']}"
+                )
+                print(
+                    f"     Hybrid:  Acc={r['avg_hybrid_acc']:.4f}  "
+                    f"F1={r['avg_hybrid_f1']:.4f}"
+                )
+                print(f"     Local trees per client: {r['local_tree_counts']}")
+                print(f"     Convergence round: {r['convergence_round']}")
+                print(f"     Time: {r['elapsed_s']:.1f}s")
+            except Exception as exc:
+                import traceback
 
-for r in results_table:
-    print(f"{r['dataset']:<12} {r['mode']:<22} {r['global_acc']:>10.4f} {r['global_f1']:>10.4f} {r['avg_hybrid_acc']:>10.4f} {r['avg_hybrid_f1']:>10.4f} {r['n_global_trees']:>7}")
+                print(f"     ERROR: {exc}")
+                traceback.print_exc()
 
-# ── Differences ───────────────────────────────────────────────────────────────
-print(f"\n{'='*80}")
-print("  DIFFERENCES (Ponderado - Uniforme)")
-print(f"{'='*80}")
+    # ── Summary table ─────────────────────────────────────────────────────────
+    print(f"\n\n{'=' * 80}")
+    print("  RESULTS SUMMARY")
+    print(f"{'=' * 80}")
+    print(
+        f"{'Dataset':<12} {'Mode':<22} {'Global Acc':>10} "
+        f"{'Global F1':>10} {'Hybrid Acc':>10} {'Hybrid F1':>10} "
+        f"{'#Trees':>7}"
+    )
+    print("-" * 83)
 
-for ds_name in DATASETS:
-    weighted_r = next((r for r in results_table if r['dataset'] == ds_name and r['use_weighted']), None)
-    uniform_r = next((r for r in results_table if r['dataset'] == ds_name and not r['use_weighted']), None)
-    if weighted_r and uniform_r:
-        d_acc = weighted_r['avg_hybrid_acc'] - uniform_r['avg_hybrid_acc']
-        d_f1 = weighted_r['avg_hybrid_f1'] - uniform_r['avg_hybrid_f1']
-        print(f"  {ds_name:<12}  Delta Hybrid Acc: {d_acc:+.4f}   Delta Hybrid F1: {d_f1:+.4f}")
-        print(f"               Local trees: {weighted_r['local_tree_counts']}  Global trees: {weighted_r['n_global_trees']}")
-        ratio = max(weighted_r['local_tree_counts']) / weighted_r['n_global_trees'] if weighted_r['n_global_trees'] > 0 else 0
-        print(f"               Ratio max_local/global: {ratio:.2f}")
+    for r in results_table:
+        print(
+            f"{r['dataset']:<12} {r['mode']:<22} "
+            f"{r['global_acc']:>10.4f} {r['global_f1']:>10.4f} "
+            f"{r['avg_hybrid_acc']:>10.4f} {r['avg_hybrid_f1']:>10.4f} "
+            f"{r['n_global_trees']:>7}"
+        )
 
-print("\nDone.")
+    # ── Differences ───────────────────────────────────────────────────────────
+    print(f"\n{'=' * 80}")
+    print("  DIFFERENCES (Ponderado - Uniforme)")
+    print(f"{'=' * 80}")
+
+    for ds_name in DATASETS:
+        weighted_r = next(
+            (
+                res
+                for res in results_table
+                if res["dataset"] == ds_name and res["use_weighted"]
+            ),
+            None,
+        )
+        uniform_r = next(
+            (
+                res
+                for res in results_table
+                if res["dataset"] == ds_name and not res["use_weighted"]
+            ),
+            None,
+        )
+        if weighted_r and uniform_r:
+            d_acc = (
+                weighted_r["avg_hybrid_acc"] - uniform_r["avg_hybrid_acc"]
+            )
+            d_f1 = weighted_r["avg_hybrid_f1"] - uniform_r["avg_hybrid_f1"]
+            print(
+                f"  {ds_name:<12}  Delta Hybrid Acc: {d_acc:+.4f}   "
+                f"Delta Hybrid F1: {d_f1:+.4f}"
+            )
+            print(
+                f"               Local trees: "
+                f"{weighted_r['local_tree_counts']}  Global trees: "
+                f"{weighted_r['n_global_trees']}"
+            )
+            ratio = (
+                max(weighted_r["local_tree_counts"])
+                / weighted_r["n_global_trees"]
+                if weighted_r["n_global_trees"] > 0
+                else 0
+            )
+            print(f"               Ratio max_local/global: {ratio:.2f}")
+
+    print("\nDone.")
+
+
+if __name__ == "__main__":
+    main()

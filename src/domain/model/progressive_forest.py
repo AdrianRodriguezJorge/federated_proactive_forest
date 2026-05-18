@@ -1,48 +1,50 @@
+"""Progressive Forest wrapper using Comparative Progressive Forest (CPF).
+
+Provides automated episodic training and convergence-based early stopping.
 """
-Progressive Forest wrapper usando ComparativeProgressiveForest (CPF).
 
-Este módulo proporciona una interfaz simplificada para entrenar Proactive Forest
-con early stopping basado en convergencia.
-
-Uso:
-    from src.domain.model.progressive_forest import ProgressiveForest
-
-    pf = ProgressiveForest(proactive_forest_instance, verbose=False)
-    pf.fit_with_early_stopping(X_train, y_train, X_val, y_val)
-    forest = pf.get_forest()
-"""
-from typing import Any
+from typing import Any, Optional
 import numpy as np
-
 
 
 class ComparativeProgressiveForest:
     """Comparative Progressive Forest (CPF) implementation.
-    
-    Trains a ProactiveForest in episodes, applying early stopping based on 
+
+    Trains a ProactiveForest in episodes, applying early stopping based on
     the convergence of validation accuracy across trees.
     """
 
-    def __init__(self, classifier, verbose: bool = False, convergence_threshold: float = 0.002):
-        """
-        :param classifier: Instancia de ProactiveForestClassifier.
-        :param verbose: Si True, imprime logs de progreso (útil para debug/notebooks).
-        :param convergence_threshold: Umbral de convergencia para early stopping.
+    def __init__(
+        self,
+        classifier: Any,
+        verbose: bool = False,
+        convergence_threshold: float = 0.002,
+    ):
+        """Initializes CPF tracking.
+
+        Args:
+            classifier (Any): Instancia de ProactiveForestClassifier.
+            verbose (bool): Si True, imprime logs de progreso.
+            convergence_threshold (float): Umbral de convergencia.
         """
         self._classifier = classifier
         self.CONVERGENCE = convergence_threshold
         self.EPISODE = 5
         self.verbose = verbose
 
-    def fit(self, X, y, Xt, yt):
-        """
-        Entrena CPF con early stopping.
+    def fit(
+        self, X: np.ndarray, y: np.ndarray, Xt: np.ndarray, yt: np.ndarray
+    ) -> "ComparativeProgressiveForest":
+        """Train CPF with early stopping.
 
-        :param X: Datos de entrenamiento.
-        :param y: Etiquetas de entrenamiento.
-        :param Xt: Datos de validación (usados para medir convergencia).
-        :param yt: Etiquetas de validación.
-        :return: self
+        Args:
+            X (np.ndarray): Training features.
+            y (np.ndarray): Training labels.
+            Xt (np.ndarray): Validation features.
+            yt (np.ndarray): Validation labels.
+
+        Returns:
+            ComparativeProgressiveForest: Self.
         """
         X = np.asarray(X)
         y = np.asarray(y)
@@ -56,9 +58,10 @@ class ComparativeProgressiveForest:
         self._classifier.clean_trees()
 
         while models_built < self._classifier.n_estimators:
-            self._classifier.buildEpisode(X, y, Xt, yt, self.EPISODE,
-                                          verbose=self.verbose)
-            # Contar árboles realmente construidos (puede ser menos que self.EPISODE si se alcanza el límite)
+            self._classifier.buildEpisode(
+                X, y, Xt, yt, self.EPISODE, verbose=self.verbose
+            )
+            # Count trees actually constructed
             new_trees = len(self._classifier._trees) - models_built
             models_built = len(self._classifier._trees)
 
@@ -66,64 +69,93 @@ class ComparativeProgressiveForest:
             max_accuracy = max(self._classifier._m_progressive_accuracy)
             episode_accuracy = max_accuracy - min_accuracy
 
-            # Convergence check based strictly on Thesis (Algoritmo 5): 
-            # Spread (Max - Min) <= Valor_Convergencia (0.002)
+            # Convergence check based strictly on Thesis (Algoritmo 5):
+            # Spread (Max - Min) <= Valor_Convergencia
             if episode_accuracy <= self.CONVERGENCE:
                 stop_counter += 1
                 if self.verbose:
-                    print(f"  [CPF] Condición de convergencia alcanzada (spread={episode_accuracy:.5f}, counter={stop_counter})")
+                    print(
+                        f"  [CPF] Condición de convergencia alcanzada "
+                        f"(spread={episode_accuracy:.5f}, "
+                        f"counter={stop_counter})"
+                    )
                 if stop_counter == 2:
-                    # Truncate ensemble to the point of maximum efficiency in the last episode
-                    best_idx_in_episode = np.argmax(self._classifier._m_progressive_accuracy)
-                    # Number of trees to keep: trees before this episode + (best_idx + 1)
-                    trees_to_keep = (models_built - new_trees) + (best_idx_in_episode + 1)
-                    self._classifier._trees = self._classifier._trees[:trees_to_keep]
+                    # Truncate ensemble to point of maximum validation efficiency
+                    best_idx_in_episode = np.argmax(
+                        self._classifier._m_progressive_accuracy
+                    )
+                    trees_to_keep = (models_built - new_trees) + (
+                        best_idx_in_episode + 1
+                    )
+                    self._classifier._trees = self._classifier._trees[
+                        :trees_to_keep
+                    ]
                     if self.verbose:
-                        print(f"  [CPF] Convergencia final alcanzada. Truncando bosque a {trees_to_keep} árboles.")
+                        print(
+                            f"  [CPF] Convergencia final alcanzada. "
+                            f"Truncando bosque a {trees_to_keep} árboles."
+                        )
                     break
             else:
                 stop_counter = 0
                 self.EPISODE += 1  # Standard progressive behavior
                 if self.verbose:
-                    print(f"  [CPF] No converge (spread={episode_accuracy:.5f}), aumentando episodio a {self.EPISODE}")
+                    print(
+                        f"  [CPF] No converge (spread={episode_accuracy:.5f}), "
+                        f"aumentando episodio a {self.EPISODE}"
+                    )
 
             if models_built + self.EPISODE > self._classifier.n_estimators:
                 self.EPISODE = self._classifier.n_estimators - models_built
 
             previous_episode_accuracy = episode_accuracy
             if self.verbose:
-                print(f"  [CPF] Árboles construidos={models_built}, próximo episodio={self.EPISODE}")
+                print(
+                    f"  [CPF] Árboles construidos={models_built}, "
+                    f"próximo episodio={self.EPISODE}"
+                )
                 print("  " + "-" * 40)
 
         return self
 
-    def return_forest(self):
-        """Retorna el clasificador interno con los árboles construidos."""
+    def return_forest(self) -> Any:
+        """Retorna el clasificador interno con los árboles construidos.
+
+        Returns:
+            Any: Inner classifier.
+        """
         return self._classifier
 
-    def forest_tree_size(self):
-        """Retorna el número de árboles construidos."""
+    def forest_tree_size(self) -> int:
+        """Retorna el número de árboles construidos.
+
+        Returns:
+            int: Tree count.
+        """
         return len(self._classifier._trees)
 
 
 class ProgressiveForest:
-    """
-    Wrapper para ComparativeProgressiveForest con interfaz simplificada.
+    """Wrapper for ComparativeProgressiveForest with simplified interface.
 
-    Implementa entrenamiento por episodios con early stopping basado en
-    convergencia de accuracy en validación.
-
-    Parámetros:
-    - CONVERGENCE: Umbral de convergencia (0.002 por defecto)
-    - EPISODE: Tamaño inicial del episodio (5 por defecto)
+    Implements episodic training with early stopping based on convergence.
     """
 
     CONVERGENCE_THRESHOLD = 0.002
     INITIAL_EPISODE_SIZE = 5
 
-    def __init__(self, forest: Any, verbose: bool = False, convergence_threshold: float = 0.002):
-        """
-        Inicializa Progressive Forest.
+    def __init__(
+        self,
+        forest: Any,
+        verbose: bool = False,
+        convergence_threshold: float = 0.002,
+    ):
+        """Initializes Progressive Forest.
+
+        Args:
+            forest (Any): Classifier or forest instance.
+            verbose (bool): Print debugging info.
+            convergence_threshold (float): Convergence threshold.
         """
         self.forest = forest
         self.verbose = verbose
@@ -135,41 +167,51 @@ class ProgressiveForest:
         X_train: np.ndarray,
         y_train: np.ndarray,
         X_val: np.ndarray,
-        y_val: np.ndarray
-    ) -> 'ProgressiveForest':
-        # ...
-        if hasattr(self.forest, '_classifier'):
+        y_val: np.ndarray,
+    ) -> "ProgressiveForest":
+        """Fit forest with early stopping based on convergence.
+
+        Args:
+            X_train (np.ndarray): Training features.
+            y_train (np.ndarray): Training labels.
+            X_val (np.ndarray): Validation features.
+            y_val (np.ndarray): Validation labels.
+
+        Returns:
+            ProgressiveForest: Self.
+        """
+        if hasattr(self.forest, "_classifier"):
             classifier = self.forest._classifier
         else:
             classifier = self.forest
 
         self._cpf = ComparativeProgressiveForest(
-            classifier, 
+            classifier,
             verbose=self.verbose,
-            convergence_threshold=self.convergence_threshold
+            convergence_threshold=self.convergence_threshold,
         )
         self._cpf.fit(X_train, y_train, X_val, y_val)
 
         return self
 
     def get_forest(self) -> Any:
-        """
-        Retorna el bosque entrenado.
+        """Retorna el bosque entrenado.
 
         Returns:
-            El clasificador con los árboles construidos por CPF
+            Any: The trained forest classifier.
         """
         if self._cpf is not None:
             return self._cpf.return_forest()
         return self.forest
 
     def forest_tree_size(self) -> int:
-        """
-        Retorna el número de árboles construidos.
+        """Retorna el número de árboles construidos.
 
         Returns:
-            Número de árboles en el bosque
+            int: Tree count.
         """
         if self._cpf is not None:
             return self._cpf.forest_tree_size()
-        return len(self.forest._trees) if hasattr(self.forest, '_trees') else 0
+        if hasattr(self.forest, "_trees"):
+            return len(self.forest._trees)
+        return 0

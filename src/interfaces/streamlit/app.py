@@ -1,14 +1,19 @@
-"""
-Entrypoint de la interfaz Streamlit.
+"""Entrypoint de la interfaz Streamlit.
+
 Ejecutar: streamlit run src/interfaces/streamlit/app.py
 """
-import sys
+
 import os
-ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.."))
+import sys
+
+import streamlit as st
+
+ROOT = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "../../..")
+)
 if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
-import streamlit as st
 from src.interfaces.streamlit.state.session_state import SessionState
 
 st.set_page_config(
@@ -22,7 +27,8 @@ st.set_page_config(
 SessionState.initialize_defaults()
 
 # ── Custom CSS for Theme Consistency ─────────────────────────────────────────
-st.markdown("""
+st.markdown(
+    """
     <style>
     /* MIMETIZAR MENSAJES CON EL FONDO DE LA PÁGINA (SAGE THEME) */
     [data-testid="stAlert"], .stAlert {
@@ -39,7 +45,9 @@ st.markdown("""
     }
 
     /* Asegurar que todo el texto sea del color oscuro restaurado */
-    [data-testid="stAlert"] div, [data-testid="stAlert"] p, [data-testid="stAlert"] span {
+    [data-testid="stAlert"] div,
+    [data-testid="stAlert"] p,
+    [data-testid="stAlert"] span {
         color: #2C2C2C !important;
         font-weight: 500 !important;
     }
@@ -61,7 +69,9 @@ st.markdown("""
         overflow: hidden !important;
     }
 
-    [data-testid="stAlert"] div, [data-testid="stAlert"] p, [data-testid="stAlert"] span {
+    [data-testid="stAlert"] div,
+    [data-testid="stAlert"] p,
+    [data-testid="stAlert"] span {
         color: #2C2C2C !important;
         font-weight: 500 !important;
     }
@@ -71,22 +81,24 @@ st.markdown("""
         font-weight: bold !important;
     }
     </style>
-""", unsafe_allow_html=True)
+""",
+    unsafe_allow_html=True,
+)
 
 # Auto-load last config from file if session state is empty
 if st.session_state.get("fl_config") is None:
-    from src.interfaces.streamlit.pages_manual.page_config import load_config_from_file, _load_dataset
+    from src.interfaces.streamlit.pages_manual.page_config import (
+        load_config_from_file,
+    )
+
     saved_cfg = load_config_from_file()
     if saved_cfg:
         try:
-            # We don't load the full dataset here to keep app startup fast, 
-            # but we load the metadata so navigation is correct.
-            # page_run or page_config will handle the full dataset load if needed.
             st.session_state["fl_config"] = saved_cfg
         except Exception:
             pass
 
-# ── Navigation ────────────────────────────────────────────────────────────────
+# ── Navigation ───────────────────────────────────────────────────────────────
 st.sidebar.title("🌲 Federated Proactive Forest")
 st.sidebar.markdown("---")
 
@@ -94,7 +106,7 @@ st.sidebar.markdown("---")
 fl_config = st.session_state.get("fl_config") or {}
 strategy = fl_config.get("aggregation", {}) or {}
 strategy_id = strategy.get("strategy", "")
-is_s9 = (strategy_id == "s9_roulette")
+is_s9 = strategy_id == "s9_roulette"
 
 pages = [
     "⚙️  Configuración",
@@ -120,10 +132,15 @@ if st.session_state.last_page != page:
     st.components.v1.html(
         """
         <script>
-            window.parent.document.querySelector('section.main').scrollTo(0, 0);
+            var sectionMain = window.parent.document.querySelector(
+                'section.main'
+            );
+            if (sectionMain) {
+                sectionMain.scrollTo(0, 0);
+            }
         </script>
         """,
-        height=0
+        height=0,
     )
 
 # Track current page
@@ -132,16 +149,21 @@ SessionState.set("current_page", page)
 # ── Load selected page ───────────────────────────────────────────────────────
 if page == "⚙️  Configuración":
     from src.interfaces.streamlit.pages_manual import page_config
+
     page_config.render()
 elif page == "▶️  Ejecutar":
     from src.interfaces.streamlit.pages_manual import page_run
+
     page_run.render()
 elif page == "🎰 Evolución de Ruleta":
     from src.interfaces.streamlit.pages_manual import page_roulette
+
     page_roulette.render()
 elif page == "🏆 Ranking de Árboles":
     from src.interfaces.streamlit.pages_manual import page_ranking
+
     page_ranking.render()
 elif page == "📊 Métricas":
     from src.interfaces.streamlit.pages_manual import page_metrics
+
     page_metrics.render()

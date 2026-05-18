@@ -20,6 +20,7 @@ def test_proactive_forest_fit_predict():
 
 def test_proactive_forest_progressive_stopping():
     """Verifica que el criterio de parada progresivo funcione."""
+    np.random.seed(42)
     X = np.random.rand(100, 5)
     y = np.random.randint(0, 2, 100)
     

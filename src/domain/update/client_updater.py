@@ -1,22 +1,35 @@
-"""
-No-Repeat Merge: actualiza el bosque del cliente con el global
-excluyendo los árboles locales ya seleccionados durante la agregación.
+"""No-Repeat Merge for Client Forest Updates.
 
-bosque_extendido = local_no_seleccionados + todos_los_árboles_globales
+Updates the client's local forest with the globally aggregated server forest
+by excluding any local trees that were already selected during the server
+aggregation round.
 """
+
 from typing import Any, List
 
 
 class ClientUpdater:
+    """Handles updating client local forests using global forests."""
+
     @staticmethod
-    def merge(local_trees: List[Any], global_trees: List[Any],
-              selected_local_ids: List[int]) -> List[Any]:
-        """
-        :param local_trees: Árboles del bosque local antes de la ronda.
-        :param global_trees: Árboles del bosque global recibido del servidor.
-        :param selected_local_ids: Índices locales que ya están en el bosque global.
-        :return: Lista combinada sin duplicados.
+    def merge(
+        local_trees: List[Any],
+        global_trees: List[Any],
+        selected_local_ids: List[int],
+    ) -> List[Any]:
+        """Merges global and local forests excluding selected local trees.
+
+        Args:
+            local_trees (List[Any]): Client's local trees before the round.
+            global_trees (List[Any]): Global trees received from the server.
+            selected_local_ids (List[int]): Local indices already in the
+                global forest.
+
+        Returns:
+            List[Any]: Merged forest containing surviving local and all global.
         """
         selected_set = set(selected_local_ids)
-        surviving_local = [t for i, t in enumerate(local_trees) if i not in selected_set]
+        surviving_local = [
+            t for i, t in enumerate(local_trees) if i not in selected_set
+        ]
         return surviving_local + global_trees

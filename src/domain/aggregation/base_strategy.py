@@ -1,13 +1,30 @@
+"""Abstract base interfaces for Federated Forest aggregation strategies.
+
+Specifies parameters and signatures required by all global federated trees
+selection strategies (e.g. S1-S7, S9, Progressive Windows).
+"""
+
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Tuple, Optional
+from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
-from src.domain.metrics.metrics_service import IMetricsService, IDiversityService
+
+from src.domain.metrics.metrics_service import IDiversityService, IMetricsService
 
 
 class IAggregationStrategy(ABC):
-    def __init__(self, 
-                 metrics_service: Optional[IMetricsService] = None,
-                 diversity_service: Optional[IDiversityService] = None):
+    """Abstract baseline class for all Federated Forest aggregation strategies."""
+
+    def __init__(
+        self,
+        metrics_service: Optional[IMetricsService] = None,
+        diversity_service: Optional[IDiversityService] = None,
+    ):
+        """Initializes strategy dependency state.
+
+        Args:
+            metrics_service (Optional[IMetricsService]): Performance metrics.
+            diversity_service (Optional[IDiversityService]): Diversity metrics.
+        """
         self.metrics_svc = metrics_service
         self.diversity_svc = diversity_service
 
@@ -15,33 +32,48 @@ class IAggregationStrategy(ABC):
     def aggregate(
         self,
         client_trees: Dict[str, List[Any]],
-        client_metadata: Dict,
+        client_metadata: Dict[str, Any],
         X_val: Optional[np.ndarray] = None,
         y_val: Optional[np.ndarray] = None,
         max_trees: Optional[int] = None,
         max_trees_per_client: Optional[int] = None,
         t_max: Optional[int] = None,
-        **kwargs
-    ) -> Tuple[List[Any], Dict[str, List[int]], List[Any], Optional[int], List[Dict]]:
+        **kwargs: Any,
+    ) -> Tuple[
+        List[Any],
+        Dict[str, List[int]],
+        List[Any],
+        Optional[int],
+        List[Dict[str, Any]],
+    ]:
         """Aggregate trees for the global model.
 
         Args:
-            client_trees: Dict mapping client_id to list of trees
-            client_metadata: Dict mapping client_id to metadata
-            X_val: Validation features for Progressive Forest convergence (S2-S7)
-            y_val: Validation labels for Progressive Forest convergence (S2-S7)
-            max_trees: Maximum number of trees for global strategies (S2-S4)
-            max_trees_per_client: Maximum trees per client for per-client strategies (S5-S7)
-            t_max: Maximum number of trees in global model (T_MAX en tesis, default: 100)
-            **kwargs: Strategy-specific parameters (e.g., f1_weight, pcd_weight)
+            client_trees (Dict[str, List[Any]]): Dict mapping client_id to list.
+            client_metadata (Dict[str, Any]): Dict mapping client_id to meta.
+            X_val (Optional[np.ndarray]): Validation features.
+            y_val (Optional[np.ndarray]): Validation labels.
+            max_trees (Optional[int]): Maximum number of trees (S2-S4).
+            max_trees_per_client (Optional[int]): Max trees per client (S5-S7).
+            t_max (Optional[int]): Maximum trees in global model (T_MAX).
+            **kwargs (Any): Strategy-specific parameters.
 
         Returns:
-          - List[DecisionTree]: árboles del bosque global
-          - Dict[str, List[int]]: {client_id: [global_indices_of_selected_trees]}
-          - List[TreeEntry]: todas las entradas (trees + metadata) en el orden usado para el ranking
+            Tuple: A tuple containing:
+                - List[Any]: Trees in global forest.
+                - Dict[str, List[int]]: Global indices of selected trees.
+                - List[Any]: TreeEntry list in ranking order.
+                - Optional[int]: Selected T_MAX tree count.
+                - List[Dict[str, Any]]: Strategy evaluation log metrics.
         """
-        ...
+        pass
 
     @property
     @abstractmethod
-    def strategy_id(self) -> str: ...
+    def strategy_id(self) -> str:
+        """Get unique strategy identifier.
+
+        Returns:
+            str: Strategy code name.
+        """
+        pass

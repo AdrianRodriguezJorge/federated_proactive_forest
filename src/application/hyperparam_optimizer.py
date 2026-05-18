@@ -1,33 +1,28 @@
 """Hyperparameter Optimization using Optuna.
 
 Bayesian optimization for Federated Proactive Forest aggregation strategies.
-Wraps FLEXOrchestrator and RouletteOrchestrator to automatically find optimal hyperparameters.
-
-Usage:
-    optimizer = HyperparamOptimizer(
-        dataset_split=dataset,
-        strategy='S6',
-        base_config=base_config,
-        search_space=search_space
-    )
-    study = optimizer.optimize(n_trials=50, metric='macro_f1')
-    print(study.best_params)
+Wraps FLEXOrchestrator and RouletteOrchestrator to automatically find optimal
+hyperparameters.
 """
+
 from __future__ import annotations
+import copy
+from dataclasses import dataclass
+from typing import Any, Callable, Dict, Optional
 
 import optuna
 import numpy as np
-import copy
-from typing import Any, Dict, Optional
-from dataclasses import dataclass
 
 from src.application.orchestrators import FLEXOrchestrator
-from src.application.orchestrators.roulette_orchestrator import RouletteOrchestrator
+from src.application.orchestrators.roulette_orchestrator import (
+    RouletteOrchestrator,
+)
 
 
 @dataclass
 class OptimizationConfig:
     """Configuration for hyperparameter optimization."""
+
     strategy: str
     metric: str
     n_trials: int
@@ -36,20 +31,9 @@ class OptimizationConfig:
 
 
 class HyperparamOptimizer:
-    """
-    Wraps Orchestrators for Bayesian hyperparameter optimization with Optuna.
+    """Wraps Orchestrators for Bayesian hyperparameter optimization.
 
     Supports all strategies S1-S7, PW (Progressive Windows) and S9 (Roulette).
-
-    Example:
-        >>> optimizer = HyperparamOptimizer(
-        ...     dataset_split=dataset,
-        ...     strategy='S9',
-        ...     base_config=base_config,
-        ...     search_space=search_space
-        ... )
-        >>> study = optimizer.optimize(n_trials=50, metric='macro_f1')
-        >>> print(f"Best params: {study.best_params}")
     """
 
     def __init__(
@@ -58,17 +42,19 @@ class HyperparamOptimizer:
         strategy: str,
         base_config: Dict[str, Any],
         search_space: Dict[str, Any],
-        verbose: bool = False
+        verbose: bool = False,
     ):
-        """
-        Initialize hyperparameter optimizer.
+        """Initialize hyperparameter optimizer.
 
         Args:
-            dataset_split: DatasetSplit with X_train, y_train, X_test, y_test
-            strategy: Strategy name ('S1'-'S7', 'PW', 'S9')
-            base_config: Base configuration dict (will be modified with sampled params)
-            search_space: Search space definition for each hyperparameter
-            verbose: Enable verbose logging during optimization
+            dataset_split (Any): Target dataset adapter split.
+            strategy (str): Strategy name ('S1'-'S7', 'PW', 'S9').
+            base_config (Dict[str, Any]): Base configuration dict.
+            search_space (Dict[str, Any]): Search space definition.
+            verbose (bool): Enable verbose logging during optimization.
+
+        Raises:
+            ValueError: If strategy is invalid.
         """
         self.dataset_split = dataset_split
         self.strategy = strategy.upper()
@@ -78,141 +64,135 @@ class HyperparamOptimizer:
         self._trial_count = 0
 
         # Validate strategy
-        valid_strategies = ['S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'PW', 'S9']
+        valid_strategies = [
+            "S1",
+            "S2",
+            "S3",
+            "S4",
+            "S5",
+            "S6",
+            "S7",
+            "PW",
+            "S9",
+        ]
         if self.strategy not in valid_strategies:
-            raise ValueError(f"Invalid strategy '{self.strategy}'. Must be one of {valid_strategies}")
+            raise ValueError(
+                f"Invalid strategy '{self.strategy}'. Must be one of "
+                f"{valid_strategies}"
+            )
 
     def _sample_params(self, trial: optuna.Trial) -> Dict[str, Any]:
-        """
-        Sample hyperparameters from search space using Optuna trial.
+        """Sample hyperparameters from search space using Optuna trial.
 
         Args:
-            trial: Optuna trial object
+            trial (optuna.Trial): Optuna trial object.
 
         Returns:
-            Dict with sampled hyperparameters
+            Dict[str, Any]: Sampled hyperparameters.
         """
         params = {}
 
         for param_name, param_config in self.search_space.items():
-            param_type = param_config.get('type', 'float')
+            param_type = param_config.get("type", "float")
 
-            if param_type == 'int':
+            if param_type == "int":
                 params[param_name] = trial.suggest_int(
                     param_name,
-                    low=param_config['low'],
-                    high=param_config['high'],
-                    step=param_config.get('step', 1)
+                    low=param_config["low"],
+                    high=param_config["high"],
+                    step=param_config.get("step", 1),
                 )
-            elif param_type == 'float':
-                if param_config.get('log', False):
+            elif param_type == "float":
+                if param_config.get("log", False):
                     params[param_name] = trial.suggest_float(
                         param_name,
-                        low=param_config['low'],
-                        high=param_config['high'],
-                        log=True
+                        low=param_config["low"],
+                        high=param_config["high"],
+                        log=True,
                     )
                 else:
                     params[param_name] = trial.suggest_float(
                         param_name,
-                        low=param_config['low'],
-                        high=param_config['high'],
-                        step=param_config.get('step', None)
+                        low=param_config["low"],
+                        high=param_config["high"],
+                        step=param_config.get("step", None),
                     )
-            elif param_type == 'categorical':
+            elif param_type == "categorical":
                 params[param_name] = trial.suggest_categorical(
-                    param_name,
-                    param_config['choices']
+                    param_name, param_config["choices"]
                 )
 
         return params
 
     def _build_config(self, params: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Build complete config dict by merging base config with sampled params.
+        """Build complete config dict by merging base config with sampled params.
 
         Args:
-            params: Sampled hyperparameters
+            params (Dict[str, Any]): Sampled hyperparameters.
 
         Returns:
-            Complete configuration dict for Orchestrators
+            Dict[str, Any]: Complete configuration dict for Orchestrators.
         """
         config = copy.deepcopy(self.base_config)
 
-        # Apply sampled params to config
         for param_path, value in params.items():
-            # Handle special cases where weights must sum to 1.0
-            if param_path == 'f1_weight':
-                # Set f1_weight and pcd_weight in aggregation
-                # pcd_weight is automatically calculated as 1.0 - f1_weight
-                # Used by S4, S7, and PW strategies
-                config.setdefault('aggregation', {})['f1_weight'] = value
-                config['aggregation']['pcd_weight'] = 1.0 - value
-            elif param_path == 'local_weight':
-                # Set local_weight and global_weight in prediction
-                config.setdefault('prediction', {})['local_weight'] = value
-                config['prediction']['global_weight'] = 1.0 - value
-            elif param_path == 'use_weighted':
-                # Set use_weighted in prediction
-                config.setdefault('prediction', {})['use_weighted'] = value
-            elif param_path == 't_max':
-                # Set t_max in aggregation
-                config.setdefault('aggregation', {})['t_max'] = value
-            elif param_path == 'n_clients':
-                # Set n_clients in federation
-                config.setdefault('federation', {})['n_clients'] = value
-            elif param_path == 'n_estimators':
-                # Set n_estimators in model
-                config.setdefault('model', {})['n_estimators'] = value
-            elif param_path == 'alpha_pf':
-                # Set alpha in model
-                config.setdefault('model', {})['alpha'] = value
-            elif param_path == 'window_size':
-                # Set window_size in aggregation (for PW and S9)
-                config.setdefault('aggregation', {})['window_size'] = value
-            elif param_path == 'max_rounds':
-                # Set max_rounds in aggregation (for PW and S9)
-                config.setdefault('aggregation', {})['max_rounds'] = value
-            elif param_path == 'convergence_threshold':
-                # Set global convergence_threshold in aggregation
-                config.setdefault('aggregation', {})['convergence_threshold'] = value
-            elif param_path == 'local_convergence':
-                # Set local convergence_threshold in model
-                config.setdefault('model', {})['convergence_threshold'] = value
-            elif param_path == 'beta':
-                # Set beta in aggregation (S9)
-                config.setdefault('aggregation', {})['beta'] = value
-            elif param_path == 'variant':
-                # Set variant in aggregation (S9)
-                config.setdefault('aggregation', {})['variant'] = value
-            elif param_path == 'dirichlet_alpha':
-                # Set alpha in federation (for non-iid)
-                config.setdefault('federation', {})['dirichlet_alpha'] = value
-            elif param_path == 'distribution':
-                # Set distribution type in federation
-                config.setdefault('federation', {})['distribution'] = value
+            if param_path == "f1_weight":
+                config.setdefault("aggregation", {})["f1_weight"] = value
+                config["aggregation"]["pcd_weight"] = 1.0 - value
+            elif param_path == "local_weight":
+                config.setdefault("prediction", {})["local_weight"] = value
+                config["prediction"]["global_weight"] = 1.0 - value
+            elif param_path == "use_weighted":
+                config.setdefault("prediction", {})["use_weighted"] = value
+            elif param_path == "t_max":
+                config.setdefault("aggregation", {})["t_max"] = value
+            elif param_path == "n_clients":
+                config.setdefault("federation", {})["n_clients"] = value
+            elif param_path == "n_estimators":
+                config.setdefault("model", {})["n_estimators"] = value
+            elif param_path == "alpha_pf":
+                config.setdefault("model", {})["alpha"] = value
+            elif param_path == "window_size":
+                config.setdefault("aggregation", {})["window_size"] = value
+            elif param_path == "max_rounds":
+                config.setdefault("aggregation", {})["max_rounds"] = value
+            elif param_path == "convergence_threshold":
+                config.setdefault("aggregation", {})[
+                    "convergence_threshold"
+                ] = value
+            elif param_path == "local_convergence":
+                config.setdefault("model", {})[
+                    "convergence_threshold"
+                ] = value
+            elif param_path == "beta":
+                config.setdefault("aggregation", {})["beta"] = value
+            elif param_path == "variant":
+                config.setdefault("aggregation", {})["variant"] = value
+            elif param_path == "dirichlet_alpha":
+                config.setdefault("federation", {})["dirichlet_alpha"] = value
+            elif param_path == "distribution":
+                config.setdefault("federation", {})["distribution"] = value
             else:
-                # Generic: try to set in aggregation first, then model, then federation
-                if 'aggregation' in config:
-                    config['aggregation'][param_path] = value
-                elif 'model' in config:
-                    config['model'][param_path] = value
+                if "aggregation" in config:
+                    config["aggregation"][param_path] = value
+                elif "model" in config:
+                    config["model"][param_path] = value
 
         return config
 
     def _objective(self, trial: optuna.Trial) -> float:
-        """
-        Objective function for Optuna to optimize.
+        """Objective function for Optuna to optimize.
 
         Args:
-            trial: Optuna trial object
+            trial (optuna.Trial): Optuna trial object.
 
         Returns:
-            Metric value to optimize (higher is better)
+            float: Metric value to optimize (higher is better).
+
+        Raises:
+            optuna.TrialPruned: If trial is pruned by MedianPruner.
         """
         self._trial_count += 1
-
-        # Sample hyperparameters
         params = self._sample_params(trial)
 
         if self.verbose:
@@ -221,57 +201,59 @@ class HyperparamOptimizer:
             print(f"{'='*60}")
             print(f"Params: {params}")
 
-        # Build config
         config = self._build_config(params)
+        config.setdefault("aggregation", {})["strategy"] = self.strategy
 
-        # Ensure strategy is set correctly
-        config.setdefault('aggregation', {})['strategy'] = self.strategy
-
-        # Set seed for reproducibility
-        seed = self.base_config.get('seed', 42)
+        seed = self.base_config.get("seed", 42)
         np.random.seed(seed)
 
         try:
-            # Create and run appropriate orchestrator
-            if self.strategy == 'S9':
+            if self.strategy == "S9":
                 orchestrator = RouletteOrchestrator(config)
-            elif self.strategy == 'PW':
-                from src.application.orchestrators.progressive_windows_orchestrator import ProgressiveWindowsOrchestrator
+            elif self.strategy == "PW":
+                from src.application.orchestrators.progressive_windows_orchestrator import (
+                    ProgressiveWindowsOrchestrator,
+                )
+
                 orchestrator = ProgressiveWindowsOrchestrator(config)
             else:
                 orchestrator = FLEXOrchestrator.from_config(config)
-            
+
             orchestrator.setup_federation(self.dataset_split, seed=seed)
             results = orchestrator.run_federated_round()
 
-            # Extract metric to optimize
             metric_name = self._get_metric_name()
-            
-            if metric_name == 'macro_f1':
+
+            if metric_name == "macro_f1":
                 metric_value = results.global_macro_f1
-            elif metric_name == 'accuracy':
+            elif metric_name == "accuracy":
                 metric_value = results.global_accuracy
-            elif metric_name == 'hybrid_macro_f1':
-                # Calculate mean of client hybrid F1 scores
+            elif metric_name == "hybrid_macro_f1":
                 f1_scores = list(results.client_f1_scores.values())
                 metric_value = np.mean(f1_scores) if f1_scores else 0.0
             else:
                 metric_value = results.global_macro_f1
 
-            # Report intermediate result for pruning
             trial.report(metric_value, step=0)
 
-            # Check if trial should be pruned
             if trial.should_prune():
                 if self.verbose:
-                    print(f"✂️  Trial {self._trial_count} PRUNED (metric={metric_value:.4f})")
+                    print(
+                        f"✂️  Trial {self._trial_count} PRUNED "
+                        f"(metric={metric_value:.4f})"
+                    )
                 raise optuna.TrialPruned()
 
             if self.verbose:
-                print(f"✅ Trial {self._trial_count} COMPLETED: {metric_name}={metric_value:.4f}")
-                print(f"   Trees: {results.n_trees_global}, "
-                      f"Accuracy: {results.global_accuracy:.4f}, "
-                      f"Macro-F1: {results.global_macro_f1:.4f}")
+                print(
+                    f"✅ Trial {self._trial_count} COMPLETED: "
+                    f"{metric_name}={metric_value:.4f}"
+                )
+                print(
+                    f"   Trees: {results.n_trees_global}, "
+                    f"Accuracy: {results.global_accuracy:.4f}, "
+                    f"Macro-F1: {results.global_macro_f1:.4f}"
+                )
 
             return metric_value
 
@@ -281,54 +263,51 @@ class HyperparamOptimizer:
             if self.verbose:
                 print(f"❌ Trial {self._trial_count} FAILED: {str(e)}")
                 import traceback
+
                 traceback.print_exc()
             raise optuna.TrialPruned()
 
     def _get_metric_name(self) -> str:
         """Get metric name for optimization."""
-        return self.base_config.get('optimization_metric', 'macro_f1')
+        return self.base_config.get("optimization_metric", "macro_f1")
 
     def optimize(
         self,
         n_trials: int = 50,
-        metric: str = 'macro_f1',
+        metric: str = "macro_f1",
         sampler: Optional[optuna.samplers.BaseSampler] = None,
         pruner: Optional[optuna.pruners.BasePruner] = None,
-        seed: int = 42
+        seed: int = 42,
     ) -> optuna.Study:
-        """
-        Run Bayesian hyperparameter optimization.
+        """Run Bayesian hyperparameter optimization.
 
         Args:
-            n_trials: Number of trials to run
-            metric: Metric to optimize ('macro_f1', 'accuracy', 'hybrid_macro_f1')
-            sampler: Optuna sampler (default: TPESampler)
-            pruner: Optuna pruner (default: MedianPruner)
-            seed: Random seed for reproducibility
+            n_trials (int): Number of trials to run.
+            metric (str): Metric to optimize.
+            sampler (Optional[optuna.samplers.BaseSampler]): Optuna sampler.
+            pruner (Optional[optuna.pruners.BasePruner]): Optuna pruner.
+            seed (int): Stable random seed.
 
         Returns:
-            Optuna Study object with optimization results
+            optuna.Study: Completed Optuna study object.
         """
-        # Update metric in config
-        self.base_config['optimization_metric'] = metric
+        self.base_config["optimization_metric"] = metric
 
-        # Create sampler
         if sampler is None:
             sampler = optuna.samplers.TPESampler(seed=seed, multivariate=True)
 
-        # Create pruner
         if pruner is None:
-            pruner = optuna.pruners.MedianPruner(n_startup_trials=5, n_warmup_steps=0)
+            pruner = optuna.pruners.MedianPruner(
+                n_startup_trials=5, n_warmup_steps=0
+            )
 
-        # Create study
         study = optuna.create_study(
-            direction='maximize',
+            direction="maximize",
             sampler=sampler,
             pruner=pruner,
-            study_name=f"{self.strategy}_{metric}_{n_trials}trials"
+            study_name=f"{self.strategy}_{metric}_{n_trials}trials",
         )
 
-        # Run optimization
         print(f"\n{'='*60}")
         print(f"🚀 INICIANDO OPTIMIZACIÓN BAYESIANA")
         print(f"{'='*60}")
@@ -339,9 +318,10 @@ class HyperparamOptimizer:
         print(f"   Pruner: {pruner.__class__.__name__}")
         print(f"{'='*60}\n")
 
-        study.optimize(self._objective, n_trials=n_trials, show_progress_bar=True)
+        study.optimize(
+            self._objective, n_trials=n_trials, show_progress_bar=True
+        )
 
-        # Print results
         print(f"\n{'='*60}")
         print(f"✅ OPTIMIZACIÓN COMPLETADA")
         print(f"{'='*60}")
@@ -355,28 +335,34 @@ class HyperparamOptimizer:
         return study
 
     def get_default_params(self) -> Dict[str, Any]:
-        """Get default hyperparameters from base config."""
+        """Get default hyperparameters from base config.
+
+        Returns:
+            Dict[str, Any]: Extracted default hyperparameters dict.
+        """
         defaults = {}
 
-        agg = self.base_config.get('aggregation', {})
-        defaults['f1_weight'] = agg.get('f1_weight', 0.5)
-        defaults['pcd_weight'] = agg.get('pcd_weight', 0.5)
-        defaults['t_max'] = agg.get('t_max', 100)
-        defaults['window_size'] = agg.get('window_size', 5)
-        defaults['max_rounds'] = agg.get('max_rounds', 20)
-        defaults['beta'] = agg.get('beta', 0.0)
+        agg = self.base_config.get("aggregation", {})
+        defaults["f1_weight"] = agg.get("f1_weight", 0.5)
+        defaults["pcd_weight"] = agg.get("pcd_weight", 0.5)
+        defaults["t_max"] = agg.get("t_max", 100)
+        defaults["window_size"] = agg.get("window_size", 5)
+        defaults["max_rounds"] = agg.get("max_rounds", 20)
+        defaults["beta"] = agg.get("beta", 0.0)
 
-        pred = self.base_config.get('prediction', {})
-        defaults['local_weight'] = pred.get('local_weight', 0.4)
-        defaults['global_weight'] = pred.get('global_weight', 0.6)
-        defaults['use_weighted'] = pred.get('use_weighted', True)
+        pred = self.base_config.get("prediction", {})
+        defaults["local_weight"] = pred.get("local_weight", 0.4)
+        defaults["global_weight"] = pred.get("global_weight", 0.6)
+        defaults["use_weighted"] = pred.get("use_weighted", True)
 
-        fed = self.base_config.get('federation', {})
-        defaults['n_clients'] = fed.get('n_clients', 5)
+        fed = self.base_config.get("federation", {})
+        defaults["n_clients"] = fed.get("n_clients", 5)
 
-        model = self.base_config.get('model', {})
-        defaults['n_estimators'] = model.get('n_estimators', 100)
-        defaults['alpha_pf'] = model.get('alpha', 0.1)
-        defaults['local_convergence'] = model.get('convergence_threshold', 0.002)
+        model = self.base_config.get("model", {})
+        defaults["n_estimators"] = model.get("n_estimators", 100)
+        defaults["alpha_pf"] = model.get("alpha", 0.1)
+        defaults["local_convergence"] = model.get(
+            "convergence_threshold", 0.002
+        )
 
         return defaults

@@ -24,10 +24,9 @@ def test_s1_aggregation_logic():
         "client_1": f2.estimators_
     }
     
-    # S1 espera metadatos de clientes como objetos ClientMetadata
     client_metadata = {
-        "client_0": ClientMetadata(client_id="client_0", accuracy=0.8),
-        "client_1": ClientMetadata(client_id="client_1", accuracy=0.7)
+        "client_0": ClientMetadata(client_id="client_0"),
+        "client_1": ClientMetadata(client_id="client_1")
     }
     
     global_trees, selected_indices, all_entries, _, _ = strategy.aggregate(

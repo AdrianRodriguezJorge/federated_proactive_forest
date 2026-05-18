@@ -1,23 +1,21 @@
 """Experiment result logger for Streamlit UI.
 
 Saves evaluation metrics (global + per-client) to CSV files organized by
-dataset × strategy combination. Each combination overwrites its previous log.
-
-Directory: results/streamlit_results/
-Filename:  {dataset_type}_{strategy_key}.csv
-Max files: len(datasets) × 8 strategies
+dataset x strategy combination. Each combination overwrites its previous log.
 """
-import logging
+
 from datetime import datetime
+import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional
-
 import pandas as pd
 
 logger = logging.getLogger(__name__)
 
-# Project root → results/streamlit_results/
-_LOG_DIR = Path(__file__).resolve().parents[4] / "results" / "streamlit_results"
+# Project root -> results/streamlit_results/
+_LOG_DIR = (
+    Path(__file__).resolve().parents[4] / "results" / "streamlit_results"
+)
 
 
 def _sanitize(name: str) -> str:
@@ -36,32 +34,30 @@ def save_experiment_log(
     results: Any,
     config: Dict[str, Any],
 ) -> Optional[Path]:
-    """
-    Save evaluation results to a CSV log file.
+    """Save evaluation results to a CSV log file.
 
     The CSV mirrors the comparison table from page_metrics:
-    Modelo | Accuracy | Macro-F1 | Macro Precision | Macro Recall | PCD | Tamaño Bosque
+    Modelo | Accuracy | Macro-F1 | Precision | Recall | PCD | Forest Size
 
-    Plus experiment metadata columns:
-    timestamp | dataset | strategy | n_clients | use_weighted | local_weight |
-    n_estimators | seed | convergence_round
+    Plus experiment metadata columns.
 
     Args:
-        results: FLResults from the federated round.
-        config: Full experiment configuration dict.
+        results (Any): FLResults from the federated round.
+        config (Dict[str, Any]): Full experiment configuration dict.
 
     Returns:
-        Path to the saved CSV, or None on error.
+        Optional[Path]: Path to the saved CSV, or None on error.
     """
     try:
         dataset_type = config.get("dataset", {}).get("type", "unknown")
-        strategy_key = config.get("aggregation", {}).get("strategy", "unknown")
+        strategy_key = config.get("aggregation", {}).get(
+            "strategy", "unknown"
+        )
         log_path = _build_log_path(dataset_type, strategy_key)
 
         # Ensure directory exists
         _LOG_DIR.mkdir(parents=True, exist_ok=True)
 
-        # ── Build rows (same logic as page_metrics comparison table) ──────
         rows: List[Dict[str, Any]] = []
 
         # Shared metadata for every row
@@ -71,8 +67,12 @@ def save_experiment_log(
             "dataset": dataset_type,
             "strategy": strategy_key,
             "n_clients": config.get("federation", {}).get("n_clients", ""),
-            "use_weighted": config.get("prediction", {}).get("use_weighted", True),
-            "local_weight": config.get("prediction", {}).get("local_weight", 0.4),
+            "use_weighted": config.get("prediction", {}).get(
+                "use_weighted", True
+            ),
+            "local_weight": config.get("prediction", {}).get(
+                "local_weight", 0.4
+            ),
             "n_estimators": config.get("model", {}).get("n_estimators", ""),
             "seed": config.get("seed", ""),
             "convergence_round": getattr(results, "convergence_round", None),
@@ -80,51 +80,63 @@ def save_experiment_log(
 
         # 1. Global model
         global_report = results.global_report
-        rows.append({
-            **meta_cols,
-            "modelo": "Global",
-            "accuracy": round(global_report.accuracy, 4),
-            "macro_f1": round(global_report.macro_f1, 4),
-            "macro_precision": round(global_report.macro_precision, 4),
-            "macro_recall": round(global_report.macro_recall, 4),
-            "pcd": round(global_report.pcd, 4),
-            "forest_size": global_report.forest_size,
-        })
+        rows.append(
+            {
+                **meta_cols,
+                "modelo": "Global",
+                "accuracy": round(global_report.accuracy, 4),
+                "macro_f1": round(global_report.macro_f1, 4),
+                "macro_precision": round(global_report.macro_precision, 4),
+                "macro_recall": round(global_report.macro_recall, 4),
+                "pcd": round(global_report.pcd, 4),
+                "forest_size": global_report.forest_size,
+            }
+        )
 
         # 2. Per-client (hybrid predictions)
         for cid in results.client_ids:
-            report = results.client_reports.get(cid) or results.client_reports.get(str(cid))
-            meta = results.client_metadata.get(cid) or results.client_metadata.get(str(cid))
+            report = results.client_reports.get(
+                cid
+            ) or results.client_reports.get(str(cid))
 
             if report:
-                if meta:
-                    if isinstance(meta, dict):
-                        pcd_val = round(meta.get('pcd', 0.0), 4)
-                    else:
-                        pcd_val = round(getattr(meta, 'pcd', 0.0), 4)
+                if hasattr(report, "pcd") and report.pcd is not None:
+                    pcd_val = round(report.pcd, 4)
                 else:
                     pcd_val = 0.0
-                rows.append({
-                    **meta_cols,
-                    "modelo": f"Client_{cid}",
-                    "accuracy": round(report.accuracy, 4),
-                    "macro_f1": round(report.macro_f1, 4),
-                    "macro_precision": round(report.macro_precision, 4),
-                    "macro_recall": round(report.macro_recall, 4),
-                    "pcd": pcd_val,
-                    "forest_size": report.forest_size,
-                })
 
-        # ── Write CSV (overwrite) ─────────────────────────────────────────
+                rows.append(
+                    {
+                        **meta_cols,
+                        "modelo": f"Client_{cid}",
+                        "accuracy": round(report.accuracy, 4),
+                        "macro_f1": round(report.macro_f1, 4),
+                        "macro_precision": round(report.macro_precision, 4),
+                        "macro_recall": round(report.macro_recall, 4),
+                        "pcd": pcd_val,
+                        "forest_size": report.forest_size,
+                    }
+                )
+
         df = pd.DataFrame(rows)
 
-        # Column order: metadata first, then metrics
         col_order = [
-            "timestamp", "dataset", "strategy", "modelo",
-            "accuracy", "macro_f1", "macro_precision", "macro_recall",
-            "pcd", "forest_size",
-            "n_clients", "use_weighted", "local_weight",
-            "n_estimators", "seed", "convergence_round",
+            "timestamp",
+            "dataset",
+            "strategy",
+            "modelo",
+            "accuracy",
+            "macro_f1",
+            "macro_precision",
+            "macro_recall",
+            "pcd",
+            "forest_size",
+            "n_clients",
+            "use_weighted",
+            "local_weight",
+            "n_estimators",
+            "seed",
+            "convergence_round",
         ]
         # Only keep columns that exist
         col_order = [c for c in col_order if c in df.columns]

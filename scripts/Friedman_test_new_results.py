@@ -1,113 +1,128 @@
-import pandas as pd
-import numpy as np
-from scipy.stats import friedmanchisquare, wilcoxon
+"""Script to run Friedman and post-hoc Wilcoxon tests with Bonferroni correction.
+
+Determines statistical significance between the Centralized Proactive Forest
+baseline (PF) and the various federated selection strategies.
+"""
+
 import os
+import pandas as pd
+from scipy.stats import friedmanchisquare, wilcoxon
 
-# =============================================================================
-# CONFIGURACIÓN Y CARGA DE DATOS
-# =============================================================================
 
-# Definimos la ruta al archivo de resultados
-csv_path = os.path.join("results", "comparison_vs_nayma_good", "comparison_table.csv")
+def run_friedman_bonferroni_analysis() -> None:
+    """Loads comparative F1 CSV and runs Friedman and Bonferroni tests."""
+    csv_path = os.path.join(
+        "results", "comparison_vs_nayma_good", "comparison_table.csv"
+    )
 
-# Cargamos los datos usando pandas
-df = pd.read_csv(csv_path)
+    if not os.path.exists(csv_path):
+        print(f"Error: No se encontró el archivo {csv_path}")
+        return
 
-# Extraemos los nombres de las bases de datos (columna 'BD')
-datasets = df['BD'].tolist()
+    df = pd.read_csv(csv_path)
 
-# Extraemos las métricas F1 para cada estrategia
-# El CSV tiene columnas como F1_PF, F1_S1, ..., F1_PW
-f1_pf = df['F1_PF'].values
-f1_s1 = df['F1_S1'].values
-f1_s2 = df['F1_S2'].values
-f1_s3 = df['F1_S3'].values
-f1_s4 = df['F1_S4'].values
-f1_s5 = df['F1_S5'].values
-f1_s6 = df['F1_S6'].values
-f1_s7 = df['F1_S7'].values
-f1_pw = df['F1_PW'].values
+    # Extraemos los nombres de las bases de datos (columna 'BD')
+    datasets = df["BD"].tolist()
 
-# Diccionario organizado para facilitar las comparaciones post-hoc y el ranking
-estrategias = {
-    "S1": f1_s1,
-    "S2": f1_s2,
-    "S3": f1_s3,
-    "S4": f1_s4,
-    "S5": f1_s5,
-    "S6": f1_s6,
-    "S7": f1_s7,
-    "PW": f1_pw
-}
+    # Extraemos las métricas F1 para cada estrategia
+    f1_pf = df["F1_PF"].values
+    f1_s1 = df["F1_S1"].values
+    f1_s2 = df["F1_S2"].values
+    f1_s3 = df["F1_S3"].values
+    f1_s4 = df["F1_S4"].values
+    f1_s5 = df["F1_S5"].values
+    f1_s6 = df["F1_S6"].values
+    f1_s7 = df["F1_S7"].values
+    f1_pw = df["F1_PW"].values
 
-print(f"--- Análisis Estadístico de Resultados (Datasets: {len(datasets)}) ---")
-print(f"Datos cargados desde: {csv_path}\n")
+    # Diccionario organizado para facilitar las comparaciones
+    estrategias = {
+        "S1": f1_s1,
+        "S2": f1_s2,
+        "S3": f1_s3,
+        "S4": f1_s4,
+        "S5": f1_s5,
+        "S6": f1_s6,
+        "S7": f1_s7,
+        "PW": f1_pw,
+    }
 
-# =============================================================================
-# 1. TEST DE FRIEDMAN (Diferencias Globales)
-# =============================================================================
-# El test de Friedman determina si existen diferencias significativas entre 
-# todos los grupos comparados simultáneamente.
+    n_ds = len(datasets)
+    print(f"--- Análisis Estadístico de Resultados (Datasets: {n_ds}) ---")
+    print(f"Datos cargados desde: {csv_path}\n")
 
-print("PASO 1: Test de Friedman (Comparación Global)")
-stat, p_friedman = friedmanchisquare(f1_pf, f1_s1, f1_s2, f1_s3, f1_s4, f1_s5, f1_s6, f1_s7, f1_pw)
+    # =========================================================================
+    # 1. TEST DE FRIEDMAN (Diferencias Globales)
+    # =========================================================================
+    print("PASO 1: Test de Friedman (Comparación Global)")
+    stat, p_friedman = friedmanchisquare(
+        f1_pf, f1_s1, f1_s2, f1_s3, f1_s4, f1_s5, f1_s6, f1_s7, f1_pw
+    )
 
-print(f"Estadístico de Friedman: {stat:.4f}")
-print(f"p-value: {p_friedman:.6f}")
+    print(f"Estadístico de Friedman: {stat:.4f}")
+    print(f"p-value: {p_friedman:.6f}")
 
-if p_friedman < 0.05:
-    print("Conclusión: EXISTEN diferencias estadísticamente significativas entre al menos dos estrategias.")
-else:
-    print("Conclusión: No se detectan diferencias significativas globales.")
-print("-" * 50)
+    if p_friedman < 0.05:
+        print(
+            "Conclusión: EXISTEN diferencias estadísticamente "
+            "significativas entre al menos dos estrategias."
+        )
+    else:
+        print("Conclusión: No se detectan diferencias significativas globales.")
+    print("-" * 50)
 
-# =============================================================================
-# 2. ANÁLISIS POST-HOC (Wilcoxon con Bonferroni)
-# =============================================================================
-# Si el test de Friedman es significativo, comparamos PF individualmente 
-# contra cada una de las otras estrategias.
+    # =========================================================================
+    # 2. ANÁLISIS POST-HOC (Wilcoxon con Bonferroni)
+    # =========================================================================
+    print("PASO 2: Análisis Post-hoc (PF vs cada estrategia)")
+    p_values = {}
+    for nombre, valores in estrategias.items():
+        _, p_val = wilcoxon(f1_pf, valores)
+        p_values[nombre] = p_val
 
-print("PASO 2: Análisis Post-hoc (PF vs cada estrategia)")
-p_values = {}
-for nombre, valores in estrategias.items():
-    # Test de Wilcoxon: prueba no paramétrica para muestras relacionadas
-    _, p_val = wilcoxon(f1_pf, valores)
-    p_values[nombre] = p_val
+    # Aplicamos la corrección de Bonferroni (multiplicar p por m)
+    m = len(p_values)
+    p_values_corr = {
+        nombre: min(p * m, 1.0) for nombre, p in p_values.items()
+    }
 
-# Aplicamos la corrección de Bonferroni (multiplicar p por el número de comparaciones)
-m = len(p_values)  # Número de comparaciones (8 estrategias contra PF)
-p_values_corr = {nombre: min(p * m, 1.0) for nombre, p in p_values.items()}
+    print(f"Resultados post-hoc (Corrección de Bonferroni para m={m}):")
+    for nombre in estrategias.keys():
+        sig = "(*)" if p_values_corr[nombre] < 0.05 else "(ns)"
+        p_orig = p_values[nombre]
+        p_corr = p_values_corr[nombre]
+        print(
+            f"  PF vs {nombre}: p-original = {p_orig:.6f}, "
+            f"p-corregido = {p_corr:.6f} {sig}"
+        )
+    print("-" * 50)
 
-print(f"Resultados post-hoc (Corrección de Bonferroni para m={m}):")
-for nombre in estrategias.keys():
-    sig = "(*)" if p_values_corr[nombre] < 0.05 else "(ns)"
-    print(f"  PF vs {nombre}: p-original = {p_values[nombre]:.6f}, p-corregido = {p_values_corr[nombre]:.6f} {sig}")
-print("-" * 50)
+    # =========================================================================
+    # 3. RANKING DE DIFERENCIAS MÁXIMAS
+    # =========================================================================
+    print("PASO 3: Ranking de Diferencias Máximas contra PF")
+    ranking = []
 
-# =============================================================================
-# 3. RANKING DE DIFERENCIAS MÁXIMAS
-# =============================================================================
-# Calculamos la diferencia absoluta máxima de F1 entre PF y cualquier otra 
-# estrategia para cada dataset, para identificar dónde el impacto es mayor.
+    for i, bd in enumerate(datasets):
+        valor_pf = f1_pf[i]
+        # Diferencias de todas las estrategias contra PF en este dataset
+        diffs = [abs(valor_pf - estrategias[s][i]) for s in estrategias]
+        max_diff_dataset = max(diffs)
+        ranking.append((bd, max_diff_dataset))
 
-print("PASO 3: Ranking de Diferencias Máximas contra PF")
-ranking = []
+    ranking.sort(key=lambda x: x[1], reverse=True)
 
-for i, bd in enumerate(datasets):
-    valor_pf = f1_pf[i]
-    # Diferencias de todas las estrategias contra PF en este dataset
-    diffs = [abs(valor_pf - estrategias[s][i]) for s in estrategias]
-    max_diff_dataset = max(diffs)
-    ranking.append((bd, max_diff_dataset))
+    print("Impacto de la estrategia (Diferencia máxima F1 vs PF) por dataset:")
+    for bd, diff in ranking:
+        print(f"  {bd:12}: {diff:.6f}")
 
-# Ordenamos el ranking de mayor diferencia a menor
-ranking.sort(key=lambda x: x[1], reverse=True)
+    max_total_bd, max_total_val = ranking[0]
+    print(
+        f"\nMayor diferencia absoluta global encontrada en "
+        f"'{max_total_bd}': {max_total_val:.6f}"
+    )
+    print("=" * 50)
 
-print("Impacto de la estrategia (Diferencia máxima F1 vs PF) por dataset:")
-for bd, diff in ranking:
-    print(f"  {bd:12}: {diff:.6f}")
 
-# Resumen final de la mayor diferencia encontrada
-max_total_bd, max_total_val = ranking[0]
-print(f"\nMayor diferencia absoluta global encontrada en '{max_total_bd}': {max_total_val:.6f}")
-print("=" * 50)
+if __name__ == "__main__":
+    run_friedman_bonferroni_analysis()
