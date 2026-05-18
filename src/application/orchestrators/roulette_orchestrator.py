@@ -272,7 +272,7 @@ class RouletteOrchestrator:
 
             if X_val is not None and y_val is not None:
                 y_val_numeric = self.label_svc.transform(y_val)
-                for cid in active_client_ids:
+                for cid in self.flex_pool.clients.actor_ids:
                     s_cid = str(cid)
                     client_model = self.flex_pool._models.get(s_cid)
                     if client_model is None and s_cid.isdigit():

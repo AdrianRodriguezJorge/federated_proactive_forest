@@ -131,7 +131,7 @@ def run_single_strategy(
                     n_estimators=100,
                     alpha=0.1,
                     class_names=split.class_names,
-                    local_convergence_threshold=0.002,
+                    convergence_threshold=0.002,
                 )
                 model.fit(X_c, y_c)
                 preds = model.predict(split.X_test)
