@@ -146,6 +146,7 @@ outputs/
 venv_py312/
 scratch/
 configs/last_config.json
+.agents/
 
 # Temporal
 *.tmp
