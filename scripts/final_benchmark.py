@@ -163,11 +163,11 @@ def run_single_strategy(
 
         fold_results.append(
             {
-                "f1": np.mean([r.macro_f1 for r in client_reports]),
-                "acc": np.mean([r.accuracy for r in client_reports]),
-                "recall": np.mean([r.macro_recall for r in client_reports]),
-                "prec": np.mean([r.macro_precision for r in client_reports]),
-                "pcd": np.mean([r.pcd for r in client_reports]),
+                "f1": res.hybrid_f1_mean,
+                "acc": res.hybrid_accuracy_mean,
+                "recall": res.hybrid_recall_mean,
+                "prec": res.hybrid_precision_mean,
+                "pcd": res.hybrid_pcd_mean,
             }
         )
 

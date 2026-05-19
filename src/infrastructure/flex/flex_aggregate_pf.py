@@ -75,7 +75,7 @@ def aggregate_trees_pf(
             "f1_weight": agg_config.get("f1_weight", 0.5),
             "pcd_weight": agg_config.get("pcd_weight", 1.0 - agg_config.get("f1_weight", 0.5)),
             "global_convergence_threshold": agg_config.get(
-                "global_convergence_threshold", 0.002
+                "global_convergence_threshold", agg_config.get("convergence_threshold", 0.002)
             ),
             "global_episode_size": agg_config.get("global_episode_size", 5),
             "local_weight": server_config.get("prediction", {}).get(

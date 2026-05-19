@@ -51,3 +51,38 @@ class FLResults:
     hybrid_weights: Dict[str, float] = field(
         default_factory=default_hybrid_weights
     )
+
+    @property
+    def hybrid_accuracy_mean(self) -> float:
+        """Mean accuracy of client hybrid models."""
+        if not self.client_reports:
+            return 0.0
+        return float(np.mean([r.accuracy for r in self.client_reports.values()]))
+
+    @property
+    def hybrid_f1_mean(self) -> float:
+        """Mean macro F1 score of client hybrid models."""
+        if not self.client_reports:
+            return 0.0
+        return float(np.mean([r.macro_f1 for r in self.client_reports.values()]))
+
+    @property
+    def hybrid_recall_mean(self) -> float:
+        """Mean macro recall of client hybrid models."""
+        if not self.client_reports:
+            return 0.0
+        return float(np.mean([r.macro_recall for r in self.client_reports.values()]))
+
+    @property
+    def hybrid_precision_mean(self) -> float:
+        """Mean macro precision of client hybrid models."""
+        if not self.client_reports:
+            return 0.0
+        return float(np.mean([r.macro_precision for r in self.client_reports.values()]))
+
+    @property
+    def hybrid_pcd_mean(self) -> float:
+        """Mean PCD of client hybrid models."""
+        if not self.client_reports:
+            return 0.0
+        return float(np.mean([r.pcd for r in self.client_reports.values()]))

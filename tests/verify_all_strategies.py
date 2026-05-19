@@ -79,7 +79,7 @@ def run_strategies_iris():
                 "variant": strategy_id,
                 "window_size": 2,
                 "max_rounds": 3,
-                "convergence_threshold": 0.0001,
+                "convergence_threshold": -1.0,
                 "beta": 0.5
             }
         }

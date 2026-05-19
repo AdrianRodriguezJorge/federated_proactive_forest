@@ -1,0 +1,82 @@
+================================================================================
+--- ANÁLISIS ESTADÍSTICO DE COMPARACIÓN CONTRA LA TESIS DE NAYMA ---
+================================================================================
+Datasets analizados (8): Iris, Car, Nursery, Vowel, Letter, Optdigits, Sonar, Spambase
+Resultados de benchmark cargados de: results\results_final_benchmark.csv
+Tabla comparativa guardada en: results\comparison_vs_nayma_good\comparison_table.csv
+
+--- TABLA COMPARATIVA DE F1-SCORES ---
+       BD  F1_PF F1_Local  F1_S1  F1_S2  F1_S3  F1_S4  F1_S5  F1_S6  F1_S7  F1_PW F1_S9_Weighted F1_S9_Mean F1_S9_Median F1_S9_Consensus F1_S9_Proactive
+     Iris 0.9549   0.9290 0.9564 0.9321 0.9321 0.9341 0.9436 0.9436 0.9342 0.9010         0.9061     0.9061       0.9061          0.9061          0.9061
+      Car 0.9457   0.7964 0.8625 0.8034 0.8002 0.8357 0.8373 0.8405 0.8167 0.7794         0.7487     0.7487       0.7487          0.7487          0.7487
+  Nursery 0.9548   0.8936 0.9171 0.8443 0.8932 0.8942 0.8964 0.9064 0.8934 0.6575         0.8819     0.8819       0.8816          0.8819          0.8818
+    Vowel 0.9684   0.6565 0.8150 0.6657 0.6630 0.7064 0.7172 0.7075 0.7080 0.7221         0.5901     0.5901       0.5910          0.5901          0.5908
+   Letter 0.9652   0.6802 0.7272 0.6659 0.6659 0.7067 0.6973 0.6954 0.6973 0.7049         0.6646     0.6646       0.6644          0.6646          0.6646
+Optdigits 0.9822   0.9335 0.9625 0.8686 0.8735 0.9200 0.9258 0.9257 0.9211 0.9398         0.9112     0.9112       0.9113          0.9112          0.9112
+    Sonar 0.8234   0.7194 0.7502 0.6942 0.7000 0.7071 0.7247 0.7162 0.7054 0.7016         0.6632     0.6632       0.6632          0.6632          0.6632
+ Spambase 0.9527   0.9181 0.9300 0.9050 0.9036 0.9125 0.9186 0.9186 0.9160 0.9247         0.9127     0.9127       0.9126          0.9127          0.9127
+
+--------------------------------------------------------------------------------
+PASO 1: Test de Friedman (Diferencias Globales)
+  [Global - Todas las Estrategias (15)]
+    Estadístico: 84.8694
+    p-value: 0.000000
+    Conclusión: EXISTEN diferencias significativas globales (p < 0.05).
+
+  [Estrategias Principales (9 + Baseline)]
+    Estadístico: 52.1153
+    p-value: 0.000000
+    Conclusión: EXISTEN diferencias significativas en el grupo principal (p < 0.05).
+--------------------------------------------------------------------------------
+PASO 2: Análisis Post-hoc (Nayma PF vs cada estrategia)
+Resultados post-hoc (Comparaciones m = 14):
+Estrategia                | Mean F1 | p-orig   | p-Bonf   | p-Holm   | Diferencia
+--------------------------------------------------------------------------------
+* Nayma PF (Centralizado) * | 0.9434  | -        | -        | -        | Baseline  
+S1 (Simple Pool)          | 0.8651  | 0.015625 | 0.218750 | 0.109375 | -0.0783 (*/ns/ns)
+S5 (Per-Client Acc)       | 0.8326  | 0.007812 | 0.109375 | 0.109375 | -0.1108 (*/ns/ns)
+S6 (Per-Client F1)        | 0.8317  | 0.007812 | 0.109375 | 0.109375 | -0.1117 (*/ns/ns)
+S4 (Global F1 PCD)        | 0.8271  | 0.007812 | 0.109375 | 0.109375 | -0.1163 (*/ns/ns)
+S7 (Per-Client F1 PCD)    | 0.8240  | 0.007812 | 0.109375 | 0.109375 | -0.1194 (*/ns/ns)
+Local Isolation           | 0.8159  | 0.007812 | 0.109375 | 0.109375 | -0.1275 (*/ns/ns)
+S3 (Global F1)            | 0.8040  | 0.007812 | 0.109375 | 0.109375 | -0.1395 (*/ns/ns)
+S2 (Global Acc)           | 0.7974  | 0.007812 | 0.109375 | 0.109375 | -0.1460 (*/ns/ns)
+PW (Proactive Window)     | 0.7914  | 0.007812 | 0.109375 | 0.109375 | -0.1520 (*/ns/ns)
+S9 Proactive PCD          | 0.7849  | 0.007812 | 0.109375 | 0.109375 | -0.1585 (*/ns/ns)
+S9 Median                 | 0.7849  | 0.007812 | 0.109375 | 0.109375 | -0.1586 (*/ns/ns)
+S9 Weighted Avg           | 0.7848  | 0.007812 | 0.109375 | 0.109375 | -0.1586 (*/ns/ns)
+S9 Simple Mean            | 0.7848  | 0.007812 | 0.109375 | 0.109375 | -0.1586 (*/ns/ns)
+S9 Consensus              | 0.7848  | 0.007812 | 0.109375 | 0.109375 | -0.1586 (*/ns/ns)
+
+Leyenda de significancia: (original / Bonferroni / Holm)
+  *  = Diferencia estadísticamente significativa (p < 0.05)
+  ns = No significativo
+
+[!] NOTA ESTADÍSTICA CRÍTICA:
+    Dado que solo tenemos 8 datasets (N=8), el p-valor original mínimo posible
+    para Wilcoxon es 0.007813. Al aplicar correcciones post-hoc para m=14,
+    el p-valor corregido mínimo es 0.007813 * 14 = 0.10938 (Bonferroni),
+    lo cual es mayor que 0.05. Por lo tanto, con N=8 y correcciones tan conservadoras,
+    es matemáticamente imposible declarar significancia corregida. Debe guiarse
+    por el p-valor original (p-orig) o la tendencia de rendimiento.
+--------------------------------------------------------------------------------
+PASO 3: Comparación de Pérdida/Ganancia de F1 vs Centralizado por Dataset
+Dataset      | Mejor Estrategia        | Diff F1  | Peor Estrategia         | Diff F1 
+--------------------------------------------------------------------------------
+Iris         | S1 (Simple Pool)        | +0.0015 | PW (Proactive Window)   | -0.0539
+Car          | S1 (Simple Pool)        | -0.0832 | S9 Weighted Avg         | -0.1970
+Nursery      | S1 (Simple Pool)        | -0.0377 | PW (Proactive Window)   | -0.2973
+Vowel        | S1 (Simple Pool)        | -0.1534 | S9 Weighted Avg         | -0.3783
+Letter       | S1 (Simple Pool)        | -0.2380 | S9 Median               | -0.3008
+Optdigits    | S1 (Simple Pool)        | -0.0197 | S2 (Global Acc)         | -0.1136
+Sonar        | S1 (Simple Pool)        | -0.0732 | S9 Weighted Avg         | -0.1602
+Spambase     | S1 (Simple Pool)        | -0.0227 | S3 (Global F1)          | -0.0491
+
+================================================================================
+--- CONCLUSIONES CLAVE DEL EXPERIMENTO ---
+================================================================================
+1. La mejor estrategia federada global en promedio es: 'S1 (Simple Pool)'
+   con un F1-score medio de 0.8651 (frente a 0.9434 del Centralizado).
+2. S1 (Simple Pool) obtiene un F1-score medio de 0.8651, superando a
+   Local Isolation (0.8159) por un margen de +0.0493,
+   lo cual demuestra cuantitativamente la efectividad de la agregación federada.
