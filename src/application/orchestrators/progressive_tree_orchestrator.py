@@ -229,19 +229,22 @@ class ProgressiveTreeOrchestrator:
                     best_idx = -1
     
                     for idx, tree in enumerate(w_trees):
-                        if idx < len(w_metrics):
-                            tree_f1 = w_metrics[idx].get("macro_f1", 0.0)
+                        cand_preds_raw = tree.predict(X_val_server)
+                        if self.label_svc:
+                            cand_preds_norm = self.label_svc.transform(
+                                cand_preds_raw
+                            )
                         else:
-                            tree_f1 = 0.0
+                            cand_preds_norm = cand_preds_raw
+
+                        # Calcular métrica (F1) en el conjunto de validación global del servidor
+                        tree_f1 = float(
+                            self.metrics_svc.f1_score(
+                                y_val_encoded, cand_preds_norm, average="macro"
+                            )
+                        )
     
                         if len(self.global_trees) > 0:
-                            cand_preds_raw = tree.predict(X_val_server)
-                            if self.label_svc:
-                                cand_preds_norm = self.label_svc.transform(
-                                    cand_preds_raw
-                                )
-                            else:
-                                cand_preds_norm = cand_preds_raw
                             diversity = self.diversity_svc.calculate_marginal_pcd(
                                 candidate_predictions=cand_preds_norm,
                                 current_hits_per_sample=global_correct_counts,
@@ -312,7 +315,7 @@ class ProgressiveTreeOrchestrator:
                 if (
                     global_prev_acc is not None
                     and acc_diff <= self.convergence_threshold
-                    and round_num >= self.min_rounds
+                    and (round_idx + 1) >= self.min_rounds
                 ):
                     global_stop_counter += 1
                     if global_stop_counter >= 2:

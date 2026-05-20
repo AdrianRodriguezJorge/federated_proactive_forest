@@ -112,7 +112,9 @@ def evaluate_hyperparams(
             "trees_per_round_per_client": trees_per_client,
             "min_episodes": patience,
             "min_rounds": patience,
-            "window_size": size_scale if strategy == "pw" else 5
+            "window_size": size_scale if strategy == "pw" else 5,
+            "f1_weight": 0.3,
+            "pcd_weight": 0.7
         },
     }
 

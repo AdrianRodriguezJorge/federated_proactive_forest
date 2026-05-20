@@ -53,24 +53,41 @@ def run_optimization():
                 f1_w = round(1.0 - pcd, 2)
                 pcd_w = round(pcd, 2)
                 
+                # Normalize strategy name for setting specific hyperparameters
+                from src.domain.aggregation.aggregation_factory import AggregationFactory
+                norm_strat = AggregationFactory.normalize_strategy_name(strategy)
+
+                global_ep_size = 5
+                trees_per_client_ep = 1
+                trees_per_rnd_client = 1
+                win_size = 5
+
+                if norm_strat == "S4":
+                    global_ep_size = 10
+                elif norm_strat == "S7":
+                    trees_per_client_ep = 3
+                elif norm_strat == "PW":
+                    win_size = 5
+                    trees_per_rnd_client = 3
+
                 config = {
                     "federation": {"n_clients": 3, "distribution": "dirichlet", "alpha": 0.5},
                     "model": {
                         "n_estimators": 50, 
                         "alpha": 0.1, 
                         "voting": "soft",
-                        "local_convergence_threshold": 0.005
+                        "local_convergence_threshold": 0.002
                     },
                     "aggregation": {
                         "strategy": strategy,
                         "variant": strategy,
-                        "window_size": 15,
+                        "window_size": win_size,
                         "max_rounds": 10,
                         "convergence_threshold": 0.002,
                         "t_max": 150,  # Suficientes árboles para permitir diversidad
-                        "global_episode_size": 15,
-                        "trees_per_client_per_episode": 5,
-                        "trees_per_round_per_client": 5,
+                        "global_episode_size": global_ep_size,
+                        "trees_per_client_per_episode": trees_per_client_ep,
+                        "trees_per_round_per_client": trees_per_rnd_client,
                         "min_episodes": 4,
                         "min_rounds": 4,
                         "f1_weight": f1_w,
