@@ -177,15 +177,17 @@ class PerClientProgressiveStrategy(ABC):
             metrics_service=self.metrics_svc or kwargs.get("metrics_service"),
             diversity_service=diversity_svc,
         )
+        trees_per_client = int(kwargs.get("trees_per_client_per_episode", 1))
         global_trees, selected_entries, conv_round, logs = selector.select(
             candidate_entries=round_robin_entries,
             X_val=X_val,
             y_val_norm=y_val_norm,
-            episode_size=len(client_ids),
+            episode_size=trees_per_client * len(client_ids),
             t_max=t_max if t_max is not None else self.T_MAX,
             convergence_threshold=kwargs.get(
                 "global_convergence_threshold", self.CONVERGENCE
             ),
+            min_episodes=kwargs.get("min_episodes", 4),
             label_service=label_svc,
             ranker=ranker,
         )

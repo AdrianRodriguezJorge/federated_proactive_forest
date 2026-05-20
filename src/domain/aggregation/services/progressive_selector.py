@@ -42,6 +42,7 @@ class ProgressiveSelector:
         episode_size: int,
         t_max: int,
         convergence_threshold: float,
+        min_episodes: int = 1,
         label_service: Optional[SimpleLabelService] = None,
         ranker: Optional[TreeRanker] = None,
     ) -> Tuple[
@@ -59,6 +60,7 @@ class ProgressiveSelector:
             episode_size (int): Tree count to add in each episode.
             t_max (int): Max ensemble size.
             convergence_threshold (float): Required accuracy improvement.
+            min_episodes (int): Minimum number of episodes before stopping.
             label_service (Optional[SimpleLabelService]): Transform encoder.
             ranker (Optional[TreeRanker]): Optional proactive re-sorter.
 
@@ -158,7 +160,7 @@ class ProgressiveSelector:
             )
 
             # Check convergence
-            if len(episode_accuracies) >= 2:
+            if len(episode_accuracies) >= 2 and episode_idx >= min_episodes:
                 improvement = episode_accuracies[-1] - episode_accuracies[-2]
                 if improvement < convergence_threshold:
                     stop_counter += 1

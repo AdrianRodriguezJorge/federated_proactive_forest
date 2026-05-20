@@ -163,6 +163,7 @@ class GlobalProgressiveStrategy(ABC):
             convergence_threshold=kwargs.get(
                 "global_convergence_threshold", self.CONVERGENCE
             ),
+            min_episodes=kwargs.get("min_episodes", 4),
             label_service=label_svc,
             ranker=ranker,
         )

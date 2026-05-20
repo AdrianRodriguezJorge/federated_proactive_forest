@@ -2,17 +2,23 @@ import sys
 import os
 import json
 import time
+import warnings
+
+# Silenciar el RuntimeWarning molesto de FLEX sobre los arreglos Numpy vs Listas
+warnings.filterwarnings("ignore", message="X_array or y_array are not a list nor a numpy array", category=RuntimeWarning)
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from src.application.orchestrators.fl_orchestrator import FLEXOrchestrator
-from src.infrastructure.datasets.dataset_factory import DatasetFactory
+from src.application.orchestrators.progressive_tree_orchestrator import ProgressiveTreeOrchestrator
+from src.infrastructure.dataset.dataset_factory import DatasetFactory
 
 def run_optimization():
-    print("Iniciando Optimización Exhaustiva del Peso PCD (Maximizar Accuracy)")
+    print("Iniciando Optimización Exhaustiva del Peso PCD (Maximizar Accuracy Híbrida Media)")
     
-    datasets = ["Iris", "Wine", "Breast", "Glass", "Vehicle", "Segment", "Optdigits", "Letter"]
-    strategies = ["S4", "S7"]
+    # Datasets reales del framework
+    datasets = ["Iris", "Car", "Nursery", "Vowel", "Letter", "Optdigits", "Sonar", "Spambase"]
+    strategies = ["S4", "S7", "pw"]
     pcd_weights = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
     
     results = {}
@@ -27,7 +33,14 @@ def run_optimization():
         
         # Load dataset
         try:
-            dataset_split = DatasetFactory.get_dataset(ds_name)
+            ds_config = {
+                "type": ds_name.lower(),
+                "test_size": 0.2,
+                "scale": True,
+                "scaler_type": "standard",
+                "seed": 42
+            }
+            dataset_split = DatasetFactory.load_from_config(ds_config)
         except Exception as e:
             print(f"Error cargando {ds_name}: {e}")
             continue
@@ -51,22 +64,30 @@ def run_optimization():
                     "aggregation": {
                         "strategy": strategy,
                         "variant": strategy,
-                        "window_size": 2,
+                        "window_size": 15,
                         "max_rounds": 10,
                         "convergence_threshold": 0.002,
                         "t_max": 150,  # Suficientes árboles para permitir diversidad
-                        "global_episode_size": 5,
+                        "global_episode_size": 15,
+                        "trees_per_client_per_episode": 5,
+                        "trees_per_round_per_client": 5,
+                        "min_episodes": 4,
+                        "min_rounds": 4,
                         "f1_weight": f1_w,
                         "pcd_weight": pcd_w
                     }
                 }
                 
                 try:
-                    orch = FLEXOrchestrator(config)
+                    if strategy == "pw":
+                        orch = ProgressiveTreeOrchestrator(config)
+                    else:
+                        orch = FLEXOrchestrator(config)
+                        
                     orch.setup_federation(dataset_split)
                     res = orch.run_federated_round(n_bootstrap=0)
                     
-                    acc = res.global_accuracy
+                    acc = res.hybrid_accuracy_mean
                     trees = res.n_trees_global
                     
                     results[ds_name][strategy].append({
@@ -75,7 +96,7 @@ def run_optimization():
                         "n_trees": trees
                     })
                     
-                    print(f"    PCD: {pcd_w:.1f} | F1_W: {f1_w:.1f} --> Acc: {acc:.4f} (Trees: {trees})")
+                    print(f"    PCD: {pcd_w:.1f} | F1_W: {f1_w:.1f} --> Hybrid Acc Mean: {acc:.4f} (Trees: {trees})")
                     
                     if hasattr(orch, 'cleanup'):
                         orch.cleanup()
@@ -95,3 +116,4 @@ def run_optimization():
 
 if __name__ == "__main__":
     run_optimization()
+

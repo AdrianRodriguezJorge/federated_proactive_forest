@@ -118,7 +118,16 @@ def run_single_strategy(
         config = {
             "federation": {"n_clients": N_CLIENTS, "distribution": "iid"},
             "model": {"n_estimators": 100, "alpha": 0.1, "voting": "soft"},
-            "aggregation": {"strategy": strategy, "max_rounds": 20},
+            "aggregation": {
+                "strategy": strategy, 
+                "max_rounds": 20,
+                "global_episode_size": 15,
+                "trees_per_client_per_episode": 5,
+                "trees_per_round_per_client": 5,
+                "min_episodes": 4,
+                "min_rounds": 4,
+                "window_size": 15,
+            },
         }
 
         if strategy == "local_isolation":

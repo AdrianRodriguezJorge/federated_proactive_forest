@@ -72,6 +72,10 @@ class ProgressiveTreeOrchestrator:
         self.convergence_threshold = float(
             agg_cfg.get("convergence_threshold", 0.002)
         )
+        self.min_rounds = int(agg_cfg.get("min_rounds", 4))
+        self.trees_per_round_per_client = int(
+            agg_cfg.get("trees_per_round_per_client", 1)
+        )
 
         self.n_estimators = self.max_rounds * self.window_size
         if "model" not in self.config:
@@ -219,55 +223,62 @@ class ProgressiveTreeOrchestrator:
                         f"data corruption."
                     )
 
-                best_tree = None
-                best_score = -1e9
-
-                for idx, tree in enumerate(w_trees):
-                    if idx < len(w_metrics):
-                        tree_f1 = w_metrics[idx].get("macro_f1", 0.0)
-                    else:
-                        tree_f1 = 0.0
-
-                    if len(self.global_trees) > 0:
-                        cand_preds_raw = tree.predict(X_val_server)
-                        if self.label_svc:
-                            cand_preds_norm = self.label_svc.transform(
-                                cand_preds_raw
+                for _ in range(min(self.trees_per_round_per_client, len(w_trees))):
+                    best_tree = None
+                    best_score = -1e9
+                    best_idx = -1
+    
+                    for idx, tree in enumerate(w_trees):
+                        if idx < len(w_metrics):
+                            tree_f1 = w_metrics[idx].get("macro_f1", 0.0)
+                        else:
+                            tree_f1 = 0.0
+    
+                        if len(self.global_trees) > 0:
+                            cand_preds_raw = tree.predict(X_val_server)
+                            if self.label_svc:
+                                cand_preds_norm = self.label_svc.transform(
+                                    cand_preds_raw
+                                )
+                            else:
+                                cand_preds_norm = cand_preds_raw
+                            diversity = self.diversity_svc.calculate_marginal_pcd(
+                                candidate_predictions=cand_preds_norm,
+                                current_hits_per_sample=global_correct_counts,
+                                n_existing_trees=len(self.global_trees),
+                                y_true=y_val_encoded,
                             )
                         else:
-                            cand_preds_norm = cand_preds_raw
-                        diversity = self.diversity_svc.calculate_marginal_pcd(
-                            candidate_predictions=cand_preds_norm,
-                            current_hits_per_sample=global_correct_counts,
-                            n_existing_trees=len(self.global_trees),
-                            y_true=y_val_encoded,
+                            diversity = 1.0
+    
+                        effective_f1_weight = (
+                            self.f1_weight if len(self.global_trees) > 0 else 1.0
                         )
-                    else:
-                        diversity = 1.0
-
-                    effective_f1_weight = (
-                        self.f1_weight if len(self.global_trees) > 0 else 1.0
-                    )
-                    pcd_weight = 1.0 - effective_f1_weight
-                    score = (effective_f1_weight * tree_f1) + (
-                        pcd_weight * diversity
-                    )
-
-                    if score > best_score:
-                        best_score = score
-                        best_tree = tree
-
-                if best_tree is not None:
-                    self.global_trees.append(best_tree)
-                    self.logger.info(
-                        f"  - Seleccionado mejor árbol de cliente {cid_str} "
-                        f"(score={best_score:.4f})"
-                    )
-                    preds_raw = best_tree.predict(X_val_server)
-                    preds_int = self.label_svc.transform(preds_raw)
-                    global_correct_counts += (preds_int == y_val_encoded).astype(
-                        int
-                    )
+                        pcd_weight = 1.0 - effective_f1_weight
+                        score = (effective_f1_weight * tree_f1) + (
+                            pcd_weight * diversity
+                        )
+    
+                        if score > best_score:
+                            best_score = score
+                            best_tree = tree
+                            best_idx = idx
+    
+                    if best_tree is not None:
+                        self.global_trees.append(best_tree)
+                        self.logger.info(
+                            f"  - Seleccionado árbol de cliente {cid_str} "
+                            f"(score={best_score:.4f})"
+                        )
+                        preds_raw = best_tree.predict(X_val_server)
+                        preds_int = self.label_svc.transform(preds_raw)
+                        global_correct_counts += (preds_int == y_val_encoded).astype(
+                            int
+                        )
+                        # Remove selected tree and its metrics to pick the next best
+                        w_trees.pop(best_idx)
+                        if best_idx < len(w_metrics):
+                            w_metrics.pop(best_idx)
 
             # Update global model
             self.flex_pool._models[server_id]["global_trees"] = (
@@ -301,6 +312,7 @@ class ProgressiveTreeOrchestrator:
                 if (
                     global_prev_acc is not None
                     and acc_diff <= self.convergence_threshold
+                    and round_num >= self.min_rounds
                 ):
                     global_stop_counter += 1
                     if global_stop_counter >= 2:
