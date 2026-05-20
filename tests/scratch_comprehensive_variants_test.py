@@ -22,6 +22,11 @@ from pandas.api.types import is_string_dtype
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import OrdinalEncoder, StandardScaler, LabelEncoder
 from joblib import Parallel, delayed
+import pytest
+
+# These are long-running scratch/benchmark scripts that monkey-patch core
+# behaviour. Skip during normal unit test runs to avoid side effects.
+pytest.skip("Skipping scratch benchmark tests during unit test runs", allow_module_level=True)
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
@@ -47,6 +52,7 @@ def patched_select(
     episode_size: int,
     t_max: int,
     convergence_threshold: float,
+    min_episodes: int = 1,
     label_service=None,
     ranker=None,
 ):
