@@ -23,16 +23,18 @@ model:
   use_progressive_stopping: true
   convergence: 0.002
   episode_size: 5
-  window_size: 5
+  window_size: 10
   verbose: false
 
 aggregation:
   strategy: "PW"
   f1_weight: 0.5
-  window_size: 5
+  window_size: 10
   max_rounds: 20
   convergence_threshold: 0.002
   t_max: 100
+  trees_per_round_per_client: 3
+  min_rounds: 3
 
 prediction:
   local_weight: 0.5

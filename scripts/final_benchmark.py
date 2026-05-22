@@ -127,16 +127,22 @@ def run_single_strategy(
     pcd_w = 0.5
 
     if norm_strat == "S4":
+        # S4: global episode size = number of trees added per episode
         global_ep_size = 10
         f1_w = 0.3
         pcd_w = 0.7
     elif norm_strat == "S7":
-        trees_per_client_ep = 3
+        # S7: prefer explicit total trees per episode; previously used 3 trees/client
+        # Maintain same budget: 3 trees per client * N_CLIENTS
+        global_ep_size = 3 * N_CLIENTS
+        # set per-client base quota for compatibility
+        trees_per_client_ep = max(1, global_ep_size // N_CLIENTS)
         f1_w = 0.3
         pcd_w = 0.7
     elif norm_strat == "PW":
+        # PW defaults: window size 5 and select 2 trees per client per round
         win_size = 5
-        trees_per_rnd_client = 3
+        trees_per_rnd_client = 2
         f1_w = 0.3
         pcd_w = 0.7
 
@@ -145,13 +151,18 @@ def run_single_strategy(
             "federation": {"n_clients": N_CLIENTS, "distribution": "iid"},
             "model": {"n_estimators": 100, "alpha": 0.1, "voting": "soft"},
             "aggregation": {
-                "strategy": strategy, 
+                "strategy": strategy,
                 "max_rounds": 20,
+                "global_convergence_threshold": 0.002,
+                "convergence_threshold": 0.002,
+                # Use explicit global_episode_size for S4/S7; harmless for others
                 "global_episode_size": global_ep_size,
+                # provide per-client quota as compatibility (floor division)
                 "trees_per_client_per_episode": trees_per_client_ep,
                 "trees_per_round_per_client": trees_per_rnd_client,
-                "min_episodes": 4,
-                "min_rounds": 4,
+                # enforce patience minimum = 5
+                "min_episodes": 5,
+                "min_rounds": 5,
                 "window_size": win_size,
                 "f1_weight": f1_w,
                 "pcd_weight": pcd_w,
@@ -184,6 +195,7 @@ def run_single_strategy(
             if strategy.startswith("s9_"):
                 variant = strategy.replace("s9_", "S9_").upper()
                 config["aggregation"]["variant"] = variant
+                config["aggregation"]["local_roulette_weight"] = 0.1
                 orch = RouletteOrchestrator(config)
             elif strategy == "pw":
                 orch = ProgressiveTreeOrchestrator(config)

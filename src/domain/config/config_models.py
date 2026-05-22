@@ -90,6 +90,8 @@ class AggregationConfig(BaseModel):
         window_size (int): Size of the evaluation sliding window.
             Defaults to 5.
         max_rounds (int): Maximum communication rounds. Defaults to 20.
+        min_rounds (int): Minimum number of rounds before early stopping.
+            Defaults to 5.
         convergence_threshold (float): Convergence criteria.
             Defaults to 0.002.
     """
@@ -100,6 +102,7 @@ class AggregationConfig(BaseModel):
     t_max: Optional[int] = None
     window_size: int = 5
     max_rounds: int = 20
+    min_rounds: int = 5
     convergence_threshold: float = 0.002
 
 

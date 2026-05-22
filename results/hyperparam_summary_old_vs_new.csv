@@ -1,0 +1,4 @@
+strategy,n_datasets,improved,worsened,unchanged,avg_delta_f1,avg_delta_acc,top_gain,top_drop
+pw,4,0,0,4,0.0,0.0,"{'dataset': 'Car', 'delta_f1_macro': 0.0, 'delta_accuracy': 0.0}","{'dataset': 'Car', 'delta_f1_macro': 0.0, 'delta_accuracy': 0.0}"
+s4_global_f1_pcd,4,0,0,4,0.0,0.0,"{'dataset': 'Car', 'delta_f1_macro': 0.0, 'delta_accuracy': 0.0}","{'dataset': 'Car', 'delta_f1_macro': 0.0, 'delta_accuracy': 0.0}"
+s7_perclient_f1_pcd,4,0,0,4,0.0,0.0,"{'dataset': 'Car', 'delta_f1_macro': 0.0, 'delta_accuracy': 0.0}","{'dataset': 'Car', 'delta_f1_macro': 0.0, 'delta_accuracy': 0.0}"

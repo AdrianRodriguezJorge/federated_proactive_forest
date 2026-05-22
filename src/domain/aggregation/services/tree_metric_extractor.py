@@ -77,25 +77,26 @@ class TreeMetricExtractor:
                     tree_acc = 0.0
                     tree_f1 = 0.0
 
-                # 2. Local PCD / Marginal PCD calculation
+                # 2. Per-tree PCD calculation based on the tree's marginal contribution
                 tree_pcd = 0.0
                 if (
                     predictions_matrix is not None
                     and X_val is not None
                     and y_val is not None
+                    and self.diversity_service is not None
                 ):
-                    y_val_reshaped = np.asarray(y_val).reshape(-1, 1)
+                    y_val_numeric = np.asarray(y_val)
+                    y_val_reshaped = y_val_numeric.reshape(-1, 1)
                     hits_matrix = predictions_matrix == y_val_reshaped
-                    hits_per_sample = np.sum(hits_matrix, axis=1)
-
-                    n_trees = predictions_matrix.shape[1]
-                    lower = 0.1 * n_trees
-                    upper = 0.9 * n_trees
-
-                    diverse_samples = np.sum(
-                        (hits_per_sample >= lower) & (hits_per_sample <= upper)
+                    hits_other = np.sum(
+                        np.delete(hits_matrix, local_id, axis=1), axis=1
                     )
-                    tree_pcd = float(diverse_samples / X_val.shape[0])
+                    tree_pcd = self.diversity_service.calculate_marginal_pcd(
+                        candidate_predictions=predictions_matrix[:, local_id],
+                        current_hits_per_sample=hits_other,
+                        n_existing_trees=predictions_matrix.shape[1] - 1,
+                        y_true=y_val_numeric,
+                    )
 
                 raw_entries.append(
                     {

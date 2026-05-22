@@ -131,10 +131,17 @@ class PerClientProgressiveStrategy(ABC):
         client_ranked_entries: Dict[str, List[TreeEntry]] = {}
         criterion = self._get_ranking_criterion(**kwargs)
         diversity_svc = self.diversity_svc or kwargs.get("diversity_service")
+        
+        f1_weight = kwargs.get("f1_weight", 0.5)
+        # Calculate pcd_weight as complement of f1_weight if not explicitly provided
+        pcd_weight = kwargs.get("pcd_weight")
+        if pcd_weight is None:
+            pcd_weight = 1.0 - f1_weight
+        
         ranker = TreeRanker(
             criterion=criterion,
-            f1_weight=kwargs.get("f1_weight", 0.5),
-            pcd_weight=kwargs.get("pcd_weight", 0.5),
+            f1_weight=f1_weight,
+            pcd_weight=pcd_weight,
             diversity_service=diversity_svc,
         )
 
@@ -169,27 +176,45 @@ class PerClientProgressiveStrategy(ABC):
         if y_val_norm.dtype == object:
             try:
                 y_val_norm = np.array(y_val_norm.tolist())
-            except Exception:
-                pass
+            except Exception as e:
+                import logging
+                logging.warning(f"Could not convert object array: {e}")
 
         # Step 3: Apply Progressive Forest with early stopping
         selector = ProgressiveSelector(
             metrics_service=self.metrics_svc or kwargs.get("metrics_service"),
             diversity_service=diversity_svc,
         )
-        trees_per_client = int(kwargs.get("trees_per_client_per_episode", 1))
+        # Determine per-client and episode size from explicit parameters.
+        # Prefer explicit `global_episode_size` which represents total trees
+        # to be added in the episode across all clients. If provided, compute
+        # per-client base quota (integer division) and use the total as
+        # `episode_size` for the selector. This preserves round-robin ordering
+        # so that remainder trees are distributed naturally across clients.
+        global_episode_size = kwargs.get("global_episode_size")
+        if global_episode_size is not None:
+            n_clients = len(client_ids)
+            base = max(0, global_episode_size // n_clients)
+            # episode_size is the total number of trees to add this episode
+            episode_size = int(global_episode_size)
+            trees_per_client = int(base) if base > 0 else 1
+        else:
+            trees_per_client = int(kwargs.get("trees_per_client_per_episode", 1))
+            episode_size = trees_per_client * len(client_ids)
+
         global_trees, selected_entries, conv_round, logs = selector.select(
             candidate_entries=round_robin_entries,
             X_val=X_val,
             y_val_norm=y_val_norm,
-            episode_size=trees_per_client * len(client_ids),
+            episode_size=episode_size,
             t_max=t_max if t_max is not None else self.T_MAX,
             convergence_threshold=kwargs.get(
                 "global_convergence_threshold", self.CONVERGENCE
             ),
-            min_episodes=kwargs.get("min_episodes", 4),
+            min_episodes=kwargs.get("min_episodes", 5),
             label_service=label_svc,
             ranker=ranker,
+            is_per_client=True,
         )
 
         selected_ids = {cid: [] for cid in client_trees.keys()}

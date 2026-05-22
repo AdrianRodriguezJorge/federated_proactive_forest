@@ -130,7 +130,8 @@ def test_tree_metric_extractor_marginal_pcd():
     # Samples 5-9: only tree_0 correct -> hits = 1 (diverse, fits between 0.2 and 1.8)
     # Diverse sample ratio: 5 / 10 = 0.5
     
-    extractor = TreeMetricExtractor(diversity_service=MockDiversityService())
+    from src.infrastructure.metrics.diversity_service import PredictionBasedDiversityService
+    extractor = TreeMetricExtractor(diversity_service=PredictionBasedDiversityService())
     raw_entries = extractor.extract_metrics(client_trees, client_metadata, X_val=X_val, y_val=y_val)
     
     assert raw_entries[0]["pcd"] == 0.3

@@ -127,10 +127,16 @@ class GlobalProgressiveStrategy(ABC):
         )
 
         criterion = self._get_ranking_criterion(**kwargs)
+        f1_weight = kwargs.get("f1_weight", 0.5)
+        # Calculate pcd_weight as complement of f1_weight if not explicitly provided
+        pcd_weight = kwargs.get("pcd_weight")
+        if pcd_weight is None:
+            pcd_weight = 1.0 - f1_weight
+        
         ranker = TreeRanker(
             criterion=criterion,
-            f1_weight=kwargs.get("f1_weight", 0.5),
-            pcd_weight=kwargs.get("pcd_weight", 0.5),
+            f1_weight=f1_weight,
+            pcd_weight=pcd_weight,
             diversity_service=diversity_svc,
         )
         ranked_entries = ranker.rank(entries)
@@ -147,8 +153,9 @@ class GlobalProgressiveStrategy(ABC):
         if y_val_norm.dtype == object:
             try:
                 y_val_norm = np.array(y_val_norm.tolist())
-            except Exception:
-                pass
+            except Exception as e:
+                import logging
+                logging.warning(f"Could not convert object array: {e}")
 
         selector = ProgressiveSelector(
             metrics_service=self.metrics_svc or kwargs.get("metrics_service"),
@@ -163,7 +170,7 @@ class GlobalProgressiveStrategy(ABC):
             convergence_threshold=kwargs.get(
                 "global_convergence_threshold", self.CONVERGENCE
             ),
-            min_episodes=kwargs.get("min_episodes", 4),
+            min_episodes=kwargs.get("min_episodes", 5),
             label_service=label_svc,
             ranker=ranker,
         )

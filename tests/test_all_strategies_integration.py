@@ -57,7 +57,7 @@ def test_strategy_execution(name, strategy_id, synthetic_split):
             "window_size": 2,
             "max_rounds": 2,
             "convergence_threshold": 0.01,
-            "beta": 0.5
+            "local_roulette_weight": 0.5
         }
     }
     

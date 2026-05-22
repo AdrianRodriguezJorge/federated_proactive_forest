@@ -63,7 +63,7 @@ class RouletteResults(FLResults):
     """Extended FLResults for the S9 strategy with roulette-specific data."""
 
     roulette_variant: str = "S9_MEAN"
-    beta: float = 0.0
+    local_roulette_weight: float = 0.1
     n_features: int = 0
     total_communication_bytes: int = 0
     upload_bytes_per_round: List[int] = field(default_factory=list)
@@ -99,9 +99,10 @@ class RouletteOrchestrator:
         # S9-specific config
         agg_cfg = self.config.get("aggregation", {})
         self.variant = agg_cfg.get("variant", "S9_MEAN")
-        self.beta = float(agg_cfg.get("beta", 0.0))
+        self.local_roulette_weight = float(agg_cfg.get("local_roulette_weight", 0.1))
         self.window_size = int(agg_cfg.get("window_size", 5))
         self.max_rounds = int(agg_cfg.get("max_rounds", 20))
+        self.min_rounds = int(agg_cfg.get("min_rounds", 5))
         self.convergence_threshold = float(
             self.config.get("model", {}).get(
                 "local_convergence_threshold", 0.002
@@ -176,10 +177,10 @@ class RouletteOrchestrator:
 
         self.step_callback("Iniciando S9 Roulette Federada...", 5)
         self.logger.info(
-            f"Starting S9 with variant={self.variant}, beta={self.beta}"
+            f"Starting S9 with variant={self.variant}, local_roulette_weight={self.local_roulette_weight}"
         )
 
-        updater = RouletteUpdater(beta=self.beta)
+        updater = RouletteUpdater(local_roulette_weight=self.local_roulette_weight)
 
         total_upload = 0
         total_download = 0
@@ -300,7 +301,8 @@ class RouletteOrchestrator:
                                         X_val, y_val_numeric, diversity="pcd"
                                     )
                                 )
-                            except Exception:
+                            except ValueError as e:
+                                self.logger.warning(f"Could not calculate diversity measure: {e}")
                                 pcd = 0.0
                             server_eval_pcd[s_cid] = pcd
 
@@ -442,12 +444,20 @@ class RouletteOrchestrator:
             client_hybrid_predictions[s_cid] = preds_numeric
             all_local_preds.append(preds_numeric)
 
+            try:
+                real_pcd = pf.diversity_measure(
+                    X_test, y_test_numeric, diversity="pcd"
+                )
+            except ValueError as e:
+                self.logger.warning(f"Could not calculate diversity measure: {e}")
+                real_pcd = 0.0
+
             client_reports[s_cid] = ForestEvaluator.evaluate_from_predictions(
                 preds_numeric,
                 y_test_numeric,
                 class_names,
                 forest_size,
-                pcd=meta.get("pcd", 0.0),
+                pcd=real_pcd,
                 n_bootstrap=n_bootstrap,
             )
 
@@ -499,7 +509,7 @@ class RouletteOrchestrator:
             client_hybrid_predictions=client_hybrid_predictions,
             client_hybrid_forest_sizes=client_hybrid_forest_sizes,
             roulette_variant=self.variant,
-            beta=self.beta,
+            local_roulette_weight=self.local_roulette_weight,
             n_features=len(global_roulette_list) if global_roulette_list else 0,
             total_communication_bytes=total_upload + total_download,
             upload_bytes_per_round=upload_per_round,

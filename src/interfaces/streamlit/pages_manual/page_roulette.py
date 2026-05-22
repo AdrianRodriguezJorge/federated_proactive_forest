@@ -37,7 +37,7 @@ def render() -> None:
 
     with col2:
         st.metric("Variante", results.roulette_variant)
-        st.metric("Beta (Balance)", f"{results.beta:.2f}")
+        st.metric("Peso Ruleta Local", f"{results.local_roulette_weight:.2f}")
 
     # Round breakdown table
     st.write("**Detalle de comunicación por ronda**")

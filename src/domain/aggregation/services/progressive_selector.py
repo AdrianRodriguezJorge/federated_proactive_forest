@@ -45,6 +45,7 @@ class ProgressiveSelector:
         min_episodes: int = 1,
         label_service: Optional[SimpleLabelService] = None,
         ranker: Optional[TreeRanker] = None,
+        is_per_client: bool = False,
     ) -> Tuple[
         List[Any], List[TreeEntry], Optional[int], List[Dict[str, Any]]
     ]:
@@ -63,6 +64,7 @@ class ProgressiveSelector:
             min_episodes (int): Minimum number of episodes before stopping.
             label_service (Optional[SimpleLabelService]): Transform encoder.
             ranker (Optional[TreeRanker]): Optional proactive re-sorter.
+            is_per_client (bool): If True, rank candidates per client to preserve round-robin.
 
         Returns:
             Tuple: A tuple containing:
@@ -105,7 +107,32 @@ class ProgressiveSelector:
                         n_existing_trees=len(selected_entries),
                         y_true=y_val_norm,
                     )
-                remaining_candidates = ranker.rank(remaining_candidates)
+                if is_per_client:
+                    # Group remaining candidates by client_id, preserving order of appearance
+                    client_order = []
+                    for entry in remaining_candidates:
+                        if entry.client_id not in client_order:
+                            client_order.append(entry.client_id)
+
+                    client_groups = {cid: [] for cid in client_order}
+                    for entry in remaining_candidates:
+                        client_groups[entry.client_id].append(entry)
+
+                    # Sort each client's sub-pool independently using ranker
+                    sorted_groups = {
+                        cid: ranker.rank(group)
+                        for cid, group in client_groups.items()
+                    }
+
+                    # Interleave them back into round-robin order
+                    remaining_candidates = []
+                    max_len = max(len(g) for g in sorted_groups.values()) if sorted_groups else 0
+                    for idx in range(max_len):
+                        for cid in client_order:
+                            if idx < len(sorted_groups[cid]):
+                                remaining_candidates.append(sorted_groups[cid][idx])
+                else:
+                    remaining_candidates = ranker.rank(remaining_candidates)
 
             # Pick next episode
             current_episode = remaining_candidates[:episode_size]

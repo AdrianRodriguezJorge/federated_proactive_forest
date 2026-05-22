@@ -293,7 +293,7 @@ S9:
     type: categorical
     choices: ["S9_MEAN", "S9_CONSENSUS", "S9_MEDIAN", "S9_WEIGHTED", "S9_PROACTIVE_PCD"]
 
-  beta:
+  local_roulette_weight:
     type: float
     low: 0.0
     high: 1.0

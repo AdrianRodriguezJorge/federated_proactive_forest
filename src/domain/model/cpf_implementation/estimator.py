@@ -499,9 +499,48 @@ class DecisionForestClassifier:
         """
         X = np.asarray(X)
         y = np.asarray(y)
-        # Handle string labels
+        # Handle label types robustly when an encoder mapping exists.
+        # Cases to support:
+        # - `y` already contains integer indices -> use as-is (fast path)
+        # - `y` contains original label names (strings) -> map via _encoder_dict
+        # - `y` contains numeric strings -> try string lookup or numeric index
         if hasattr(self, "_encoder_dict"):
-            y = np.array([self._encoder_dict.get(val, 0) for val in y])
+            n_classes = len(self._encoder_dict)
+            # Fast path: already integer indices in valid range
+            if np.issubdtype(y.dtype, np.integer) and y.size > 0:
+                if np.all((y >= 0) & (y < n_classes)):
+                    y = y.astype(np.int64)
+                else:
+                    # Some integers out of range: map per-value defensively
+                    mapped = []
+                    for val in y:
+                        if val in self._encoder_dict:
+                            mapped.append(self._encoder_dict[val])
+                        else:
+                            sval = str(val)
+                            mapped.append(self._encoder_dict.get(sval, 0))
+                    y = np.array(mapped, dtype=np.int64)
+            else:
+                # Non-integer inputs: try mapping by label, by string, or numeric fallback
+                mapped = []
+                for val in y:
+                    if val in self._encoder_dict:
+                        mapped.append(self._encoder_dict[val])
+                        continue
+                    sval = str(val)
+                    if sval in self._encoder_dict:
+                        mapped.append(self._encoder_dict[sval])
+                        continue
+                    # Last attempt: numeric string -> integer index if valid
+                    try:
+                        ival = int(val)
+                        if 0 <= ival < n_classes:
+                            mapped.append(ival)
+                        else:
+                            mapped.append(0)
+                    except Exception:
+                        mapped.append(0)
+                y = np.array(mapped, dtype=np.int64)
         if diversity == "pcd":
             metric = PercentageCorrectDiversity()
         elif diversity == "qstat":

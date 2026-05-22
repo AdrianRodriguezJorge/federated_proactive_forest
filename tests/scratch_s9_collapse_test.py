@@ -1,4 +1,4 @@
-"""Demonstration of S9 beta=0 collapse across federated rounds."""
+"""Demonstration of S9 local_roulette_weight=0 collapse across federated rounds."""
 import sys, os
 import numpy as np
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -10,9 +10,9 @@ from src.domain.aggregation.strategies.s9_roulette_strategy import (
 )
 
 
-def run_simulation(beta: float):
+def run_simulation(local_roulette_weight: float):
     print(f"\n==========================================")
-    print(f"SIMULATING S9 FEDERATION WITH beta = {beta}")
+    print(f"SIMULATING S9 FEDERATION WITH local_roulette_weight = {local_roulette_weight}")
     print(f"==========================================")
 
     # 3 features
@@ -28,7 +28,7 @@ def run_simulation(beta: float):
     print(f"  Client 2: {c2_local}")
     print(f"  Client 3: {c3_local}")
 
-    updater = RouletteUpdater(beta=beta)
+    updater = RouletteUpdater(local_roulette_weight=local_roulette_weight)
 
     # Let's run 3 rounds
     client_vectors = {"c1": c1_local.copy(), "c2": c2_local.copy(), "c3": c3_local.copy()}
@@ -86,5 +86,5 @@ def run_simulation(beta: float):
 
 
 if __name__ == "__main__":
-    run_simulation(beta=0.0)
-    run_simulation(beta=0.3)
+    run_simulation(local_roulette_weight=0.0)
+    run_simulation(local_roulette_weight=0.3)

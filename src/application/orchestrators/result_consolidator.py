@@ -5,6 +5,7 @@ mixing predictions, computes statistical metrics (accuracy, PCD, f1-score,
 confusion matrices), and packages results for post-hoc validation.
 """
 
+import logging
 from typing import Any, Dict, List, Optional
 import numpy as np
 
@@ -150,7 +151,8 @@ class ResultConsolidator:
                 real_pcd = hybrid_forest.diversity_measure(
                     X_test, y_test_numeric, diversity="pcd"
                 )
-            except Exception:
+            except ValueError as e:
+                logging.warning(f"Could not calculate hybrid forest diversity measure: {e}")
                 real_pcd = 0.0
 
             client_hybrid_predictions[cid] = hybrid_preds
@@ -175,7 +177,8 @@ class ResultConsolidator:
                         X_test, y_test, diversity="pcd"
                     )
                 )
-            except Exception:
+            except ValueError as e:
+                logging.warning(f"Could not calculate global forest diversity measure: {e}")
                 global_pcd = 0.0
 
             global_report = ForestEvaluator.evaluate_from_predictions(

@@ -36,6 +36,22 @@ def run_experiment(
     Returns:
         Dict[str, Any]: Dict containing global and per-client metrics.
     """
+    from src.domain.aggregation.aggregation_factory import AggregationFactory
+    norm_strat = AggregationFactory.normalize_strategy_name(strategy)
+
+    global_ep_size = 5
+    trees_per_client_ep = 1
+    trees_per_rnd_client = 1
+    win_size = 5
+
+    if norm_strat == "S4":
+        global_ep_size = 10
+    elif norm_strat == "S7":
+        trees_per_client_ep = 3
+    elif norm_strat == "PW":
+        win_size = 10
+        trees_per_rnd_client = 3
+
     config = {
         "dataset": dataset_cfg,
         "federation": {
@@ -57,9 +73,14 @@ def run_experiment(
             "f1_weight": 0.5,
             "pcd_weight": 0.5,
             "global_convergence_threshold": 0.002,
-            "episode_size": 5,
-            "window_size": 5,
+            "convergence_threshold": 0.002,
+            "global_episode_size": global_ep_size,
+            "trees_per_client_per_episode": trees_per_client_ep,
+            "trees_per_round_per_client": trees_per_rnd_client,
+            "window_size": win_size,
             "max_rounds": 20,
+            "min_episodes": 3,
+            "min_rounds": 3,
         },
         "prediction": {
             "local_weight": 0.4,

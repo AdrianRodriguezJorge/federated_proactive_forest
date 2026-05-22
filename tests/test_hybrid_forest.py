@@ -1,5 +1,6 @@
 import pytest
 import numpy as np
+from src.domain.model.cpf_implementation.estimator import ProactiveForestClassifier
 from src.domain.model.hybrid_forest import HybridForest
 from src.domain.services.label_service import SimpleLabelService
 
@@ -107,3 +108,31 @@ def test_hybrid_forest_diversity_measure():
     # Verify invalid diversity metric raises ValueError
     with pytest.raises(ValueError):
         hybrid.diversity_measure(X, y, diversity='invalid')
+
+
+def test_proactive_forest_classifier_diversity_handles_numeric_labels_with_string_encoder():
+    """Verify ProactiveForestClassifier.diversity_measure handles numeric y labels.
+
+    This guards against the case where encoder keys are stored as string values
+    while the target labels are numeric integers.
+    """
+    class NumericDummyTree:
+        def __init__(self, predictions):
+            self.predictions = np.asarray(predictions, dtype=np.int64)
+
+        def predict(self, X):
+            return self.predictions
+
+    classifier = ProactiveForestClassifier(n_estimators=2, alpha=0.1)
+    classifier._trees = [
+        NumericDummyTree([0, 1, 0]),
+        NumericDummyTree([1, 1, 0]),
+    ]
+    classifier._encoder_dict = {"0": 0, "1": 1}
+
+    X = np.zeros((3, 1))
+    y = np.array([0, 1, 0], dtype=np.int64)
+
+    diversity = classifier.diversity_measure(X, y, diversity="pcd")
+    assert diversity > 0.0
+    assert diversity <= 1.0

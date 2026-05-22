@@ -69,12 +69,21 @@ class ProgressiveTreeOrchestrator:
         self.window_size = int(agg_cfg.get("window_size", 5))
         self.max_rounds = int(agg_cfg.get("max_rounds", 20))
         self.f1_weight = float(agg_cfg.get("f1_weight", 0.5))
+        # Calculate pcd_weight as complement of f1_weight if not explicitly provided
+        self.pcd_weight = agg_cfg.get("pcd_weight")
+        if self.pcd_weight is None:
+            self.pcd_weight = 1.0 - self.f1_weight
+        else:
+            self.pcd_weight = float(self.pcd_weight)
+        
         self.convergence_threshold = float(
             agg_cfg.get("convergence_threshold", 0.002)
         )
-        self.min_rounds = int(agg_cfg.get("min_rounds", 4))
+        # patience / min_rounds lower bound set to 5
+        self.min_rounds = int(agg_cfg.get("min_rounds", 5))
+        # default trees to select per client per round is 2
         self.trees_per_round_per_client = int(
-            agg_cfg.get("trees_per_round_per_client", 1)
+            agg_cfg.get("trees_per_round_per_client", 2)
         )
 
         self.n_estimators = self.max_rounds * self.window_size
@@ -257,9 +266,9 @@ class ProgressiveTreeOrchestrator:
                         effective_f1_weight = (
                             self.f1_weight if len(self.global_trees) > 0 else 1.0
                         )
-                        pcd_weight = 1.0 - effective_f1_weight
+                        # Use the stored pcd_weight
                         score = (effective_f1_weight * tree_f1) + (
-                            pcd_weight * diversity
+                            self.pcd_weight * diversity
                         )
     
                         if score > best_score:
@@ -341,7 +350,9 @@ class ProgressiveTreeOrchestrator:
         )
         self.flex_pool._models[server_id]["model"] = global_forest
 
-        server_val_dataset = Dataset.from_array(X_val_server, y_val_server)
+        server_val_dataset = Dataset.from_array(
+            np.asarray(X_val_server), np.asarray(y_val_server)
+        )
         from src.infrastructure.flex.flex_evaluate_pf import (
             evaluate_global_pf_model,
             evaluate_global_pf_model_at_clients,

@@ -141,6 +141,11 @@ class ProgressiveWindowsStrategy(IAggregationStrategy):
             ValueError: If validation data is missing.
         """
         self.f1_weight = kwargs.get("f1_weight", self.f1_weight)
+        # Calculate pcd_weight as complement of f1_weight if not explicitly provided
+        self.pcd_weight = kwargs.get("pcd_weight")
+        if self.pcd_weight is None:
+            self.pcd_weight = 1.0 - self.f1_weight
+        
         self.window_size = kwargs.get("window_size", self.window_size)
         self.max_rounds = kwargs.get("max_rounds", self.max_rounds)
         self.convergence_threshold = kwargs.get(
@@ -237,9 +242,9 @@ class ProgressiveWindowsStrategy(IAggregationStrategy):
                 effective_f1_weight = (
                     self.f1_weight if len(self._global_trees) > 0 else 1.0
                 )
-                pcd_weight = 1.0 - effective_f1_weight
+                # Use the stored pcd_weight
                 score = (
-                    effective_f1_weight * tree_f1 + pcd_weight * diversity
+                    effective_f1_weight * tree_f1 + self.pcd_weight * diversity
                 )
                 tree_scores.append(
                     (global_idx, tree, score, tree_f1, diversity)

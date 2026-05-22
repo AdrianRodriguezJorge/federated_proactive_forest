@@ -12,6 +12,6 @@ model:
 
 aggregation:
   strategy: "s9_proactive_pcd"
-  beta: 0.1
+  local_roulette_weight: 0.1
   window_size: 5
   max_rounds: 20

@@ -140,3 +140,65 @@ def test_progressive_selector_proactive_re_ranking():
     
     # For episode 2 (when tree1 is selected), it calculates marginal PCD for tree2
     assert div_svc.marginal_pcd_calls > 0
+
+
+def test_progressive_selector_per_client_ranking():
+    """Verify that is_per_client=True keeps round-robin ordering of client candidates intact, while re-ranking internally."""
+    y_val = np.array([0, 1, 0, 1])
+    X_val = np.zeros((4, 2))
+    
+    # Client 0 trees
+    t0_1 = SpyTree(np.array([0, 1, 0, 1]), label="c0_t1")
+    t0_2 = SpyTree(np.array([0, 0, 1, 1]), label="c0_t2")
+    # Client 1 trees
+    t1_1 = SpyTree(np.array([1, 1, 0, 0]), label="c1_t1")
+    t1_2 = SpyTree(np.array([1, 0, 1, 0]), label="c1_t2")
+
+    entries = [
+        TreeEntry(tree=t0_1, client_id="c0", tree_local_id=0, accuracy=0.8, macro_f1=0.8, pcd=0.5),
+        TreeEntry(tree=t1_1, client_id="c1", tree_local_id=0, accuracy=0.8, macro_f1=0.8, pcd=0.5),
+        TreeEntry(tree=t0_2, client_id="c0", tree_local_id=1, accuracy=0.8, macro_f1=0.8, pcd=0.5),
+        TreeEntry(tree=t1_2, client_id="c1", tree_local_id=1, accuracy=0.8, macro_f1=0.8, pcd=0.5)
+    ]
+    
+    ranker = TreeRanker(RankingCriterion.F1_PCD, f1_weight=0.5, pcd_weight=0.5)
+    
+    # Mock diversity service that returns custom values based on label to force re-ranking
+    class CustomDiversityService(IDiversityService):
+        def calculate_pcd(self, pm, yt): return 0.5
+        def calculate_pcd_samples(self, pm, yt): return np.ones(yt.shape[0])
+        def calculate_marginal_pcd(self, candidate_predictions, current_hits_per_sample, n_existing_trees, y_true):
+            # We want to check if the ranker swaps the order of client 0's trees:
+            # Let's say we prefer t0_2 over t0_1, and t1_2 over t1_1:
+            # If the tree has local_id == 1, return high PCD. If local_id == 0, return low PCD.
+            # We don't have direct access to TreeEntry inside calculate_marginal_pcd, but we can look at predictions.
+            # t0_2 has predictions [0, 0, 1, 1], t1_2 has [1, 0, 1, 0].
+            if np.array_equal(candidate_predictions, [0, 0, 1, 1]) or np.array_equal(candidate_predictions, [1, 0, 1, 0]):
+                return 0.99
+            return 0.01
+
+    div_svc = CustomDiversityService()
+    selector = ProgressiveSelector(metrics_service=MockMetricsService(), diversity_service=div_svc)
+    
+    selected_trees, selected_entries, convergence_round, round_logs = selector.select(
+        candidate_entries=entries,
+        X_val=X_val,
+        y_val_norm=y_val,
+        episode_size=1,
+        t_max=4,
+        convergence_threshold=0.001,
+        ranker=ranker,
+        is_per_client=True
+    )
+    
+    # If round-robin client order is preserved:
+    # Selected entries order MUST alternate client_id: c0, c1, c0, c1
+    client_ids = [e.client_id for e in selected_entries]
+    assert client_ids == ["c0", "c1", "c0", "c1"]
+    
+    # But within each client's pool, the order MUST have been swapped (local_id 1 before local_id 0):
+    # C0: local_id 1 (t0_2) then local_id 0 (t0_1)
+    # C1: local_id 1 (t1_2) then local_id 0 (t1_1)
+    tree_local_ids = [e.tree_local_id for e in selected_entries]
+    assert tree_local_ids == [1, 1, 0, 0]
+

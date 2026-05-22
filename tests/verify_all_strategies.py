@@ -80,7 +80,7 @@ def run_strategies_iris():
                 "window_size": 2,
                 "max_rounds": 3,
                 "convergence_threshold": -1.0,
-                "beta": 0.5
+                "local_roulette_weight": 0.5
             }
         }
         

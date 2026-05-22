@@ -62,7 +62,9 @@ def train_window_pf_pw(
             random_state=42,
             stratify=y if len(np.unique(y)) > 1 else None,
         )
-    except Exception:
+    except Exception as e:
+        import logging
+        logging.warning(f"Stratified split failed, falling back to non-stratified: {e}")
         X_train, X_val, y_train, y_val = train_test_split(
             X, y, test_size=0.2, random_state=42
         )

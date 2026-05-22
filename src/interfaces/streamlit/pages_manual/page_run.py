@@ -182,8 +182,8 @@ def render() -> None:
                 st.metric("🧠 Estrategia", strat_label)
             with row2_c3:
                 if is_s9:
-                    beta_val = getattr(results, "beta", 0.0)
-                    st.metric("⚖️ Beta (Local)", f"{beta_val:.2f}")
+                    weight_val = getattr(results, "local_roulette_weight", 0.0)
+                    st.metric("⚖️ Peso Ruleta Local", f"{weight_val:.2f}")
                 else:
                     st.metric("🌲 Árboles Global", results.n_trees_global)
 
@@ -258,8 +258,8 @@ def render() -> None:
             st.metric("🧠 Estrategia", strat_label)
         with row2_c3:
             if is_s9_tag:
-                beta_val = getattr(results, "beta", 0.0)
-                st.metric("⚖️ Beta (Local)", f"{beta_val:.2f}")
+                weight_val = getattr(results, "local_roulette_weight", 0.0)
+                st.metric("⚖️ Peso Ruleta Local", f"{weight_val:.2f}")
             else:
                 st.metric("🌲 Árboles Global", results.n_trees_global)
 

@@ -186,7 +186,9 @@ def render() -> None:
     s9_variant = current_config.get("aggregation", {}).get(
         "variant", "S9_MEAN"
     )
-    s9_beta = float(current_config.get("aggregation", {}).get("beta", 0.0))
+    s9_local_roulette_weight = float(
+        current_config.get("aggregation", {}).get("local_roulette_weight", 0.1)
+    )
     s9_window_size = int(
         current_config.get("aggregation", {}).get("window_size", 5)
     )
@@ -597,13 +599,13 @@ def render() -> None:
                 help="Árboles locales antes de enviar vector de ruleta.",
             )
         with col_s9b:
-            s9_beta = st.slider(
-                "Beta (balance local/global)",
+            s9_local_roulette_weight = st.slider(
+                "Local Roulette Weight (local_roulette_weight)",
                 0.0,
                 1.0,
-                value=s9_beta,
+                value=s9_local_roulette_weight,
                 step=0.05,
-                help="Beta de balanceo local/global de ruleta.",
+                help="Peso asignado a la ruleta local del cliente.",
             )
             s9_max_rounds = st.number_input(
                 "Rondas maximas",
@@ -724,7 +726,7 @@ def render() -> None:
                 "window_size": window_size_calc,
                 "max_rounds": max_rounds_calc,
                 "variant": s9_variant if strategy_key == "s9_roulette" else "",
-                "beta": s9_beta if strategy_key == "s9_roulette" else 0.0,
+                "local_roulette_weight": s9_local_roulette_weight if strategy_key == "s9_roulette" else 0.0,
             },
             "prediction": {
                 "local_weight": pred_local_w,

@@ -8,6 +8,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional, Union
 
+import numpy as np
 from flex.data import Dataset, FedDataDistribution
 from flex.model import FlexModel
 from src.application.orchestrators.fl_orchestrator import (
@@ -66,6 +67,8 @@ class ProgressiveWindowsOrchestrator(FLEXOrchestrator):
         self.convergence_threshold = agg_cfg.get(
             "convergence_threshold", 0.002
         )
+        # enforce patience (min rounds) >= 5 by default
+        self.min_rounds = int(agg_cfg.get("min_rounds", 5))
 
     def run_federated_round(
         self, n_bootstrap: int = 0
@@ -147,7 +150,9 @@ class ProgressiveWindowsOrchestrator(FLEXOrchestrator):
             )
 
             # 5. Evaluate Convergence
-            server_val_dataset = Dataset.from_array(X_val, y_val)
+            server_val_dataset = Dataset.from_array(
+                np.asarray(X_val), np.asarray(y_val)
+            )
             server_eval = self.flex_pool.servers.map(
                 evaluate_global_pf_model, test_data=server_val_dataset
             )
@@ -167,7 +172,7 @@ class ProgressiveWindowsOrchestrator(FLEXOrchestrator):
 
             if previous_accuracy is not None:
                 acc_gain = current_accuracy - previous_accuracy
-                if acc_gain <= self.convergence_threshold:
+                if acc_gain <= self.convergence_threshold and (round_idx) >= self.min_rounds:
                     stop_counter += 1
                     if stop_counter >= 2:
                         results.convergence_round = round_idx

@@ -8,6 +8,7 @@ from __future__ import annotations
 import logging
 import warnings
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+import numpy as np
 
 try:
     from flex.data import Dataset, FedDataDistribution, FedDatasetConfig
@@ -247,7 +248,9 @@ class FLEXOrchestrator:
         y_val_server = self.dataset_split.y_val
 
         # Validation data as FLEX Dataset for server eval primitives
-        server_val_dataset = Dataset.from_array(X_val_server, y_val_server)
+        server_val_dataset = Dataset.from_array(
+            np.asarray(X_val_server), np.asarray(y_val_server)
+        )
 
         agg_kwargs = {
             "server_config": self.config,

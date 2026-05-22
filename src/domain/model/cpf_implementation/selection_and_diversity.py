@@ -55,8 +55,22 @@ class PercentageCorrectDiversity(DiversityMeasure):
         # Vectorized prediction across all estimators
         all_preds = np.array([p.predict(X) for p in predictors])
 
+        # Normalize types to avoid mismatches between numeric indices and
+        # decoded string labels. Convert both predictions and ground-truth
+        # to string form before comparison so equality works across types.
+        try:
+            all_preds = all_preds.astype(str)
+        except Exception:
+            # Fallback: map element-wise to str
+            all_preds = np.vectorize(lambda v: str(v))(all_preds)
+
+        try:
+            y_cmp = y.astype(str)
+        except Exception:
+            y_cmp = np.array([str(v) for v in y])
+
         # Compare with true labels (broadcasting)
-        correct_mask = all_preds == y
+        correct_mask = all_preds == y_cmp
 
         # Count correct predictors per instance
         n_corrects = np.sum(correct_mask, axis=0)

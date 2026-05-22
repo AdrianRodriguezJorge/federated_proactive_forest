@@ -58,6 +58,8 @@ def load_base_config(
             "pcd_weight": 0.5,
             "global_convergence_threshold": 0.002,
             "episode_size": 5,
+            "min_episodes": 3,
+            "min_rounds": 3,
         },
         "prediction": {
             "local_weight": 0.4,
@@ -75,6 +77,7 @@ def load_base_config(
                 "max_rounds": 20,
                 "alpha": 0.5,
                 "global_convergence_threshold": 0.002,
+                "trees_per_round_per_client": 3,
             }
         )
         config["prediction"] = {
@@ -85,13 +88,17 @@ def load_base_config(
         config["aggregation"].update(
             {
                 "variant": "S9_MEAN",
-                "beta": 0.0,
+                "local_roulette_weight": 0.1,
                 "window_size": 5,
                 "max_rounds": 20,
                 "global_convergence_threshold": 0.002,
             }
         )
 
+    if strategy == "S4":
+        config["aggregation"]["global_episode_size"] = 10
+    elif strategy == "S7":
+        config["aggregation"]["trees_per_client_per_episode"] = 3
     return config
 
 

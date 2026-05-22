@@ -4,11 +4,25 @@
 
 By balancing **accuracy** (individual tree classification performance) and **diversity** (using advanced information-theoretic and prediction-based diversity criteria), this framework bridges the gap between traditional federated ensemble methods and communication-efficient distributed intelligence.
 
+> **Current Release**: **v3.0.0** — Production-ready with comprehensive benchmarking, statistical validation, and optimized FLEX integration.
+
 ---
 
+[![Version](https://img.shields.io/badge/version-3.0.0-blue.svg)](pyproject.toml)
 [![Python Version](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Framework](https://img.shields.io/badge/framework-FLEX-orange.svg)](https://github.com/nik-f-v/flex-framework)
+
+---
+
+## ✨ What's New in v3.0.0
+
+*   **Enhanced Testing Suite**: Comprehensive test coverage for aggregation strategies, label services, and federated orchestration.
+*   **Improved CLI Integration**: Streamlined command-line interface with better error handling and configuration validation.
+*   **Optimized Hyperparameter Search**: Updated `hyperparameter_search.py` and `optimize_pcd_weight.py` for faster convergence analysis.
+*   **Production-Grade Benchmarking**: Fully automated benchmark pipeline (`final_benchmark.py`) with robust checkpoint and recovery mechanisms.
+*   **Statistical Validation**: Non-parametric Friedman tests and Wilcoxon post-hoc analyses with Bonferroni correction for rigorous strategy comparison.
+*   **Python 3.12+ Standardization**: Full compatibility and optimization for Python 3.12+ with updated dependency versions.
 
 ---
 
@@ -28,21 +42,22 @@ By balancing **accuracy** (individual tree classification performance) and **div
 ## 📋 Table of Contents
 
 1.  [🌲 Header & Introduction](#-federated-proactive-forest)
-2.  [🎯 Key Capabilities](#-key-capabilities)
-3.  [🚀 Installation & System Requirements](#-installation--system-requirements)
-4.  [⚡ Quick Start Guide](#-quick-start-guide)
-5.  [📊 Supported Datasets](#-supported-datasets)
-6.  [🏆 Aggregation Strategies & Tree Selection](#-aggregation-strategies--tree-selection)
-7.  [🏗️ System Architecture & Hexagonal Design](#-system-architecture--hexagonal-design)
-8.  [🌐 Interactive Streamlit Web UI](#-interactive-streamlit-web-ui)
-9.  [💻 CLI & Configurations](#-cli--configurations)
-10. [📓 Jupyter Notebooks & Optimization](#-jupyter-notebooks--optimization)
-11. [⚙️ Advanced Configuration](#-advanced-configuration)
-12. [🔧 Developer Guide: Adding Custom Datasets](#-developer-guide-adding-custom-datasets)
-13. [🧪 Testing Suite](#-testing-suite)
-14. [📊 Research Scripts & Statistical Validation](#-research-scripts--statistical-validation)
-15. [📈 Decision Guide & Troubleshooting](#-decision-guide--troubleshooting)
-16. [📄 Authors, Citations & License](#-authors-citations--license)
+2.  [✨ What's New in v3.0.0](#-whats-new-in-v300)
+3.  [🎯 Key Capabilities](#-key-capabilities)
+4.  [🚀 Installation & System Requirements](#-installation--system-requirements)
+5.  [⚡ Quick Start Guide](#-quick-start-guide)
+6.  [📊 Supported Datasets](#-supported-datasets)
+7.  [🏆 Aggregation Strategies & Tree Selection](#-aggregation-strategies--tree-selection)
+8.  [🏗️ System Architecture & Hexagonal Design](#-system-architecture--hexagonal-design)
+9.  [🌐 Interactive Streamlit Web UI](#-interactive-streamlit-web-ui)
+10. [💻 CLI & Configurations](#-cli--configurations)
+11. [📓 Jupyter Notebooks & Optimization](#-jupyter-notebooks--optimization)
+12. [⚙️ Advanced Configuration](#-advanced-configuration)
+13. [🔧 Developer Guide: Adding Custom Datasets](#-developer-guide-adding-custom-datasets)
+14. [🧪 Testing Suite](#-testing-suite)
+15. [📊 Research Scripts & Statistical Validation](#-research-scripts--statistical-validation)
+16. [📈 Decision Guide & Troubleshooting](#-decision-guide--troubleshooting)
+17. [📄 Authors, Citations & License](#-authors-citations--license)
 
 ---
 
@@ -75,27 +90,40 @@ By balancing **accuracy** (individual tree classification performance) and **div
         source venv_py312/bin/activate
         ```
 
-3.  **Install Standard Dependencies & Package Extras**
-    First, install core requirements:
+3.  **Install Standard Dependencies**
+    First, install core dependencies from requirements.txt:
     ```bash
+    pip install --upgrade pip setuptools wheel
     pip install -r requirements.txt
     ```
-    Then, install optional development and framework modules:
+
+4.  **Install the Package in Development Mode**
+    This enables direct imports from `src/` and installs optional extras:
     ```bash
-    # UI dependencies (Streamlit & Plotly)
-    pip install -e ".[ui]"
-
-    # Developer & Testing tools (pytest & coverage)
-    pip install -e ".[dev]"
-
-    # Hyperparameter optimization (Optuna & Joblib)
-    pip install -e ".[opt]"
-
-    # FLEX Framework orchestration (FLEX connectors) - Highly Recommended
-    pip install -e ".[flex]"
+    pip install -e .
     ```
 
-4.  **Verify Installation**
+5.  **Install Optional Extras (Recommended for Full Features)**
+    Choose the extras you need based on your use case:
+    
+    ```bash
+    # UI dependencies (Streamlit & Plotly) - for web interface
+    pip install -e ".[ui]"
+
+    # Developer & Testing tools (pytest & coverage) - for running tests
+    pip install -e ".[dev]"
+
+    # Hyperparameter optimization (Optuna & Joblib) - for Optuna search
+    pip install -e ".[opt]"
+
+    # FLEX Framework orchestration (Full federated learning support) - Highly Recommended
+    pip install -e ".[flex]"
+
+    # All extras at once
+    pip install -e ".[ui,dev,opt,flex]"
+    ```
+
+6.  **Verify Installation**
     Run this quick import check to confirm the core model compiles successfully:
     ```bash
     python -c "from src.domain.model.proactive_forest import ProactiveForest; print('✅ Core ProactiveForest imported successfully!')"
@@ -105,35 +133,42 @@ By balancing **accuracy** (individual tree classification performance) and **div
 
 ## ⚡ Quick Start Guide
 
-### 🌐 Option 1: Run the Interactive Web UI
-Launch the pre-configured Streamlit dashboard to visually configure and run federated rounds:
+Choose your preferred interaction method:
+
+### 🌐 Option 1: Interactive Web UI (Recommended for First-Time Users)
+Launch the pre-configured Streamlit dashboard to visually configure and run federated rounds without touching code:
 ```bash
 streamlit run src/interfaces/streamlit/app.py
 ```
-Open `http://localhost:8501` in your browser.
+Then open `http://localhost:8501` in your browser and follow these steps:
 1.  Navigate to **⚙️ Configuration** and select the *Iris* dataset, 3 clients, and the `S7` strategy.
 2.  Click **▶️ Run Experiment** to watch the real-time execution progress.
 3.  Examine selected vs. discarded decision trees under **🏆 Tree Ranking**.
 4.  Analyze the confusion matrix and macro F1 scores in **📊 Complete Metrics**.
 
-### 💻 Option 2: Run via CLI (YAML Configuration)
-Execute automated pipeline configurations straight from files:
+### 💻 Option 2: CLI with YAML Configuration (For Reproducible Experiments)
+Execute pre-configured experiment pipelines from YAML files:
 ```bash
-python -m src.interfaces.cli.main --config configs/experiments/exp_s1_simple_pool.yaml
+python -m src.interfaces.cli.main --config configs/experiments/exp_s7_perclient_f1_pcd.yaml
 ```
 
-### 🐍 Option 3: Programmatic Execution
-You can easily import core abstractions to orchestrate custom experiments programmatically:
+Quick parameter overrides:
+```bash
+python -m src.interfaces.cli.main --dataset Iris --clients 3 --strategy s7_perclient_f1_pcd --trees 50
+```
+
+### 🐍 Option 3: Programmatic Execution (For Custom Workflows)
+Directly use the framework APIs in Python for fine-grained control:
 
 ```python
 from src.application.orchestrators.fl_orchestrator import FLEXOrchestrator
 from src.infrastructure.dataset.dataset_factory import DatasetFactory
 
-# 1. Load and parse dataset via the factory
+# 1. Load and parse dataset
 adapter = DatasetFactory.create_adapter({"type": "Iris"})
 dataset_split = adapter.load()
 
-# 2. Define the exact federated configuration
+# 2. Define federated configuration
 config = {
     "federation": {
         "n_clients": 3,
@@ -156,12 +191,12 @@ config = {
     }
 }
 
-# 3. Setup and execute the federated orchestration
+# 3. Execute federated orchestration
 orchestrator = FLEXOrchestrator(config)
 orchestrator.setup_federation(dataset_split)
 results = orchestrator.run_federated_round(n_bootstrap=0)
 
-# 4. Extract metrics
+# 4. Extract and display metrics
 print(f"✅ Global Model Accuracy: {results.global_accuracy:.4f}")
 print(f"✅ Active Trees in Global Pool: {results.n_trees_global}")
 ```
@@ -477,26 +512,56 @@ pytest tests/
 
 ## 📊 Research Scripts & Statistical Validation
 
-The `scripts/` directory contains high-performance utilities designed for rigorous scientific validation.
+The `scripts/` directory contains high-performance utilities designed for rigorous scientific validation and comparative analysis.
 
 ### 🏆 Automated Benchmarking (`final_benchmark.py`)
-This script executes a comprehensive evaluation protocol: 10-fold cross-validation over 5 repetitions across all 8 datasets, testing all 13 strategies and the local baseline.
-*   **Automatic Parallelism**: Leverages `joblib` with `n_jobs=-1` (or a custom setting like `n_workers = 2` for memory limits).
-*   **Robust Caching**: Automatically saves progress to `results/results_final_benchmark.csv` at each checkpoint. If a run crashes or disconnects in Colab, it will resume from the last completed strategy combination.
-*   **Execution Command**:
+Comprehensive evaluation protocol: **10-fold cross-validation** over **5 repetitions** across all **8 datasets**, testing all **13 strategies** plus the local isolation baseline.
+
+**Key Features:**
+*   **Automatic Parallelism**: Leverages `joblib` with configurable `n_workers` for efficient resource utilization.
+*   **Robust Checkpointing**: Automatically saves progress to `results/results_final_benchmark.csv` at each strategy completion. Resumable if interrupted.
+*   **Memory Management**: Configurable worker count to prevent OOM errors on resource-constrained systems.
+
+**Execution:**
+```bash
+# Standard execution (uses all available CPU cores)
+python scripts/final_benchmark.py
+
+# Configure number of workers for memory-constrained systems
+# Edit n_workers = 2 inside final_benchmark.py before running
+python scripts/final_benchmark.py
+```
+
+> **💡 Tip**: Average runtime is 30-90 minutes depending on hardware. For testing, temporarily reduce `n_folds` or `n_repetitions` in the script.
+
+### 📉 Additional Research Scripts
+
+*   **`hyperparameter_search.py`**: Automated hyperparameter discovery using Optuna. Systematically explores optimal alpha, F1/PCD weights, and client count configurations.
     ```bash
-    python scripts/final_benchmark.py
+    python scripts/hyperparameter_search.py
     ```
 
-> [!TIP]
-> If running in Google Colab Free and you hit Out-Of-Memory limits due to parallel threads, change `n_workers = 1` inside `scripts/final_benchmark.py` to run strategies sequentially.
+*   **`optimize_pcd_weight.py`**: Isolated PCD weight optimization. Determines the optimal balance between performance (F1-score) and diversity (PCD) for hybrid strategies (S4, S7).
+    ```bash
+    python scripts/optimize_pcd_weight.py
+    ```
 
-### 📉 Local vs. Federated Gain (`local_vs_s9_experiment.py`)
-Directly quantifies the exact "federation gain". By setting $\beta = 1.0$, the script neutralizes server updates, running isolated local clients alongside cooperative ones under identical Dirichlet conditions to isolate communication benefits.
+*   **`Friedman_test_new_results.py`**: Non-parametric statistical analysis. Performs Friedman rank-sum test to determine if strategy differences are statistically significant.
+    ```bash
+    python scripts/Friedman_test_new_results.py
+    ```
 
-### 📊 Rigorous Non-Parametric Validation
-*   **`Friedman_test_new_results.py`**: Performs a Friedman rank-sum test to determine if there is a statistically significant difference between federated strategies and local-only baselines.
-*   **`statistical_comparison.py`**: Executes post-hoc Wilcoxon signed-rank tests with Bonferroni correction, producing scientific p-value indices.
+*   **`weighted_vs_uniform.py`**: Comparative analysis between weighted and uniform aggregation weights in S9 Roulette strategies.
+    ```bash
+    python scripts/weighted_vs_uniform.py
+    ```
+
+*   **`run_cli_last_config.py`**: Convenience script that re-runs the last used configuration from `configs/last_config.json`.
+    ```bash
+    python scripts/run_cli_last_config.py
+    ```
+
+---
 
 ---
 
@@ -540,11 +605,11 @@ Streamlit recalculates elements on state changes.
 ## 📄 Authors, Citations & License
 
 ### 👤 Contributors
-*   **Adrián Rodríguez** (Lead Architect & Developer)
-*   **Mario Cepero** (Creator of the original centralized Proactive Forest algorithm)
+*   **Adrián Rodríguez** (Lead Architect & Developer) — Comprehensive framework design, all 13+ aggregation strategies, FLEX integration, and Streamlit UI.
+*   **Mario Cepero** (Creator of the original centralized Proactive Forest algorithm) — Published foundational research (Cepero, 2023).
 
 ### 📖 Citations
-If you utilize this framework or its results in your academic publication or thesis, please cite:
+If you utilize this framework, its evaluation results, or its strategies in your academic publication or thesis, please cite:
 
 ```bibtex
 @article{cepero2023proactive,
@@ -555,11 +620,12 @@ If you utilize this framework or its results in your academic publication or the
   publisher={IEEE}
 }
 
-@misc{federated_proactive_forest,
-  title={Federated Proactive Forest: Comparative Analysis of Tree Aggregation Strategies},
+@software{federated_proactive_forest_2026,
+  title={Federated Proactive Forest v3.0: Comprehensive Tree Aggregation Strategies for Communication-Efficient Federated Learning},
   author={Rodríguez, Adrián},
   year={2026},
-  howpublished={\url{https://github.com/AdrianRodriguezJorge/federated_proactive_forest}}
+  url={https://github.com/AdrianRodriguezJorge/federated_proactive_forest},
+  version={3.0.0}
 }
 ```
 
@@ -567,4 +633,7 @@ If you utilize this framework or its results in your academic publication or the
 This repository is licensed under the terms of the **MIT License**. For details, please consult the [LICENSE](LICENSE) file.
 
 ---
-**⭐ If you find our federated learning research framework helpful, please consider giving this repository a star on GitHub!**
+
+**⭐ If you find our federated learning research framework helpful, please consider giving this repository a star on GitHub! This helps support ongoing research and development.**
+
+**📧 For questions, issues, or collaboration inquiries, please open an issue on the GitHub repository or contact the maintainers.**

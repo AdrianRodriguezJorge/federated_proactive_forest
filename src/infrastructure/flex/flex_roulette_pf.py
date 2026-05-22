@@ -209,7 +209,7 @@ def set_global_roulette(
 def deploy_global_roulette(
     server_flex_model: FlexModel, *args: Any, **kwargs: Any
 ) -> Dict[str, Any]:
-    """Send global roulette vector and beta parameter to client.
+    """Send global roulette vector and local_roulette_weight parameter to client.
 
     FLEX Primitive for deploy_server_model.
 
@@ -219,16 +219,16 @@ def deploy_global_roulette(
         **kwargs (Any): Keyword args.
 
     Returns:
-        Dict[str, Any]: Deployed global roulette and beta coefficient.
+        Dict[str, Any]: Deployed global roulette and local_roulette_weight coefficient.
     """
     config = server_flex_model.get("config", {})
-    beta = config.get("aggregation", {}).get("beta", 0.0)
+    local_roulette_weight = config.get("aggregation", {}).get("local_roulette_weight", 0.1)
 
     return {
         "global_roulette": deepcopy(
             server_flex_model.get("global_roulette", [])
         ),
-        "beta": beta,
+        "local_roulette_weight": local_roulette_weight,
     }
 
 

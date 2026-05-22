@@ -164,8 +164,8 @@ class HyperparamOptimizer:
                 config.setdefault("model", {})[
                     "convergence_threshold"
                 ] = value
-            elif param_path == "beta":
-                config.setdefault("aggregation", {})["beta"] = value
+            elif param_path == "local_roulette_weight":
+                config.setdefault("aggregation", {})["local_roulette_weight"] = value
             elif param_path == "variant":
                 config.setdefault("aggregation", {})["variant"] = value
             elif param_path == "dirichlet_alpha":
@@ -348,7 +348,7 @@ class HyperparamOptimizer:
         defaults["t_max"] = agg.get("t_max", 100)
         defaults["window_size"] = agg.get("window_size", 5)
         defaults["max_rounds"] = agg.get("max_rounds", 20)
-        defaults["beta"] = agg.get("beta", 0.0)
+        defaults["local_roulette_weight"] = agg.get("local_roulette_weight", 0.1)
 
         pred = self.base_config.get("prediction", {})
         defaults["local_weight"] = pred.get("local_weight", 0.4)

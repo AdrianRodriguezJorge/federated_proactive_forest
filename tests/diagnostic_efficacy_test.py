@@ -129,18 +129,18 @@ def test_s9_variants_identical():
         print("  real-world clients may produce near-identical roulettes.")
     else:
         print("  [OK] Variants produce different outputs with synthetic data.")
-        print("  -> Real issue: clients may converge to same roulette due to beta=0")
+        print("  -> Real issue: clients may converge to same roulette due to local_roulette_weight=0")
 
-    # Test: with beta=0, client FULLY adopts global roulette each round
-    updater = RouletteUpdater(beta=0.0)
+    # Test: with local_roulette_weight=0, client FULLY adopts global roulette each round
+    updater = RouletteUpdater(local_roulette_weight=0.0)
     local = np.random.dirichlet(np.ones(n_features))
     glob = np.random.dirichlet(np.ones(n_features))
     fused = updater.fuse(local, glob)
     diff = np.max(np.abs(fused - glob))
-    print(f"\n  Beta=0 fusion test: local is COMPLETELY replaced by global")
+    print(f"\n  local_roulette_weight=0 fusion test: local is COMPLETELY replaced by global")
     print(f"  max|fused - global| = {diff:.15f}")
     if diff < 1e-10:
-        print("  [CRITICAL ISSUE] beta=0 means ALL clients adopt the EXACT same")
+        print("  [CRITICAL ISSUE] local_roulette_weight=0 means ALL clients adopt the EXACT same")
         print("  global roulette after round 1. All variants collapse to MEAN.")
         print("  -> This is WHY all S9 variants produce identical benchmark results!")
         return False
@@ -479,7 +479,7 @@ def test_benchmark_s9_collapse():
 
     if identical_count > 0:
         print(f"\n  [CRITICAL] {identical_count}/{total_datasets} datasets have identical S9 results!")
-        print("  Root cause: beta=0 forces full global roulette adoption.")
+        print("  Root cause: local_roulette_weight=0 forces full global roulette adoption.")
     return True
 
 

@@ -81,7 +81,7 @@ def aggregate_trees_pf(
             "local_weight": server_config.get("prediction", {}).get(
                 "local_weight", 0.5
             ),
-            "min_episodes": agg_config.get("min_episodes", 4),
+            "min_episodes": agg_config.get("min_episodes", 5),
             "trees_per_client_per_episode": agg_config.get("trees_per_client_per_episode", 1),
             "current_global_trees": current_global_trees,
             "current_round": current_round,

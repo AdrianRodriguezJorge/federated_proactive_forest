@@ -53,7 +53,9 @@ def train_window_pf_s9(
             random_state=42,
             stratify=y if len(np.unique(y)) > 1 else None,
         )
-    except Exception:
+    except Exception as e:
+        import logging
+        logging.warning(f"Stratified split failed, falling back to non-stratified: {e}")
         X_train, X_val, y_train, y_val = train_test_split(
             X, y, test_size=0.2, random_state=42
         )
@@ -95,6 +97,8 @@ def train_window_pf_s9(
 
     stop_counter = prev_meta.get("stop_counter", 0)
     prev_episode_acc = prev_meta.get("prev_episode_acc")
+    rounds_completed = prev_meta.get("rounds_completed", 0) + 1
+    min_rounds = config.get("aggregation", {}).get("min_rounds", 5)
 
     # Build trees
     classifier.buildEpisode(X_train, y_train, X_val, y_val, window_size)
@@ -122,7 +126,7 @@ def train_window_pf_s9(
         or episode_acc < pf.convergence_threshold
     ):
         stop_counter += 1
-        if stop_counter >= 2:
+        if stop_counter >= 2 and rounds_completed >= min_rounds:
             has_converged = True
     else:
         stop_counter = 0
@@ -138,6 +142,7 @@ def train_window_pf_s9(
                 "has_converged": has_converged,
                 "stop_counter": stop_counter,
                 "prev_episode_acc": episode_acc,
+                "rounds_completed": rounds_completed,
             },
             "X_train": X_train,
         }

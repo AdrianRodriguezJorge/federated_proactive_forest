@@ -99,7 +99,7 @@ class FedDataDistributor:
 
         # Create FLEX Dataset
         centralized_dataset = Dataset.from_array(
-            X_array=X_train_fed, y_array=y_train_fed
+            X_array=np.asarray(X_train_fed), y_array=np.asarray(y_train_fed)
         )
 
         n_clients = self._get_config_value(

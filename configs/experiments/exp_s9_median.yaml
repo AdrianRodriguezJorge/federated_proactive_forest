@@ -23,7 +23,7 @@ model:
 aggregation:
   strategy: "S9"
   variant: "S9_MEDIAN"
-  beta: 0.0
+  local_roulette_weight: 0.1
   window_size: 5
   max_rounds: 20
   convergence_threshold: 0.002

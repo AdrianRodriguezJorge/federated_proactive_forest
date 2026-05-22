@@ -47,21 +47,21 @@ def _align_labels(
 
     # Process y_true
     try:
-        if isinstance(y_true_arr.flat[0], (str, np.str_)):
+        if y_true_arr.size > 0 and isinstance(y_true_arr.flat[0], (str, np.str_)):
             y_true_arr = np.array(
                 [class_to_idx.get(str(y), 0) for y in y_true_arr]
             )
-    except Exception:
-        pass
+    except Exception as e:
+        logging.warning(f"Failed to align true labels: {e}")
 
     # Process y_pred
     try:
-        if isinstance(y_pred_arr.flat[0], (str, np.str_)):
+        if y_pred_arr.size > 0 and isinstance(y_pred_arr.flat[0], (str, np.str_)):
             y_pred_arr = np.array(
                 [class_to_idx.get(str(p), 0) for p in y_pred_arr]
             )
-    except Exception:
-        pass
+    except Exception as e:
+        logging.warning(f"Failed to align predicted labels: {e}")
 
     return y_true_arr, y_pred_arr
 
