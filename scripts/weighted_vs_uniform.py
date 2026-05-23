@@ -1,14 +1,15 @@
-"""Experiment: use_weighted=True vs False on 2 datasets.
+"""Experiment: Optimization of local_weight vs Uniform Tree Voting.
 
-Compares hybrid prediction metrics when weighting by origin (local/global)
-vs uniform tree voting.
+Compares hybrid prediction metrics when weighting by origin (local/global) with
+local_weight ranging from 0.1 to 0.9, vs uniform tree voting (use_weighted=False)
+across Iris, Car, and Spambase datasets.
 """
 
 import os
 import sys
 import time
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, List
 import numpy as np
 from sklearn.metrics import accuracy_score, f1_score
 
@@ -22,6 +23,7 @@ from src.infrastructure.dataset.dataset_factory import DatasetFactory
 def run_experiment(
     dataset_cfg: Dict[str, Any],
     use_weighted: bool,
+    local_weight: float = 0.4,
     strategy: str = "s6_perclient_f1",
     seed: int = 42,
 ) -> Dict[str, Any]:
@@ -30,6 +32,7 @@ def run_experiment(
     Args:
         dataset_cfg (Dict[str, Any]): Config map for the dataset adapter.
         use_weighted (bool): Whether to weigh global vs local trees.
+        local_weight (float): Vote weight to allocate to local trees.
         strategy (str): Aggregation strategy identifier.
         seed (int): Random number generator seed.
 
@@ -39,27 +42,12 @@ def run_experiment(
     from src.domain.aggregation.aggregation_factory import AggregationFactory
     norm_strat = AggregationFactory.normalize_strategy_name(strategy)
 
-    global_ep_size = 5
+    global_ep_size = 3
     trees_per_client_ep = 1
     trees_per_rnd_client = 1
     win_size = 5
-    f1_w = 0.5
-    pcd_w = 0.5
-
-    if norm_strat == "S4":
-        global_ep_size = 5
-        f1_w = 0.3
-        pcd_w = 0.7
-    elif norm_strat == "S7":
-        trees_per_client_ep = 2
-        global_ep_size = trees_per_client_ep * 3
-        f1_w = 0.3
-        pcd_w = 0.7
-    elif norm_strat == "PW":
-        win_size = 10
-        trees_per_rnd_client = 3
-        f1_w = 0.3
-        pcd_w = 0.7
+    f1_w = 0.3
+    pcd_w = 0.7
 
     config = {
         "dataset": dataset_cfg,
@@ -82,7 +70,6 @@ def run_experiment(
             "f1_weight": f1_w,
             "pcd_weight": pcd_w,
             "global_convergence_threshold": 0.002,
-            "convergence_threshold": 0.002,
             "global_episode_size": global_ep_size,
             "trees_per_client_per_episode": trees_per_client_ep,
             "trees_per_round_per_client": trees_per_rnd_client,
@@ -92,8 +79,7 @@ def run_experiment(
             "min_rounds": 4,
         },
         "prediction": {
-            "local_weight": 0.4,
-            "global_weight": 0.6,
+            "local_weight": local_weight,
             "use_weighted": use_weighted,
         },
         "verbose": False,
@@ -126,7 +112,7 @@ def run_experiment(
                 )
             )
 
-    # Per-client local tree counts and global tree count
+    # Per-client local tree counts
     local_counts = []
     for cid in results.client_ids:
         meta = results.client_metadata.get(cid)
@@ -139,8 +125,6 @@ def run_experiment(
         "n_global_trees": results.n_trees_global,
         "avg_hybrid_acc": np.mean(hybrid_accs) if hybrid_accs else 0.0,
         "avg_hybrid_f1": np.mean(hybrid_f1s) if hybrid_f1s else 0.0,
-        "hybrid_accs": hybrid_accs,
-        "hybrid_f1s": hybrid_f1s,
         "local_tree_counts": local_counts,
         "convergence_round": results.convergence_round,
         "elapsed_s": elapsed,
@@ -152,6 +136,14 @@ DATASETS = {
     "Iris": {
         "type": "Iris",
         "file_path": "data/iris.csv",
+        "target_column": "class",
+        "test_size": 0.2,
+        "scale": True,
+        "sep": ",",
+    },
+    "Car": {
+        "type": "Car",
+        "file_path": "data/car.csv",
         "target_column": "class",
         "test_size": 0.2,
         "scale": True,
@@ -169,107 +161,112 @@ DATASETS = {
 
 
 def main() -> None:
-    """Executes the comparative weighted vs uniform experiment."""
-    results_table = []
+    """Executes local_weight optimization sweep."""
+    all_results = {}
 
     for ds_name, ds_cfg in DATASETS.items():
-        print(f"\n{'=' * 60}")
-        print(f"  Dataset: {ds_name}")
-        print(f"{'=' * 60}")
+        print(f"\n{'=' * 70}")
+        print(f"  OPTIMIZING LOCAL WEIGHT ON DATASET: {ds_name}")
+        print(f"{'=' * 70}")
 
-        for weighted in [True, False]:
-            label = "Ponderado (lambda)" if weighted else "Uniforme (1/N)"
-            print(f"\n  >> {label} (use_weighted={weighted})...")
+        ds_results = []
+
+        # 1. Run Uniform Voting (use_weighted = False)
+        print("  >> Evaluating Uniform (1/N) voting...")
+        try:
+            r = run_experiment(ds_cfg, use_weighted=False)
+            ds_results.append({
+                "label": "Uniforme (1/N)",
+                "use_weighted": False,
+                "local_weight": 0.0,
+                **r
+            })
+            print(f"     Uniform Hybrid Acc: {r['avg_hybrid_acc']:.4f} | Hybrid F1: {r['avg_hybrid_f1']:.4f}")
+        except Exception as exc:
+            print(f"     ERROR: {exc}")
+
+        # 2. Sweep local_weight from 0.1 to 0.9
+        for lw in [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]:
+            print(f"  >> Evaluating Weighted (local_weight={lw:.1f})...")
             try:
-                r = run_experiment(ds_cfg, use_weighted=weighted)
-                results_table.append(
-                    {
-                        "dataset": ds_name,
-                        "mode": label,
-                        "use_weighted": weighted,
-                        **r,
-                    }
-                )
-                print(
-                    f"     Global:  Acc={r['global_acc']:.4f}  "
-                    f"F1={r['global_f1']:.4f}  Trees={r['n_global_trees']}"
-                )
-                print(
-                    f"     Hybrid:  Acc={r['avg_hybrid_acc']:.4f}  "
-                    f"F1={r['avg_hybrid_f1']:.4f}"
-                )
-                print(f"     Local trees per client: {r['local_tree_counts']}")
-                print(f"     Convergence round: {r['convergence_round']}")
-                print(f"     Time: {r['elapsed_s']:.1f}s")
+                r = run_experiment(ds_cfg, use_weighted=True, local_weight=lw)
+                ds_results.append({
+                    "label": f"Ponderado (lw={lw:.1f})",
+                    "use_weighted": True,
+                    "local_weight": lw,
+                    **r
+                })
+                print(f"     Weighted Hybrid Acc: {r['avg_hybrid_acc']:.4f} | Hybrid F1: {r['avg_hybrid_f1']:.4f}")
             except Exception as exc:
-                import traceback
-
                 print(f"     ERROR: {exc}")
-                traceback.print_exc()
 
-    # ── Summary table ─────────────────────────────────────────────────────────
-    print(f"\n\n{'=' * 80}")
-    print("  RESULTS SUMMARY")
-    print(f"{'=' * 80}")
-    print(
-        f"{'Dataset':<12} {'Mode':<22} {'Global Acc':>10} "
-        f"{'Global F1':>10} {'Hybrid Acc':>10} {'Hybrid F1':>10} "
-        f"{'#Trees':>7}"
-    )
-    print("-" * 83)
+        all_results[ds_name] = ds_results
 
-    for r in results_table:
+    # ── Summary tables by Dataset ─────────────────────────────────────────────
+    print(f"\n\n{'=' * 90}")
+    print("  OPTIMIZATION EXPERIMENT DETAILED SUMMARY")
+    print(f"{'=' * 90}")
+
+    for ds_name, ds_results in all_results.items():
+        print(f"\nDataset: {ds_name}")
+        print("-" * 90)
         print(
-            f"{r['dataset']:<12} {r['mode']:<22} "
-            f"{r['global_acc']:>10.4f} {r['global_f1']:>10.4f} "
-            f"{r['avg_hybrid_acc']:>10.4f} {r['avg_hybrid_f1']:>10.4f} "
-            f"{r['n_global_trees']:>7}"
+            f"{'Prediction Mode':<22} {'Global Acc':>10} {'Global F1':>10} "
+            f"{'Hybrid Acc':>10} {'Hybrid F1':>10} {'#Glob Trees':>11} {'Local Trees':<15}"
         )
+        print("-" * 90)
 
-    # ── Differences ───────────────────────────────────────────────────────────
-    print(f"\n{'=' * 80}")
-    print("  DIFFERENCES (Ponderado - Uniforme)")
-    print(f"{'=' * 80}")
+        best_config = None
+        best_f1 = -1.0
 
-    for ds_name in DATASETS:
-        weighted_r = next(
-            (
-                res
-                for res in results_table
-                if res["dataset"] == ds_name and res["use_weighted"]
-            ),
-            None,
-        )
-        uniform_r = next(
-            (
-                res
-                for res in results_table
-                if res["dataset"] == ds_name and not res["use_weighted"]
-            ),
-            None,
-        )
-        if weighted_r and uniform_r:
-            d_acc = (
-                weighted_r["avg_hybrid_acc"] - uniform_r["avg_hybrid_acc"]
-            )
-            d_f1 = weighted_r["avg_hybrid_f1"] - uniform_r["avg_hybrid_f1"]
+        for r in ds_results:
             print(
-                f"  {ds_name:<12}  Delta Hybrid Acc: {d_acc:+.4f}   "
-                f"Delta Hybrid F1: {d_f1:+.4f}"
+                f"{r['label']:<22} "
+                f"{r['global_acc']:>10.4f} {r['global_f1']:>10.4f} "
+                f"{r['avg_hybrid_acc']:>10.4f} {r['avg_hybrid_f1']:>10.4f} "
+                f"{r['n_global_trees']:>11} {str(r['local_tree_counts']):<15}"
             )
-            print(
-                f"               Local trees: "
-                f"{weighted_r['local_tree_counts']}  Global trees: "
-                f"{weighted_r['n_global_trees']}"
-            )
-            ratio = (
-                max(weighted_r["local_tree_counts"])
-                / weighted_r["n_global_trees"]
-                if weighted_r["n_global_trees"] > 0
-                else 0
-            )
-            print(f"               Ratio max_local/global: {ratio:.2f}")
+            # Find the configuration with the highest hybrid F1 score
+            if r['avg_hybrid_f1'] > best_f1:
+                best_f1 = r['avg_hybrid_f1']
+                best_config = r
 
+        print("-" * 90)
+        if best_config:
+            print(
+                f"[BEST] Best configuration for {ds_name}: {best_config['label']} "
+                f"with Hybrid F1 = {best_config['avg_hybrid_f1']:.4f} "
+                f"(Acc = {best_config['avg_hybrid_acc']:.4f})"
+            )
+        print("-" * 90)
+
+    # ── Final Global Conclusion ───────────────────────────────────────────────
+    print(f"\n{'=' * 90}")
+    print("  FINAL OPTIMIZATION CONCLUSION & RECOMMENDATION")
+    print(f"{'=' * 90}")
+    
+    overall_f1_gains = []
+    
+    for ds_name, ds_results in all_results.items():
+        uniform_cfg = next((r for r in ds_results if not r["use_weighted"]), None)
+        best_weighted_cfg = None
+        best_wf1 = -1.0
+        for r in ds_results:
+            if r["use_weighted"] and r["avg_hybrid_f1"] > best_wf1:
+                best_wf1 = r["avg_hybrid_f1"]
+                best_weighted_cfg = r
+                
+        if uniform_cfg and best_weighted_cfg:
+            gain = best_weighted_cfg["avg_hybrid_f1"] - uniform_cfg["avg_hybrid_f1"]
+            overall_f1_gains.append(gain)
+            print(
+                f"  * {ds_name:<10}: Best Weighted F1 = {best_weighted_cfg['avg_hybrid_f1']:.4f} "
+                f"(lw={best_weighted_cfg['local_weight']:.1f}) vs Uniform F1 = {uniform_cfg['avg_hybrid_f1']:.4f}. "
+                f"Delta F1: {gain:+.4f}"
+            )
+            
+    avg_gain = np.mean(overall_f1_gains) if overall_f1_gains else 0.0
+    print(f"\n  Average F1 gain of the optimal Weighted config over Uniform: {avg_gain:+.4f}")
     print("\nDone.")
 
 

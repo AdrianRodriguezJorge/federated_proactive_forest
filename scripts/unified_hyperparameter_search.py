@@ -1,8 +1,11 @@
-"""Unified Hyperparameter Grid Search for Federated Proactive Forest.
+"""Unified Hyperparameter Grid Search comparing Paso de 3 vs Paso de 6 across all progressive selection strategies.
 
-This script executes a comprehensive grid search over both convergence thresholds,
-episode sizes, and PCD weights for S4 and S7 strategies (excluding PW).
-It maintains a homologous configuration across all tasks and datasets.
+Compares:
+- Paso 3: Global (S2, S3, S4 with global_episode_size=3), Per-Client (S5, S6, S7 with trees_per_client=1), PW (trees_per_round=1)
+- Paso 6: Global (S2, S3, S4 with global_episode_size=6), Per-Client (S5, S6, S7 with trees_per_client=2), PW (trees_per_round=2)
+
+Over the 4 standard datasets: Sonar, Vowel, Spambase, Nursery.
+Fixed hyperparameters: patience=4, pcd_weight=0.7 (where applicable), window_size=5 (for PW).
 """
 
 import sys
@@ -10,6 +13,7 @@ import os
 import time
 import warnings
 import argparse
+import json
 from typing import Dict, Any, List
 import numpy as np
 import pandas as pd
@@ -26,96 +30,127 @@ warnings.filterwarnings(
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from src.application.orchestrators import FLEXOrchestrator
-from src.domain.aggregation.aggregation_factory import AggregationFactory
+from src.application.orchestrators.progressive_tree_orchestrator import (
+    ProgressiveTreeOrchestrator,
+)
 from src.domain.dataset.base_adapter import DatasetSplit
 from src.infrastructure.dataset.dataset_factory import DatasetFactory
 from src.infrastructure.persistence.experiment_results import save_experiment_results_json
 
 
-def evaluate_hyperparams(
-    ds_name: str,
+def evaluate_config(
     strategy: str,
+    ds_name: str,
+    pace: int,
     patience: int,
-    global_episode_size: int,
     threshold: float,
-    pcd_weight: float,
-    n_estimators: int,
+    n_estimators_max: int,
     local_convergence: float,
     split: DatasetSplit,
 ) -> Dict[str, Any]:
-    """Evaluate a single hyperparameter combination on a specific dataset split."""
-    strategy_norm = AggregationFactory.normalize_strategy_name(strategy)
-    
-    # Standardize trees_per_client based on global_episode_size and 3 clients
-    trees_per_client = max(1, global_episode_size // 3)
-    f1_w = round(1.0 - pcd_weight, 2)
-    pcd_w = round(pcd_weight, 2)
+    """Evalúa una estrategia específica con paso de 3 o paso de 6."""
+    pcd_w = 0.7
+    f1_w = 0.3
+
+    # Traducir paso a los hiperparámetros específicos
+    is_global = strategy in ["S2", "S3", "S4"]
+    is_perclient = strategy in ["S5", "S6", "S7"]
+
+    if is_global:
+        global_ep_size = pace
+        trees_per_client_ep = 2  # No se usa pero se declara
+        trees_per_rnd_client = 2
+    elif is_perclient:
+        trees_per_client_ep = pace // 3  # 1 o 2
+        global_ep_size = trees_per_client_ep * 3
+        trees_per_rnd_client = 2
+    elif strategy == "PW":
+        trees_per_rnd_client = pace // 3  # 1 o 2
+        global_ep_size = trees_per_rnd_client * 3
+        trees_per_client_ep = 2
+
+    # Normalizar nombre de estrategia para FLEXOrchestrator
+    strategy_map = {
+        "S2": "s2_global_accuracy",
+        "S3": "s3_global_f1",
+        "S4": "s4_global_f1_pcd",
+        "S5": "s5_perclient_accuracy",
+        "S6": "s6_perclient_f1",
+        "S7": "s7_perclient_f1_pcd",
+        "PW": "pw",
+    }
+    flex_strategy = strategy_map[strategy]
 
     aggregation_config = {
-        "strategy": strategy_norm,
-        "variant": strategy_norm,
-        "max_rounds": 15,
+        "strategy": flex_strategy,
+        "variant": flex_strategy,
+        "max_rounds": 20,
         "global_convergence_threshold": threshold,
         "convergence_threshold": threshold,
-        "trees_per_client_per_episode": trees_per_client,
+        "global_episode_size": global_ep_size,
+        "trees_per_client_per_episode": trees_per_client_ep,
+        "trees_per_round_per_client": trees_per_rnd_client,
         "min_episodes": patience,
         "min_rounds": patience,
         "window_size": 5,
-        "trees_per_round_per_client": trees_per_client,
         "f1_weight": f1_w,
         "pcd_weight": pcd_w,
         "t_max": 100,
     }
 
-    if strategy_norm != "PW":
-        aggregation_config["global_episode_size"] = global_episode_size
-
     config = {
         "federation": {"n_clients": 3, "distribution": "iid"},
         "model": {
-            "n_estimators": n_estimators,
+            "n_estimators": n_estimators_max,
             "alpha": 0.1,
             "voting": "soft",
             "local_convergence_threshold": local_convergence,
         },
         "aggregation": aggregation_config,
+        "prediction": {
+            "local_weight": 0.4,
+            "use_weighted": True
+        }
     }
 
-    orch = FLEXOrchestrator(config)
+    if strategy == "PW":
+        orch = ProgressiveTreeOrchestrator(config)
+    else:
+        orch = FLEXOrchestrator(config)
         
     try:
         orch.setup_federation(split)
         res = orch.run_federated_round(n_bootstrap=0)
+        
+        # Métricas promedio de los bosques híbridos de los clientes
         acc = res.hybrid_accuracy_mean
         f1 = res.hybrid_f1_mean
-        n_trees = len(orch.flex_pool._models["server"].get("trees", []))
+        pcd = res.hybrid_pcd_mean
+        avg_trees = float(np.mean([r.forest_size for r in res.client_reports.values()]))
+        
+        convergence_round = res.convergence_round
     except Exception as e:
-        print(
-            f"Error on {strategy_norm} (pat={patience}, size={global_episode_size}, thres={threshold}, pcd={pcd_w}) on {ds_name}: {e}"
-        )
-        acc, f1, n_trees = 0.0, 0.0, 0
+        print(f"Error en {strategy} (Paso={pace}) en dataset {ds_name}: {e}")
+        acc, f1, pcd, avg_trees, convergence_round = 0.0, 0.0, 0.0, 0, None
     finally:
         if hasattr(orch, "cleanup"):
             orch.cleanup()
             
     return {
         "strategy": strategy,
-        "strategy_normalized": strategy_norm,
         "dataset": ds_name,
-        "patience": patience,
-        "global_episode_size": global_episode_size,
-        "threshold": threshold,
-        "pcd_weight": pcd_w,
-        "f1_weight": f1_w,
+        "pace": pace,
         "accuracy": acc,
         "f1_macro": f1,
-        "n_trees": n_trees,
+        "pcd": pcd,
+        "forest_size": avg_trees,
+        "convergence_round": convergence_round,
     }
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Unified Grid Search for early-stopping and PCD weight hyperparameters."
+        description="Unified Grid Search comparing Paso de 3 vs Paso de 6 across all S strategies + PW."
     )
     parser.add_argument(
         "--n_jobs",
@@ -124,10 +159,10 @@ def main():
         help="Number of parallel jobs to run (default: -1)",
     )
     parser.add_argument(
-        "--n_estimators",
+        "--n_estimators_max",
         type=int,
         default=100,
-        help="Number of estimators for local training (default: 100)",
+        help="Maximum estimators in server model (default: 100)",
     )
     parser.add_argument(
         "--local_convergence",
@@ -145,18 +180,19 @@ def main():
     args = parser.parse_args()
 
     datasets = ["Sonar", "Vowel", "Spambase", "Nursery"]
-    strategies = ["s4_global_f1_pcd", "s7_perclient_f1_pcd"]  # PW is excluded
+    strategies = ["S2", "S3", "S4", "S5", "S6", "S7", "PW"]
+    paces = [3, 6]
     
-    # Grid Search Space
-    patiences = [3, 4]
-    global_episode_sizes = [5, 10, 15]
-    thresholds = [0.002]
-    pcd_weights = [0.1, 0.3, 0.5, 0.6, 0.7, 0.8, 0.9]
+    # Hiperparámetros de control fijos
+    patience = 4
+    threshold = 0.002
 
     print("======================================================================")
-    print("UNIFIED HYPERPARAMETER GRID SEARCH (S4 & S7)")
+    print("COMPARATIVA DE PASO DE CRECIMIENTO: PASO DE 3 VS PASO DE 6 (TODAS LAS ESTRATEGIAS S + PW)")
     print("======================================================================")
-    print(f"Estimators: {args.n_estimators} | Local threshold: {args.local_convergence} | Seed: {args.seed}")
+    print(f"Parámetros Fijos: Patience = {patience} | Threshold = {threshold} | PCD Weight = 0.7 (donde aplica)")
+    print(f"Estrategias: {strategies} | Pasos: {paces}")
+    print(f"Datasets: {datasets}")
 
     dataset_base_config = {
         "test_size": 0.2,
@@ -167,94 +203,91 @@ def main():
 
     splits = {}
     for d in datasets:
-        print(f"Loading dataset {d}...")
+        print(f"Cargando dataset {d}...")
         splits[d] = DatasetFactory.load_from_config(
             {**dataset_base_config, "type": d.lower()}
         )
 
+    # Generación de tareas (combinatoria)
     tasks = []
     for d in datasets:
         for strat in strategies:
-            for pat in patiences:
-                for ges in global_episode_sizes:
-                    for thresh in thresholds:
-                        for pcd in pcd_weights:
-                            tasks.append((d, strat, pat, ges, thresh, pcd))
+            for pace in paces:
+                tasks.append((strat, d, pace))
 
-    print(f"\nRunning {len(tasks)} combinations in parallel (n_jobs={args.n_jobs})...")
+    print(f"\nEjecutando {len(tasks)} combinaciones en paralelo (n_jobs={args.n_jobs})...")
     start_time = time.time()
     
     results = Parallel(n_jobs=args.n_jobs, verbose=10)(
-        delayed(evaluate_hyperparams)(
-            task[0],
-            task[1],
-            task[2],
-            task[3],
-            task[4],
-            task[5],
-            args.n_estimators,
+        delayed(evaluate_config)(
+            task[0],  # strategy
+            task[1],  # ds_name
+            task[2],  # pace
+            patience,
+            threshold,
+            args.n_estimators_max,
             args.local_convergence,
-            splits[task[0]],
+            splits[task[1]],
         )
         for task in tasks
     )
 
     end_time = time.time()
-    print(f"\nGrid search completed in {end_time - start_time:.2f} seconds.")
+    print(f"\nComparativa finalizada en {end_time - start_time:.2f} segundos.")
 
-    print("\nSaving results to JSON...")
+    print("\nGuardando resultados en JSON...")
     out_file = "results/unified_hyperparam_search_results.json"
     os.makedirs(os.path.dirname(out_file), exist_ok=True)
     save_experiment_results_json(
         out_file,
         {
             "script_name": "unified_hyperparameter_search.py",
-            "experiment_type": "unified_grid_search",
+            "experiment_type": "pace_comparison_all_s_strategies_3_vs_6",
             "objective": "hybrid_accuracy",
             "dataset_config": dataset_base_config,
             "common_config": {
                 "federation": {"n_clients": 3, "distribution": "iid"},
                 "model": {
-                    "n_estimators": args.n_estimators,
+                    "n_estimators": args.n_estimators_max,
                     "alpha": 0.1,
                     "voting": "soft",
                     "local_convergence_threshold": args.local_convergence,
                 },
+                "patience": patience,
+                "threshold": threshold,
             },
             "created_by": "unified_hyperparameter_search.py",
         },
         results,
     )
-    print(f"Results successfully saved at: {out_file}")
+    print(f"Resultados guardados exitosamente en: {out_file}")
 
-    # Analyze and display results
-    df_grid = pd.DataFrame(results)
+    # Analizar y mostrar la tabla comparativa por estrategia y paso
+    df = pd.DataFrame(results)
+    
+    grouped = df.groupby(["strategy", "pace"]).agg(
+        mean_acc=("accuracy", "mean"),
+        mean_f1=("f1_macro", "mean"),
+        mean_pcd=("pcd", "mean"),
+        mean_forest=("forest_size", "mean")
+    ).reset_index()
+
+    # Reordenar las estrategias en un orden lógico
+    strategy_order = {"S2": 1, "S3": 2, "S4": 3, "S5": 4, "S6": 5, "S7": 6, "PW": 7}
+    grouped["order"] = grouped["strategy"].map(strategy_order)
+    grouped = grouped.sort_values(by=["order", "pace"])
 
     print("\n======================================================================")
-    print("TOP 3 CONFIGURATIONS PER STRATEGY (Based on Average Accuracy)")
+    print("TABLA COMPARATIVA GLOBAL (PASO DE 3 VS PASO DE 6)")
     print("======================================================================")
-
-    for strat in strategies:
-        strat_norm = AggregationFactory.normalize_strategy_name(strat)
-        print(f"\nStrategy: {strat_norm}")
-        df_strat = df_grid[df_grid["strategy_normalized"] == strat_norm]
-        
-        grouped = df_strat.groupby(
-            ["patience", "global_episode_size", "threshold", "pcd_weight"]
-        ).agg(
-            avg_acc=("accuracy", "mean"),
-            avg_f1=("f1_macro", "mean"),
-            avg_trees=("n_trees", "mean")
-        ).reset_index()
-        
-        top3 = grouped.sort_values(by="avg_acc", ascending=False).head(3)
-        
-        for _, row in top3.iterrows():
-            print(
-                f"  Patience: {int(row['patience'])} | Size: {int(row['global_episode_size']):2d} | "
-                f"Threshold: {row['threshold']:.3f} | PCD Weight: {row['pcd_weight']:.1f} --> "
-                f"Acc: {row['avg_acc']:.4f} | F1: {row['avg_f1']:.4f} | Trees: {row['avg_trees']:.1f}"
-            )
+    print(f"{'Estrategia':<10} | {'Paso':<5} | {'Acc Promedio':<12} | {'F1 Promedio':<12} | {'PCD Promedio':<12} | {'Bosque Promedio':<15}")
+    print("-" * 75)
+    for _, row in grouped.iterrows():
+        print(
+            f"{row['strategy']:<10} | {row['pace']:<5} | "
+            f"{row['mean_acc']*100:11.2f}% | {row['mean_f1']*100:11.2f}% | "
+            f"{row['mean_pcd']:11.4f} | {row['mean_forest']:14.1f}"
+        )
 
 
 if __name__ == "__main__":

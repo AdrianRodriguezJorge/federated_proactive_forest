@@ -119,52 +119,39 @@ def run_single_strategy(
     norm_strat = AggregationFactory.normalize_strategy_name(strategy)
 
     # Base defaults
-    global_ep_size = 5
+    global_ep_size = 3
     trees_per_client_ep = 1
     trees_per_rnd_client = 1
     win_size = 5
-    f1_w = 0.5
-    pcd_w = 0.5
-
-    if norm_strat == "S4":
-        # S4: global episode size = number of trees added per episode
-        global_ep_size = 5
-        f1_w = 0.3
-        pcd_w = 0.7
-    elif norm_strat == "S7":
-        # S7: strictly uses 2 trees per client per episode
-        trees_per_client_ep = 2
-        global_ep_size = trees_per_client_ep * N_CLIENTS
-        f1_w = 0.3
-        pcd_w = 0.7
-    elif norm_strat == "PW":
-        # PW defaults: window size 5 and select 2 trees per client per round
-        win_size = 5
-        trees_per_rnd_client = 2
-        f1_w = 0.3
-        pcd_w = 0.7
+    f1_w = 0.3
+    pcd_w = 0.7
 
     for _, split in enumerate(precomputed_splits):
         config = {
             "federation": {"n_clients": N_CLIENTS, "distribution": "iid"},
-            "model": {"n_estimators": 100, "alpha": 0.1, "voting": "soft"},
+            "model": {
+                "n_estimators": 100,
+                "alpha": 0.1,
+                "voting": "soft",
+                "local_convergence_threshold": 0.002,
+            },
             "aggregation": {
                 "strategy": strategy,
                 "max_rounds": 20,
                 "global_convergence_threshold": 0.002,
-                "convergence_threshold": 0.002,
-                # Use explicit global_episode_size for S4/S7; harmless for others
                 "global_episode_size": global_ep_size,
-                # provide per-client quota as compatibility (floor division)
                 "trees_per_client_per_episode": trees_per_client_ep,
                 "trees_per_round_per_client": trees_per_rnd_client,
-                # enforce patience minimum = 4
                 "min_episodes": 4,
                 "min_rounds": 4,
                 "window_size": win_size,
                 "f1_weight": f1_w,
                 "pcd_weight": pcd_w,
             },
+            "prediction": {
+                "local_weight": 0.4,
+                "use_weighted": True
+            }
         }
 
         if strategy == "local_isolation":

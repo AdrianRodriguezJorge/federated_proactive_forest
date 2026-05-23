@@ -54,16 +54,16 @@ def load_base_config(
         "aggregation": {
             "strategy": strategy,
             "t_max": 100,
-            "f1_weight": 0.5,
-            "pcd_weight": 0.5,
+            "f1_weight": 0.3,
+            "pcd_weight": 0.7,
             "global_convergence_threshold": 0.002,
-            "episode_size": 5,
+            "episode_size": 3,
             "min_episodes": 4,
             "min_rounds": 4,
         },
         "prediction": {
             "local_weight": 0.4,
-            "global_weight": 0.6,
+            "use_weighted": True,
         },
         "verbose": False,
         "seed": seed,
@@ -77,13 +77,11 @@ def load_base_config(
                 "max_rounds": 20,
                 "alpha": 0.5,
                 "global_convergence_threshold": 0.002,
-                "trees_per_round_per_client": 3,
+                "trees_per_round_per_client": 1,
+                "f1_weight": 0.3,
+                "pcd_weight": 0.7,
             }
         )
-        config["prediction"] = {
-            "local_weight": 0.5,
-            "global_weight": 0.5,
-        }
     elif strategy == "S9":
         config["aggregation"].update(
             {
@@ -96,11 +94,11 @@ def load_base_config(
         )
 
     if strategy == "S4":
-        config["aggregation"]["global_episode_size"] = 5
+        config["aggregation"]["global_episode_size"] = 3
         config["aggregation"]["f1_weight"] = 0.3
         config["aggregation"]["pcd_weight"] = 0.7
     elif strategy == "S7":
-        config["aggregation"]["trees_per_client_per_episode"] = 2
+        config["aggregation"]["trees_per_client_per_episode"] = 1
         config["aggregation"]["f1_weight"] = 0.3
         config["aggregation"]["pcd_weight"] = 0.7
     return config
