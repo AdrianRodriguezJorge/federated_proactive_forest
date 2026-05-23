@@ -185,22 +185,10 @@ class PerClientProgressiveStrategy(ABC):
             metrics_service=self.metrics_svc or kwargs.get("metrics_service"),
             diversity_service=diversity_svc,
         )
-        # Determine per-client and episode size from explicit parameters.
-        # Prefer explicit `global_episode_size` which represents total trees
-        # to be added in the episode across all clients. If provided, compute
-        # per-client base quota (integer division) and use the total as
-        # `episode_size` for the selector. This preserves round-robin ordering
-        # so that remainder trees are distributed naturally across clients.
-        global_episode_size = kwargs.get("global_episode_size")
-        if global_episode_size is not None:
-            n_clients = len(client_ids)
-            base = max(0, global_episode_size // n_clients)
-            # episode_size is the total number of trees to add this episode
-            episode_size = int(global_episode_size)
-            trees_per_client = int(base) if base > 0 else 1
-        else:
-            trees_per_client = int(kwargs.get("trees_per_client_per_episode", 1))
-            episode_size = trees_per_client * len(client_ids)
+        # Determine per-client and episode size strictly from trees_per_client_per_episode,
+        # ignoring global_episode_size.
+        trees_per_client = int(kwargs.get("trees_per_client_per_episode", 1))
+        episode_size = trees_per_client * len(client_ids)
 
         global_trees, selected_entries, conv_round, logs = selector.select(
             candidate_entries=round_robin_entries,

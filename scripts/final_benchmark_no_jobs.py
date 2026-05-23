@@ -104,13 +104,19 @@ def run_single_strategy(
     pcd_w = 0.5
 
     if norm_strat == "S4":
-        global_ep_size = 10
+        global_ep_size = 5
+        f1_w = 0.3
+        pcd_w = 0.7
     elif norm_strat == "S7":
-        global_ep_size = 3 * N_CLIENTS
-        trees_per_client_ep = max(1, global_ep_size // N_CLIENTS)
+        trees_per_client_ep = 2
+        global_ep_size = trees_per_client_ep * N_CLIENTS
+        f1_w = 0.3
+        pcd_w = 0.7
     elif norm_strat == "PW":
         win_size = 5
         trees_per_rnd_client = 3
+        f1_w = 0.3
+        pcd_w = 0.7
 
     for split in precomputed_splits:
         config = {
@@ -124,8 +130,8 @@ def run_single_strategy(
                 "global_episode_size": global_ep_size,
                 "trees_per_client_per_episode": trees_per_client_ep,
                 "trees_per_round_per_client": trees_per_rnd_client,
-                "min_episodes": 5,
-                "min_rounds": 5,
+                "min_episodes": 4,
+                "min_rounds": 4,
                 "window_size": win_size,
                 "f1_weight": f1_w,
                 "pcd_weight": pcd_w,

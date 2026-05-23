@@ -128,15 +128,13 @@ def run_single_strategy(
 
     if norm_strat == "S4":
         # S4: global episode size = number of trees added per episode
-        global_ep_size = 10
+        global_ep_size = 5
         f1_w = 0.3
         pcd_w = 0.7
     elif norm_strat == "S7":
-        # S7: prefer explicit total trees per episode; previously used 3 trees/client
-        # Maintain same budget: 3 trees per client * N_CLIENTS
-        global_ep_size = 3 * N_CLIENTS
-        # set per-client base quota for compatibility
-        trees_per_client_ep = max(1, global_ep_size // N_CLIENTS)
+        # S7: strictly uses 2 trees per client per episode
+        trees_per_client_ep = 2
+        global_ep_size = trees_per_client_ep * N_CLIENTS
         f1_w = 0.3
         pcd_w = 0.7
     elif norm_strat == "PW":
@@ -160,9 +158,9 @@ def run_single_strategy(
                 # provide per-client quota as compatibility (floor division)
                 "trees_per_client_per_episode": trees_per_client_ep,
                 "trees_per_round_per_client": trees_per_rnd_client,
-                # enforce patience minimum = 5
-                "min_episodes": 5,
-                "min_rounds": 5,
+                # enforce patience minimum = 4
+                "min_episodes": 4,
+                "min_rounds": 4,
                 "window_size": win_size,
                 "f1_weight": f1_w,
                 "pcd_weight": pcd_w,

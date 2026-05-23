@@ -43,14 +43,23 @@ def run_experiment(
     trees_per_client_ep = 1
     trees_per_rnd_client = 1
     win_size = 5
+    f1_w = 0.5
+    pcd_w = 0.5
 
     if norm_strat == "S4":
-        global_ep_size = 10
+        global_ep_size = 5
+        f1_w = 0.3
+        pcd_w = 0.7
     elif norm_strat == "S7":
-        trees_per_client_ep = 3
+        trees_per_client_ep = 2
+        global_ep_size = trees_per_client_ep * 3
+        f1_w = 0.3
+        pcd_w = 0.7
     elif norm_strat == "PW":
         win_size = 10
         trees_per_rnd_client = 3
+        f1_w = 0.3
+        pcd_w = 0.7
 
     config = {
         "dataset": dataset_cfg,
@@ -70,8 +79,8 @@ def run_experiment(
         },
         "aggregation": {
             "strategy": strategy,
-            "f1_weight": 0.5,
-            "pcd_weight": 0.5,
+            "f1_weight": f1_w,
+            "pcd_weight": pcd_w,
             "global_convergence_threshold": 0.002,
             "convergence_threshold": 0.002,
             "global_episode_size": global_ep_size,
@@ -79,8 +88,8 @@ def run_experiment(
             "trees_per_round_per_client": trees_per_rnd_client,
             "window_size": win_size,
             "max_rounds": 20,
-            "min_episodes": 3,
-            "min_rounds": 3,
+            "min_episodes": 4,
+            "min_rounds": 4,
         },
         "prediction": {
             "local_weight": 0.4,
