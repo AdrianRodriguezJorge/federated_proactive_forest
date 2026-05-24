@@ -475,6 +475,97 @@
         "duration_seconds": 1.22,
         "error": null,
         "timestamp": "2026-05-23T17:03:23.699624"
+      },
+      "s7_perclient_f1_pcd": {
+        "success": true,
+        "metrics": {
+          "f1": 0.8666666666666667,
+          "accuracy": 0.8666666666666667,
+          "pcd": 0.3111111111111111,
+          "forest_size": 110.0
+        },
+        "convergence_round": 5,
+        "duration_seconds": 1.58,
+        "error": null,
+        "timestamp": "2026-05-23T17:03:24.841583"
+      },
+      "pw": {
+        "success": true,
+        "metrics": {
+          "f1": 0.8666666666666667,
+          "accuracy": 0.8666666666666667,
+          "pcd": 0.4666666666666666,
+          "forest_size": 9.0
+        },
+        "convergence_round": null,
+        "duration_seconds": 0.26,
+        "error": null,
+        "timestamp": "2026-05-23T17:03:24.843859"
+      },
+      "s9_weighted_average": {
+        "success": true,
+        "metrics": {
+          "f1": 0.9106621773288439,
+          "accuracy": 0.9111111111111111,
+          "pcd": 0.24444444444444446,
+          "forest_size": 20.0
+        },
+        "convergence_round": 4,
+        "duration_seconds": 0.32,
+        "error": null,
+        "timestamp": "2026-05-23T17:03:24.846380"
+      },
+      "s9_simple_mean": {
+        "success": true,
+        "metrics": {
+          "f1": 0.9106621773288439,
+          "accuracy": 0.9111111111111111,
+          "pcd": 0.24444444444444446,
+          "forest_size": 20.0
+        },
+        "convergence_round": 4,
+        "duration_seconds": 0.41,
+        "error": null,
+        "timestamp": "2026-05-23T17:03:24.884304"
+      },
+      "s9_median": {
+        "success": true,
+        "metrics": {
+          "f1": 0.9106621773288439,
+          "accuracy": 0.9111111111111111,
+          "pcd": 0.24444444444444446,
+          "forest_size": 20.0
+        },
+        "convergence_round": 4,
+        "duration_seconds": 0.42,
+        "error": null,
+        "timestamp": "2026-05-23T17:03:25.159103"
+      },
+      "s9_consensus": {
+        "success": true,
+        "metrics": {
+          "f1": 0.9106621773288439,
+          "accuracy": 0.9111111111111111,
+          "pcd": 0.24444444444444446,
+          "forest_size": 20.0
+        },
+        "convergence_round": 4,
+        "duration_seconds": 0.42,
+        "error": null,
+        "timestamp": "2026-05-23T17:03:25.325342"
+      },
+      "s9_proactive_pcd": {
+        "success": true,
+        "metrics": {
+          "f1": 0.9106621773288439,
+          "accuracy": 0.9111111111111111,
+          "pcd": 0.24444444444444446,
+          "forest_size": 20.0
+        },
+        "convergence_round": 4,
+        "duration_seconds": 0.5,
+        "error": null,
+        "timestamp": "2026-05-23T17:03:25.753516"
       }
     }
   }
