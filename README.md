@@ -17,6 +17,8 @@ By balancing **accuracy** (individual tree classification performance) and **div
 
 ## ✨ What's New in v3.0.0
 
+*   **Deterministic Validation & Seeding Fixes**: Resolved client-side seed alignment and server-side ledger state persistence issues to eliminate run-to-run duplicate results and guarantee scientific reproducibility.
+*   **Single-Fold Benchmark Pipeline**: Introduced `benchmark_single_fold.py` with full results saved to `results/benchmark_single_fold_results.json` and reproducible via `configs/benchmark_hyperparameters.yaml`.
 *   **Enhanced Testing Suite**: Comprehensive test coverage for aggregation strategies, label services, and federated orchestration.
 *   **Improved CLI Integration**: Streamlined command-line interface with better error handling and configuration validation.
 *   **Optimized Hyperparameter Search**: Updated `hyperparameter_search.py` and `optimize_pcd_weight.py` for faster convergence analysis.
@@ -535,6 +537,41 @@ python scripts/final_benchmark.py
 > **💡 Tip**: Average runtime is 30-90 minutes depending on hardware. For testing, temporarily reduce `n_folds` or `n_repetitions` in the script.
 
 ### 📉 Additional Research Scripts
+
+*   **`benchmark_single_fold.py`**: A high-speed benchmarking utility that evaluates all **13 strategies** sequentially over a single dataset split across **7 benchmark datasets** (Iris, Car, Nursery, Vowel, Optdigits, Sonar, Spambase).
+    *   **Configuration Reproducibility**: All hyperparameters used for this benchmark are declared in [**`configs/benchmark_hyperparameters.yaml`**](configs/benchmark_hyperparameters.yaml).
+    *   **Result Output**: Detailed JSON metrics are saved at `results/benchmark_single_fold_results.json`.
+    ```bash
+    python scripts/benchmark_single_fold.py
+    ```
+
+#### 📊 Summary of Single-Fold Benchmark Results (May 2026)
+
+The following tables showcase the performance (Macro F1-score) and ensemble size (number of trees) across the 7 evaluated datasets under 3 clients (IID):
+
+##### Macro F1-Score
+| Strategy | Iris | Car | Nursery | Vowel | Optdigits | Sonar | Spambase |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **s1_simple_pool** | 0.8667 | 0.9303 | 0.9536 | 0.8586 | 0.9661 | 0.8056 | 0.9321 |
+| **s2_global_accuracy** | 0.8667 | 0.9250 | 0.9593 | 0.7941 | 0.9565 | 0.8864 | 0.9327 |
+| **s3_global_f1** | 0.8667 | 0.9367 | 0.9598 | 0.8322 | 0.9572 | 0.8719 | 0.9327 |
+| **s4_global_f1_pcd** | 0.8887 | 0.9469 | 0.9537 | 0.7908 | 0.9601 | 0.8215 | 0.9311 |
+| **s5_perclient_accuracy**| 0.8887 | 0.9210 | 0.9537 | 0.8093 | 0.9572 | 0.8858 | 0.9321 |
+| **s6_perclient_f1** | 0.8887 | 0.9374 | 0.9554 | 0.8120 | 0.9613 | 0.9182 | 0.9291 |
+| **s7_perclient_f1_pcd** | 0.8667 | 0.9337 | 0.9502 | 0.8256 | 0.9542 | 0.8534 | 0.9350 |
+| **pw (Progressive Windows)** | 0.8667 | 0.9291 | 0.9195 | 0.7137 | 0.9521 | 0.7529 | 0.9219 |
+| **s9_weighted_average** | 0.9107 | 0.7795 | 0.9243 | 0.6583 | 0.9409 | 0.6614 | 0.9200 |
+| **s9_simple_mean** | 0.9107 | 0.7795 | 0.9243 | 0.6583 | 0.9409 | 0.6614 | 0.9200 |
+| **s9_median** | 0.9107 | 0.7795 | 0.9243 | 0.6666 | 0.9415 | 0.6614 | 0.9200 |
+| **s9_consensus** | 0.9107 | 0.7795 | 0.9243 | 0.6583 | 0.9409 | 0.6614 | 0.9200 |
+| **s9_proactive_pcd** | 0.9107 | 0.7795 | 0.9243 | 0.6584 | 0.9409 | 0.6614 | 0.9200 |
+
+##### Average Forest Size (Number of Trees)
+| Strategy | Iris | Car | Nursery | Vowel | Optdigits | Sonar | Spambase |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **FLEX Baselines (S1-S7)**| ~110 | ~112 | ~114 | ~120 | ~115 | ~111 | ~118 |
+| **pw (Progressive Windows)** | 11.0 | 16.0 | 14.0 | 13.0 | 17.0 | 12.0 | 15.0 |
+| **S9 Roulette Variants**| 21.6 | 21.6 | 21.6 | 28.3 | 30.0 | 21.6 | 30.0 |
 
 *   **`hyperparameter_search.py`**: Automated hyperparameter discovery using Optuna. Systematically explores optimal alpha, F1/PCD weights, and client count configurations.
     ```bash

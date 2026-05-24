@@ -1,0 +1,216 @@
+# Benchmark Single Fold - Hyperparameters Configuration
+# Saved: 2026-05-24
+# These hyperparameters were used to run all 13 strategies across the 7 benchmark datasets.
+
+experiment_metadata:
+  n_clients: 3
+  train_size_percent: 80
+  val_size_percent: 10
+  test_size_percent: 10
+  cross_validation: false
+
+base_model_config:
+  n_estimators: 100
+  alpha: 0.1
+  voting: "soft"
+  local_convergence_threshold: 0.002
+
+base_prediction_config:
+  local_weight: 0.4
+  use_weighted: true
+
+strategies:
+  # FLEX Baselines (S1 - S7)
+  s1_simple_pool:
+    aggregation:
+      strategy: "s1_simple_pool"
+      max_rounds: 20
+      global_convergence_threshold: 0.002
+      global_episode_size: 3
+      trees_per_client_per_episode: 1
+      trees_per_round_per_client: 1
+      min_episodes: 4
+      min_rounds: 4
+      window_size: 5
+      f1_weight: 0.3
+      pcd_weight: 0.7
+
+  s2_global_accuracy:
+    aggregation:
+      strategy: "s2_global_accuracy"
+      max_rounds: 20
+      global_convergence_threshold: 0.002
+      global_episode_size: 3
+      trees_per_client_per_episode: 1
+      trees_per_round_per_client: 1
+      min_episodes: 4
+      min_rounds: 4
+      window_size: 5
+      f1_weight: 0.3
+      pcd_weight: 0.7
+
+  s3_global_f1:
+    aggregation:
+      strategy: "s3_global_f1"
+      max_rounds: 20
+      global_convergence_threshold: 0.002
+      global_episode_size: 3
+      trees_per_client_per_episode: 1
+      trees_per_round_per_client: 1
+      min_episodes: 4
+      min_rounds: 4
+      window_size: 5
+      f1_weight: 0.3
+      pcd_weight: 0.7
+
+  s4_global_f1_pcd:
+    aggregation:
+      strategy: "s4_global_f1_pcd"
+      max_rounds: 20
+      global_convergence_threshold: 0.002
+      global_episode_size: 3
+      trees_per_client_per_episode: 1
+      trees_per_round_per_client: 1
+      min_episodes: 4
+      min_rounds: 4
+      window_size: 5
+      f1_weight: 0.3
+      pcd_weight: 0.7
+
+  s5_perclient_accuracy:
+    aggregation:
+      strategy: "s5_perclient_accuracy"
+      max_rounds: 20
+      global_convergence_threshold: 0.002
+      global_episode_size: 3
+      trees_per_client_per_episode: 1
+      trees_per_round_per_client: 1
+      min_episodes: 4
+      min_rounds: 4
+      window_size: 5
+      f1_weight: 0.3
+      pcd_weight: 0.7
+
+  s6_perclient_f1:
+    aggregation:
+      strategy: "s6_perclient_f1"
+      max_rounds: 20
+      global_convergence_threshold: 0.002
+      global_episode_size: 3
+      trees_per_client_per_episode: 1
+      trees_per_round_per_client: 1
+      min_episodes: 4
+      min_rounds: 4
+      window_size: 5
+      f1_weight: 0.3
+      pcd_weight: 0.7
+
+  s7_perclient_f1_pcd:
+    aggregation:
+      strategy: "s7_perclient_f1_pcd"
+      max_rounds: 20
+      global_convergence_threshold: 0.002
+      global_episode_size: 3
+      trees_per_client_per_episode: 1
+      trees_per_round_per_client: 1
+      min_episodes: 4
+      min_rounds: 4
+      window_size: 5
+      f1_weight: 0.3
+      pcd_weight: 0.7
+
+  # Progressive Windows (PW) Baseline
+  pw:
+    aggregation:
+      strategy: "pw"
+      max_rounds: 20
+      global_convergence_threshold: 0.002
+      global_episode_size: 3
+      trees_per_client_per_episode: 1
+      trees_per_round_per_client: 1
+      min_episodes: 4
+      min_rounds: 4
+      window_size: 5
+      f1_weight: 0.3
+      pcd_weight: 0.7
+
+  # Global Attribute Roulette Strategies (S9 Variants)
+  s9_weighted_average:
+    aggregation:
+      strategy: "s9_weighted_average"
+      variant: "S9_WEIGHTED_AVERAGE"
+      local_roulette_weight: 0.1
+      max_rounds: 20
+      global_convergence_threshold: 0.002
+      global_episode_size: 3
+      trees_per_client_per_episode: 1
+      trees_per_round_per_client: 1
+      min_episodes: 4
+      min_rounds: 4
+      window_size: 5
+      f1_weight: 0.3
+      pcd_weight: 0.7
+
+  s9_simple_mean:
+    aggregation:
+      strategy: "s9_simple_mean"
+      variant: "S9_SIMPLE_MEAN"
+      local_roulette_weight: 0.1
+      max_rounds: 20
+      global_convergence_threshold: 0.002
+      global_episode_size: 3
+      trees_per_client_per_episode: 1
+      trees_per_round_per_client: 1
+      min_episodes: 4
+      min_rounds: 4
+      window_size: 5
+      f1_weight: 0.3
+      pcd_weight: 0.7
+
+  s9_median:
+    aggregation:
+      strategy: "s9_median"
+      variant: "S9_MEDIAN"
+      local_roulette_weight: 0.1
+      max_rounds: 20
+      global_convergence_threshold: 0.002
+      global_episode_size: 3
+      trees_per_client_per_episode: 1
+      trees_per_round_per_client: 1
+      min_episodes: 4
+      min_rounds: 4
+      window_size: 5
+      f1_weight: 0.3
+      pcd_weight: 0.7
+
+  s9_consensus:
+    aggregation:
+      strategy: "s9_consensus"
+      variant: "S9_CONSENSUS"
+      local_roulette_weight: 0.1
+      max_rounds: 20
+      global_convergence_threshold: 0.002
+      global_episode_size: 3
+      trees_per_client_per_episode: 1
+      trees_per_round_per_client: 1
+      min_episodes: 4
+      min_rounds: 4
+      window_size: 5
+      f1_weight: 0.3
+      pcd_weight: 0.7
+
+  s9_proactive_pcd:
+    aggregation:
+      strategy: "s9_proactive_pcd"
+      variant: "S9_PROACTIVE_PCD"
+      local_roulette_weight: 0.1
+      max_rounds: 20
+      global_convergence_threshold: 0.002
+      global_episode_size: 3
+      trees_per_client_per_episode: 1
+      trees_per_round_per_client: 1
+      min_episodes: 4
+      min_rounds: 4
+      window_size: 5
+      f1_weight: 0.3
+      pcd_weight: 0.7
