@@ -175,7 +175,9 @@ class S9ProactivePCDStrategy(IRouletteAggregationStrategy):
 
 _VARIANT_MAP: Dict[str, type] = {
     "S9_WEIGHTED": S9WeightedAverageStrategy,
+    "S9_WEIGHTED_AVERAGE": S9WeightedAverageStrategy,
     "S9_MEAN": S9SimpleMeanStrategy,
+    "S9_SIMPLE_MEAN": S9SimpleMeanStrategy,
     "S9_MEDIAN": S9MedianStrategy,
     "S9_CONSENSUS": S9ConsensusStrategy,
     "S9_PROACTIVE_PCD": S9ProactivePCDStrategy,

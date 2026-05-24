@@ -809,13 +809,18 @@ class ProactiveForestClassifier(DecisionForestClassifier):
             self._trees = []
 
         if self.random_state is not None:
-            np.random.seed(self.random_state)
+            np.random.seed(self.random_state + len(self._trees))
 
-        self.ledger = FIProbabilityLedger(
-            probabilities=self._feature_prob,
-            n_features=self._n_features,
-            alpha=self.alpha,
-        )
+        if not hasattr(self, "ledger") or self.ledger is None:
+            self.ledger = FIProbabilityLedger(
+                probabilities=self._feature_prob,
+                n_features=self._n_features,
+                alpha=self.alpha,
+            )
+        else:
+            if self._feature_prob is not None:
+                self.ledger.probabilities = self._feature_prob
+
         self._tree_builder = TreeBuilder(
             split_criterion=self._split_criterion,
             feature_prob=self.ledger.probabilities,
@@ -835,11 +840,12 @@ class ProactiveForestClassifier(DecisionForestClassifier):
             new_tree = self._tree_builder.build_tree(
                 X[ids], y[ids], self._n_classes
             )
+            global_tree_index = len(self._trees)
             self._trees.append(new_tree)
             preds = self._predict_on_tree(Xt, new_tree)
             acc = float(np.mean(yt == preds))
             self._m_progressive_accuracy.append(acc)
-            rate = i / self._n_estimators
+            rate = global_tree_index / self.n_estimators
             self.ledger.update_probabilities(new_tree, rate=rate)
             self._tree_builder.feature_prob = self.ledger.probabilities
             self.set_generator.clear()
