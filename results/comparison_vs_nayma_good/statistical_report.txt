@@ -6,7 +6,6 @@ Resultados de benchmark cargados de: results\results_final_benchmark.csv
 Tabla comparativa guardada en: results\comparison_vs_nayma_good\comparison_table.csv
 
 --- TABLA COMPARATIVA DE F1-SCORES ---
-       BD  F1_PF F1_Local  F1_S1  F1_S2  F1_S3  F1_S4  F1_S5  F1_S6  F1_S7  F1_PW F1_S9_Weighted F1_S9_Mean F1_S9_Median F1_S9_Consensus F1_S9_Proactive
      Iris 0.9549   0.9290 0.9564 0.9321 0.9321 0.9341 0.9436 0.9436 0.9342 0.9010         0.9061     0.9061       0.9061          0.9061          0.9061
       Car 0.9457   0.7964 0.8625 0.8034 0.8002 0.8357 0.8373 0.8405 0.8167 0.7794         0.7487     0.7487       0.7487          0.7487          0.7487
   Nursery 0.9548   0.8936 0.9171 0.8443 0.8932 0.8942 0.8964 0.9064 0.8934 0.6575         0.8819     0.8819       0.8816          0.8819          0.8818
@@ -41,12 +40,11 @@ S7 (Per-Client F1 PCD)    | 0.8240  | 0.007812 | 0.109375 | 0.109375 | -0.1194 (
 Local Isolation           | 0.8159  | 0.007812 | 0.109375 | 0.109375 | -0.1275 (*/ns/ns)
 S3 (Global F1)            | 0.8040  | 0.007812 | 0.109375 | 0.109375 | -0.1395 (*/ns/ns)
 S2 (Global Acc)           | 0.7974  | 0.007812 | 0.109375 | 0.109375 | -0.1460 (*/ns/ns)
-PW (Proactive Window)     | 0.7914  | 0.007812 | 0.109375 | 0.109375 | -0.1520 (*/ns/ns)
-S9 Proactive PCD          | 0.7849  | 0.007812 | 0.109375 | 0.109375 | -0.1585 (*/ns/ns)
-S9 Median                 | 0.7849  | 0.007812 | 0.109375 | 0.109375 | -0.1586 (*/ns/ns)
-S9 Weighted Avg           | 0.7848  | 0.007812 | 0.109375 | 0.109375 | -0.1586 (*/ns/ns)
-S9 Simple Mean            | 0.7848  | 0.007812 | 0.109375 | 0.109375 | -0.1586 (*/ns/ns)
-S9 Consensus              | 0.7848  | 0.007812 | 0.109375 | 0.109375 | -0.1586 (*/ns/ns)
+S8 Proactive PCD          | 0.7849  | 0.007812 | 0.109375 | 0.109375 | -0.1585 (*/ns/ns)
+S8 Median                 | 0.7849  | 0.007812 | 0.109375 | 0.109375 | -0.1586 (*/ns/ns)
+S8 Weighted Avg           | 0.7848  | 0.007812 | 0.109375 | 0.109375 | -0.1586 (*/ns/ns)
+S8 Simple Mean            | 0.7848  | 0.007812 | 0.109375 | 0.109375 | -0.1586 (*/ns/ns)
+S8 Consensus              | 0.7848  | 0.007812 | 0.109375 | 0.109375 | -0.1586 (*/ns/ns)
 
 Leyenda de significancia: (original / Bonferroni / Holm)
   *  = Diferencia estadísticamente significativa (p < 0.05)
@@ -63,13 +61,11 @@ Leyenda de significancia: (original / Bonferroni / Holm)
 PASO 3: Comparación de Pérdida/Ganancia de F1 vs Centralizado por Dataset
 Dataset      | Mejor Estrategia        | Diff F1  | Peor Estrategia         | Diff F1 
 --------------------------------------------------------------------------------
-Iris         | S1 (Simple Pool)        | +0.0015 | PW (Proactive Window)   | -0.0539
-Car          | S1 (Simple Pool)        | -0.0832 | S9 Weighted Avg         | -0.1970
-Nursery      | S1 (Simple Pool)        | -0.0377 | PW (Proactive Window)   | -0.2973
-Vowel        | S1 (Simple Pool)        | -0.1534 | S9 Weighted Avg         | -0.3783
-Letter       | S1 (Simple Pool)        | -0.2380 | S9 Median               | -0.3008
+Car          | S1 (Simple Pool)        | -0.0832 | S8 Weighted Avg         | -0.1970
+Vowel        | S1 (Simple Pool)        | -0.1534 | S8 Weighted Avg         | -0.3783
+Letter       | S1 (Simple Pool)        | -0.2380 | S8 Median               | -0.3008
 Optdigits    | S1 (Simple Pool)        | -0.0197 | S2 (Global Acc)         | -0.1136
-Sonar        | S1 (Simple Pool)        | -0.0732 | S9 Weighted Avg         | -0.1602
+Sonar        | S1 (Simple Pool)        | -0.0732 | S8 Weighted Avg         | -0.1602
 Spambase     | S1 (Simple Pool)        | -0.0227 | S3 (Global F1)          | -0.0491
 
 ================================================================================

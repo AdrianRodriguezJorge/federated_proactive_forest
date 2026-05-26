@@ -240,58 +240,12 @@ S7:
     log: true
 
 # ============================================================================
-# PW: Progressive Windows
+# S8: Global Attribute Roulette (Roulette Strategy)
 # ============================================================================
-PW:
-  alpha_pf:
-    type: float
-    low: 0.05
-    high: 0.9
-    step: 0.05
-
-  window_size:
-    type: int
-    low: 3
-    high: 15
-    step: 1
-
-  max_rounds:
-    type: int
-    low: 10
-    high: 40
-    step: 5
-
-  f1_weight:
-    type: float
-    low: 0.0
-    high: 1.0
-    step: 0.1
-
-  convergence_threshold:
-    type: float
-    low: 0.0001
-    high: 0.01
-    log: true
-
-  local_weight:
-    type: float
-    low: 0.0
-    high: 1.0
-    step: 0.1
-
-  local_convergence:
-    type: float
-    low: 0.0001
-    high: 0.01
-    log: true
-
-# ============================================================================
-# S9: Global Attribute Roulette (Roulette Strategy)
-# ============================================================================
-S9:
+S8:
   variant:
     type: categorical
-    choices: ["S9_MEAN", "S9_CONSENSUS", "S9_MEDIAN", "S9_WEIGHTED", "S9_PROACTIVE_PCD"]
+    choices: ["S8_MEAN", "S8_CONSENSUS", "S8_MEDIAN", "S8_WEIGHTED", "S8_PROACTIVE_PCD"]
 
   local_roulette_weight:
     type: float

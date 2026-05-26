@@ -30,11 +30,11 @@ By balancing **accuracy** (individual tree classification performance) and **div
 
 ## 🎯 Key Capabilities
 
-*   🌳 **12 Aggregation Strategies**: Native support for S1–S7 (ranking-based) and 5 distinct variants of the S9 Global Roulette strategy.
+*   🌳 **12 Aggregation Strategies**: Native support for S1–S7 (ranking-based) and 5 distinct variants of the S8 Global Roulette strategy.
 *   📡 **Native FLEX Integration**: Built directly upon the FLEX Federated Learning Framework to ensure robust client-server orchestration, parallel execution, and standardized connection pools.
 *   📉 **Non-IID Heterogeneity Handling**: Full Dirichlet-based data partitioning simulates realistic real-world client data skew, allowing researchers to evaluate strategy resilience under severe distribution shifts.
 *   ⚖️ **Weighted Hybrid Prediction**: An intelligent voting mechanism that mathematically combines local client expertise with global generalized knowledge using highly configurable weight ratios.
-*   🎰 **S9 Global Roulette**: An ultra-low bandwidth strategy that exchanges statistical attribute importance vectors instead of complex decision tree structures, reducing communication payloads by up to 99%.
+*   🎰 **S8 Global Roulette**: An ultra-low bandwidth strategy that exchanges statistical attribute importance vectors instead of complex decision tree structures, reducing communication payloads by up to 99%.
 *   🔄 **Label Normalization Service**: A centralized `LabelService` that guarantees consistent categorical class indexing and cross-client class alignments, eliminating out-of-vocabulary shifted predictions.
 *   🌐 **Interactive Analysis UI**: A comprehensive 5-page Streamlit web interface showcasing real-time runs, dynamic metric analysis, interactive tree-ranking tables, and attribute roulette evolution heatmaps.
 *   🧪 **Research-Grade Benchmarking**: Fully automated, parallel cross-validation script (`final_benchmark.py`) with integrated non-parametric statistical tests (Friedman and post-hoc Wilcoxon with Bonferroni correction).
@@ -245,20 +245,20 @@ To systematically evaluate how local trees are selected, merged, and distributed
 | **S5** | Per-Client Accuracy Ranking | Local Out-of-Bag Acc | **Medium** (Per-client subset) | Selection done independently per client based on local validation accuracy. |
 | **S6** | Per-Client Macro-F1 Ranking | Local Out-of-Bag F1 | **Medium** (Per-client subset) | Selection done independently per client based on local validation Macro-F1. |
 | **S7** | Per-Client Hybrid Ranking | Local F1 + Local PCD | **Medium** (Per-client diversity) | Client-level selection maximizing local accuracy and local diversity. |
-| **S9_MEAN** | Roulette Simple Mean | Attribute Mean | **Ultra-Low** (Vector only) | Aggregates feature probabilities via simple arithmetic mean of vectors. |
-| **S9_WEIGHTED** | Roulette Weighted Avg | Client Data Size Weight | **Ultra-Low** (Vector only) | Vector aggregation weighted proportionally to client training set sizes. |
-| **S9_MEDIAN** | Roulette Robust Median | Coordinate Median | **Ultra-Low** (Vector only) | Employs median filtering to neutralize noisy/adversarial client vectors. |
-| **S9_CONSENSUS** | Roulette Consensus | Performance Consensus | **Ultra-Low** (Vector only) | Weights client vectors dynamic-historically based on validation accuracy. |
-| **S9_PROACTIVE_PCD**| Roulette Proactive PCD | Diversity-Weighted PCD | **Ultra-Low** (Vector only) | Adapts probability vectors based on localized feature-correct diversity scores. |
+| **S8_MEAN** | Roulette Simple Mean | Attribute Mean | **Ultra-Low** (Vector only) | Aggregates feature probabilities via simple arithmetic mean of vectors. |
+| **S8_WEIGHTED** | Roulette Weighted Avg | Client Data Size Weight | **Ultra-Low** (Vector only) | Vector aggregation weighted proportionally to client training set sizes. |
+| **S8_MEDIAN** | Roulette Robust Median | Coordinate Median | **Ultra-Low** (Vector only) | Employs median filtering to neutralize noisy/adversarial client vectors. |
+| **S8_CONSENSUS** | Roulette Consensus | Performance Consensus | **Ultra-Low** (Vector only) | Weights client vectors dynamic-historically based on validation accuracy. |
+| **S8_PROACTIVE_PCD**| Roulette Proactive PCD | Diversity-Weighted PCD | **Ultra-Low** (Vector only) | Adapts probability vectors based on localized feature-correct diversity scores. |
 
 ---
 
-### 🎰 Unified S9 (Global Attribute Roulette) Documentation
+### 🎰 Unified S8 (Global Attribute Roulette) Documentation
 
-The **S9 Global Attribute Roulette** represents the pinnacle of communication-efficient horizontal federated learning within this codebase. It is strictly designed for extreme edge-computing scenarios where network bandwidth is the primary bottleneck.
+The **S8 Global Attribute Roulette** represents the pinnacle of communication-efficient horizontal federated learning within this codebase. It is strictly designed for extreme edge-computing scenarios where network bandwidth is the primary bottleneck.
 
 #### ⚙️ The Vector-Exchange Paradigm
-Rather than transmitting massive serialized Random/Proactive Forest structures (which consume megabytes of payload and introduce structural intellectual property leakage), S9 exchanges simple **one-dimensional attribute selection probability vectors** ($p \in \mathbb{R}^{d}$, where $d$ is the number of features).
+Rather than transmitting massive serialized Random/Proactive Forest structures (which consume megabytes of payload and introduce structural intellectual property leakage), S8 exchanges simple **one-dimensional attribute selection probability vectors** ($p \in \mathbb{R}^{d}$, where $d$ is the number of features).
 
 ```
 [ Client 1 ] --(p1 vector)--> [                   ]
@@ -267,7 +267,7 @@ Rather than transmitting massive serialized Random/Proactive Forest structures (
 ```
 
 1.  **Local Step**: Each client trains a local Proactive Forest. The client extracts feature importance scores (the probability of feature selection during split generation).
-2.  **Aggregation Step**: The server gathers these raw vectors and performs mathematical consolidation based on the selected S9 variant:
+2.  **Aggregation Step**: The server gathers these raw vectors and performs mathematical consolidation based on the selected S8 variant:
     *   **Mean**: $\mathbf{p}_{\text{global}} = \frac{1}{K} \sum_{k=1}^{K} \mathbf{p}_k$
     *   **Weighted**: $\mathbf{p}_{\text{global}} = \sum_{k=1}^{K} \frac{N_k}{\sum N_i} \mathbf{p}_k$ (where $N_k$ is the local sample size of client $k$).
     *   **Median**: $\mathbf{p}_{\text{global}} = \text{median}(\mathbf{p}_1, \dots, \mathbf{p}_K)$ (coordinate-wise median filtering out malicious or corrupted client anomalies).
@@ -276,7 +276,7 @@ Rather than transmitting massive serialized Random/Proactive Forest structures (
 3.  **Distribution Step**: The aggregated vector is returned to all clients. In the subsequent training step, clients initialize their tree-growing splitting processes using the server's global probability vector, directly incorporating distributed feature significance without transferring a single tree.
 
 > [!NOTE]
-> S9 reduces communication payloads by over **99%** compared to S1-S7, while successfully preserves local privacy since no tree structures or exact data bounds ever leave the client nodes.
+> S8 reduces communication payloads by over **99%** compared to S1-S7, while successfully preserves local privacy since no tree structures or exact data bounds ever leave the client nodes.
 
 ---
 
@@ -313,7 +313,7 @@ src/
 ├── domain/                         # 📦 Pure Enterprise & Algorithm Core (Framework-Agnostic)
 │   ├── model/                      #   ├── ProactiveForest (Ensemble building, convergence)
 │   │                               #   └── DecisionTree (Custom split, entropy/gini evaluation)
-│   ├── aggregation/                #   ├── Selection Strategies (S1-S7, S9)
+│   ├── aggregation/                #   ├── Selection Strategies (S1-S7, S8)
 │   │                               #   └── StrategyFactory
 │   ├── metrics/                    #   └── ForestEvaluator (OOB scoring, multi-class validation)
 │   ├── services/                   #   ├── LabelService (Centralized cross-client index mapping)
@@ -322,7 +322,7 @@ src/
 │
 ├── application/                    # 🎯 Orchestration & Application Boundaries
 │   ├── orchestrators/              #   ├── FLEXOrchestrator (Standard FL coordinator)
-│   │                               #   ├── RouletteOrchestrator (S9 attribute vector loop)
+│   │                               #   ├── RouletteOrchestrator (S8 attribute vector loop)
 │   │                               #   └── FedDataDistributor (Dirichlet & IID data splitter)
 │   └── ResultConsolidator.py       #   └── Consolidated test performance parser
 │
@@ -354,7 +354,7 @@ The graphical user interface is organized into **five isolated functional views*
 2.  **Page 2: Run Experiment**: Starts the training loop. Features a visual progress bar, interactive log stream, and a final model performance dashboard displaying overall accuracy, Macro-F1, and final tree counts.
 3.  **Page 3: Tree Ranking**: Displays which trees were selected or discarded. In per-client strategies (S5-S7), users can filter selected trees per individual client, inspecting tree-level accuracy and OOB diversity.
 4.  **Page 4: Complete Metrics**: Interactive Confusion Matrix plots (built with Plotly) and side-by-side bar charts comparing precision, recall, and Macro-F1 across all federated clients.
-5.  **Page 5: Roulette Evolution (S9 Only)**: A dynamic, interactive heatmap showing how the global attribute selection probabilities ($p$-vector) evolve across training rounds. Ideal for verifying convergence of feature selection.
+5.  **Page 5: Roulette Evolution (S8 Only)**: A dynamic, interactive heatmap showing how the global attribute selection probabilities ($p$-vector) evolve across training rounds. Ideal for verifying convergence of feature selection.
 
 ---
 
@@ -390,9 +390,9 @@ aggregation:
 *   `exp_s1_simple_pool.yaml`: Baseline combining all client trees.
 *   `exp_s4_global_f1_pcd.yaml`: Global F1-score and PCD-diversity ranking.
 *   `exp_s7_perclient_f1_pcd.yaml`: Per-client adaptive selection based on local metrics.
-*   `exp_s9_consensus.yaml`: Performance-consensus-weighted Global Attribute Roulette.
-*   `exp_s9_proactive_pcd.yaml`: S9 variation prioritizing features that optimize class-correct diversity.
-*   `exp_s9_mean.yaml`, `exp_s9_median.yaml`, `exp_s9_weighted.yaml`: Basic statistical Roulette aggregations.
+*   `exp_s8_consensus.yaml`: Performance-consensus-weighted Global Attribute Roulette.
+*   `exp_s8_proactive_pcd.yaml`: S8 variation prioritizing features that optimize class-correct diversity.
+*   `exp_s8_mean.yaml`, `exp_s8_median.yaml`, `exp_s8_weighted.yaml`: Basic statistical Roulette aggregations.
 
 ### 🚀 Running Targeted CLI Commands
 ```bash
@@ -410,7 +410,7 @@ python -m src.interfaces.cli.main --dataset Iris --clients 3 --strategy s7_percl
 The repository includes research notebooks to facilitate interactive algorithm exploration and hyperparameter searches under `src/interfaces/notebooks/`:
 
 *   **`baselines/centralized_baselines_comparison.ipynb`**: Evaluates centralized Random Forests vs. centralized Proactive Forests to set reference baselines for federated gains.
-*   **`optimization/optuna_s1.ipynb` through `optuna_s9.ipynb`**: Integrates **Optuna** to execute automated search space exploration on the strategies, helping researchers systematically discover optimal configurations for `alpha`, `f1_weight`, and client count thresholds.
+*   **`optimization/optuna_s1.ipynb` through `optuna_s8.ipynb`**: Integrates **Optuna** to execute automated search space exploration on the strategies, helping researchers systematically discover optimal configurations for `alpha`, `f1_weight`, and client count thresholds.
 
 ---
 
@@ -556,17 +556,17 @@ The following tables showcase the performance (Macro F1-score) and ensemble size
 | **s5_perclient_accuracy**| 0.8887 | 0.9210 | 0.9537 | 0.8093 | 0.9572 | 0.8858 | 0.9321 |
 | **s6_perclient_f1** | 0.8887 | 0.9374 | 0.9554 | 0.8120 | 0.9613 | 0.9182 | 0.9291 |
 | **s7_perclient_f1_pcd** | 0.8667 | 0.9337 | 0.9502 | 0.8256 | 0.9542 | 0.8534 | 0.9350 |
-| **s9_weighted_average** | 0.9107 | 0.7795 | 0.9243 | 0.6583 | 0.9409 | 0.6614 | 0.9200 |
-| **s9_simple_mean** | 0.9107 | 0.7795 | 0.9243 | 0.6583 | 0.9409 | 0.6614 | 0.9200 |
-| **s9_median** | 0.9107 | 0.7795 | 0.9243 | 0.6666 | 0.9415 | 0.6614 | 0.9200 |
-| **s9_consensus** | 0.9107 | 0.7795 | 0.9243 | 0.6583 | 0.9409 | 0.6614 | 0.9200 |
-| **s9_proactive_pcd** | 0.9107 | 0.7795 | 0.9243 | 0.6584 | 0.9409 | 0.6614 | 0.9200 |
+| **s8_weighted_average** | 0.9107 | 0.7795 | 0.9243 | 0.6583 | 0.9409 | 0.6614 | 0.9200 |
+| **s8_simple_mean** | 0.9107 | 0.7795 | 0.9243 | 0.6583 | 0.9409 | 0.6614 | 0.9200 |
+| **s8_median** | 0.9107 | 0.7795 | 0.9243 | 0.6666 | 0.9415 | 0.6614 | 0.9200 |
+| **s8_consensus** | 0.9107 | 0.7795 | 0.9243 | 0.6583 | 0.9409 | 0.6614 | 0.9200 |
+| **s8_proactive_pcd** | 0.9107 | 0.7795 | 0.9243 | 0.6584 | 0.9409 | 0.6614 | 0.9200 |
 
 ##### Average Forest Size (Number of Trees)
 | Strategy | Iris | Car | Nursery | Vowel | Optdigits | Sonar | Spambase |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
 | **FLEX Baselines (S1-S7)**| ~110 | ~112 | ~114 | ~120 | ~115 | ~111 | ~118 |
-| **S9 Roulette Variants**| 21.6 | 21.6 | 21.6 | 28.3 | 30.0 | 21.6 | 30.0 |
+| **S8 Roulette Variants**| 21.6 | 21.6 | 21.6 | 28.3 | 30.0 | 21.6 | 30.0 |
 
 *   **`hyperparameter_search.py`**: Automated hyperparameter discovery using Optuna. Systematically explores optimal alpha, F1/PCD weights, and client count configurations.
     ```bash
@@ -583,7 +583,7 @@ The following tables showcase the performance (Macro F1-score) and ensemble size
     python scripts/Friedman_test_new_results.py
     ```
 
-*   **`weighted_vs_uniform.py`**: Comparative analysis between weighted and uniform aggregation weights in S9 Roulette strategies.
+*   **`weighted_vs_uniform.py`**: Comparative analysis between weighted and uniform aggregation weights in S8 Roulette strategies.
     ```bash
     python scripts/weighted_vs_uniform.py
     ```
@@ -603,7 +603,7 @@ The following tables showcase the performance (Macro F1-score) and ensemble size
 
 | Use Case Scenario | Recommended Strategy | Bandwidth Required | Memory Overhead | Scientific Rationale |
 | :--- | :--- | :--- | :--- | :--- |
-| **Edge Device / Minimal IoT** | `S9_CONSENSUS` | **Ultra-Low** | **Minimal** | Exchanges 1D vectors; consensus handles unreliable nodes. |
+| **Edge Device / Minimal IoT** | `S8_CONSENSUS` | **Ultra-Low** | **Minimal** | Exchanges 1D vectors; consensus handles unreliable nodes. |
 | **High Class Imbalance** | `S7` (Per-Client Hybrid) | **Medium** | **Medium** | PCD diversity stops clients from voting only for local majority classes. |
 | **High Network Bandwidth** | `S4` (Global Hybrid) | **High** | **High** | Maximizes overall ensemble performance using global OOB validations. |
 | **Fast Baseline Search** | `S1` (Simple Pool) | **High** | **High** | Quickest setup; includes all trees with zero filtering overhead. |

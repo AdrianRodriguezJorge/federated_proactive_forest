@@ -1,4 +1,4 @@
-"""FLEX primitives for the S9 Global Attribute Roulette strategy.
+"""FLEX primitives for the S8 Global Attribute Roulette strategy.
 
 These functions follow the same decorator patterns used by the existing
 PF FLEX primitives (flex_train_pf, flex_aggregate_pf, flex_deploy_model_pf)
@@ -16,7 +16,7 @@ from flex.pool.decorators import (
     deploy_server_model,
     set_aggregated_weights,
 )
-from src.domain.aggregation.strategies.s9_roulette_strategy import (
+from src.domain.aggregation.strategies.s8_roulette_strategy import (
     create_roulette_strategy,
 )
 
@@ -93,7 +93,7 @@ def aggregate_roulettes(
         ValueError: If client returned empty vector or dimension mismatch
             or validation scores are missing under consensus strategies.
     """
-    variant = kwargs.get("variant", "S9_MEAN")
+    variant = kwargs.get("variant", "S8_MEAN")
     server_eval_f1 = kwargs.get("server_eval_f1", {})
     server_eval_pcd = kwargs.get("server_eval_pcd", {})
 
@@ -132,18 +132,18 @@ def aggregate_roulettes(
 
         # Unbiased server-side evaluation priority
         val_f1 = server_eval_f1.get(cid, server_eval_f1.get(str(cid)))
-        if variant == "S9_CONSENSUS" and val_f1 is None:
+        if variant == "S8_CONSENSUS" and val_f1 is None:
             raise ValueError(
                 f"CRITICAL: Unbiased server-side F1-score evaluation "
-                f"is missing for client {cid} under S9_CONSENSUS."
+                f"is missing for client {cid} under S8_CONSENSUS."
             )
         client_f1[cid] = float(val_f1) if val_f1 is not None else 0.0
 
         val_pcd = server_eval_pcd.get(cid, server_eval_pcd.get(str(cid)))
-        if variant == "S9_PROACTIVE_PCD" and val_pcd is None:
+        if variant == "S8_PROACTIVE_PCD" and val_pcd is None:
             raise ValueError(
                 f"CRITICAL: Unbiased server-side PCD evaluation "
-                f"is missing for client {cid} under S9_PROACTIVE_PCD."
+                f"is missing for client {cid} under S8_PROACTIVE_PCD."
             )
         client_pcd[cid] = float(val_pcd) if val_pcd is not None else 0.0
 
@@ -196,7 +196,7 @@ def set_global_roulette(
     server_flex_model.update(
         {
             "global_roulette": aggregated_data.get("global_roulette", []),
-            "roulette_variant": aggregated_data.get("variant", "S9_MEAN"),
+            "roulette_variant": aggregated_data.get("variant", "S8_MEAN"),
             "roulette_upload_bytes": aggregated_data.get("upload_bytes", 0),
             "roulette_download_bytes": aggregated_data.get("download_bytes", 0),
             "roulette_total_bytes": aggregated_data.get("total_bytes", 0),

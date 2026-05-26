@@ -13,9 +13,9 @@ def render_comparison_table(results: Any) -> None:
     """
     comparison_data = []
 
-    # Global Model (Skip for S9 strategy as requested)
-    is_s9 = results.strategy_id.startswith("S9")
-    if not is_s9:
+    # Global Model (Skip for S8 strategy as requested)
+    is_s8 = results.strategy_id.startswith("S8")
+    if not is_s8:
         global_report = results.global_report
         comparison_data.append(
             {

@@ -79,7 +79,7 @@ class AggregationConfig(BaseModel):
     """Configuration settings for federated aggregation strategies.
 
     Attributes:
-        strategy (str): Strategy identifier (e.g., 'S1', 'S9').
+        strategy (str): Strategy identifier (e.g., 'S1', 'S8').
             Defaults to "S1".
         f1_weight (float): Weight for F1 score in multi-metric strategies.
             Defaults to 0.7.

@@ -80,17 +80,17 @@ def test_tree_metric_extractor_pcd_is_client_level():
 
 
 # ============================================================================
-# TEST 2: S9 Roulette variants produce IDENTICAL results
+# TEST 2: S8 Roulette variants produce IDENTICAL results
 # ============================================================================
-def test_s9_variants_identical():
-    """Check if all S9 variants produce identical results (as seen in benchmark)."""
+def test_s8_variants_identical():
+    """Check if all S8 variants produce identical results (as seen in benchmark)."""
     print("\n" + "="*70)
-    print("TEST 2: S9 Roulette variant differentiation")
+    print("TEST 2: S8 Roulette variant differentiation")
     print("="*70)
 
-    from src.domain.aggregation.strategies.s9_roulette_strategy import (
-        S9WeightedAverageStrategy, S9SimpleMeanStrategy, S9MedianStrategy,
-        S9ConsensusStrategy, S9ProactivePCDStrategy
+    from src.domain.aggregation.strategies.s8_roulette_strategy import (
+        S8WeightedAverageStrategy, S8SimpleMeanStrategy, S8MedianStrategy,
+        S8ConsensusStrategy, S8ProactivePCDStrategy
     )
 
     np.random.seed(42)
@@ -106,11 +106,11 @@ def test_s9_variants_identical():
     pcds = {"c1": 0.3, "c2": 0.5, "c3": 0.2}
 
     results = {}
-    results["WEIGHTED"] = S9WeightedAverageStrategy().aggregate_vectors(client_vectors, sizes)
-    results["MEAN"] = S9SimpleMeanStrategy().aggregate_vectors(client_vectors)
-    results["MEDIAN"] = S9MedianStrategy().aggregate_vectors(client_vectors)
-    results["CONSENSUS"] = S9ConsensusStrategy().aggregate_vectors(client_vectors, client_f1_scores=f1s)
-    results["PCD"] = S9ProactivePCDStrategy().aggregate_vectors(client_vectors, client_pcd_scores=pcds)
+    results["WEIGHTED"] = S8WeightedAverageStrategy().aggregate_vectors(client_vectors, sizes)
+    results["MEAN"] = S8SimpleMeanStrategy().aggregate_vectors(client_vectors)
+    results["MEDIAN"] = S8MedianStrategy().aggregate_vectors(client_vectors)
+    results["CONSENSUS"] = S8ConsensusStrategy().aggregate_vectors(client_vectors, client_f1_scores=f1s)
+    results["PCD"] = S8ProactivePCDStrategy().aggregate_vectors(client_vectors, client_pcd_scores=pcds)
 
     print("  Checking if variants produce different global roulettes...")
     all_identical = True
@@ -142,7 +142,7 @@ def test_s9_variants_identical():
     if diff < 1e-10:
         print("  [CRITICAL ISSUE] local_roulette_weight=0 means ALL clients adopt the EXACT same")
         print("  global roulette after round 1. All variants collapse to MEAN.")
-        print("  -> This is WHY all S9 variants produce identical benchmark results!")
+        print("  -> This is WHY all S8 variants produce identical benchmark results!")
         return False
     return True
 
@@ -442,12 +442,12 @@ def test_validation_leak_small_data():
 
 
 # ============================================================================
-# TEST 10: Benchmark results analysis - S9 collapse detection
+# TEST 10: Benchmark results analysis - S8 collapse detection
 # ============================================================================
-def test_benchmark_s9_collapse():
-    """Analyze the actual benchmark CSV for S9 variant collapse."""
+def test_benchmark_s8_collapse():
+    """Analyze the actual benchmark CSV for S8 variant collapse."""
     print("\n" + "="*70)
-    print("TEST 10: Benchmark results - S9 variant collapse analysis")
+    print("TEST 10: Benchmark results - S8 variant collapse analysis")
     print("="*70)
 
     csv_path = os.path.join(os.path.dirname(__file__), "..", "results", "results_final_benchmark.csv")
@@ -461,57 +461,28 @@ def test_benchmark_s9_collapse():
         rows = list(reader)
 
     datasets = set(r["dataset"] for r in rows)
-    s9_strategies = ["s9_weighted_average", "s9_simple_mean", "s9_median", "s9_consensus", "s9_proactive_pcd"]
+    s8_strategies = ["s8_weighted_average", "s8_simple_mean", "s8_median", "s8_consensus", "s8_proactive_pcd"]
 
     identical_count = 0
     total_datasets = 0
     for ds in sorted(datasets):
         ds_rows = {r["strategy"]: float(r["f1_mean"]) for r in rows if r["dataset"] == ds}
-        s9_f1s = {s: ds_rows.get(s, -1) for s in s9_strategies if s in ds_rows}
-        if len(s9_f1s) >= 2:
+        s8_f1s = {s: ds_rows.get(s, -1) for s in s8_strategies if s in ds_rows}
+        if len(s8_f1s) >= 2:
             total_datasets += 1
-            vals = list(s9_f1s.values())
+            vals = list(s8_f1s.values())
             if max(vals) - min(vals) < 0.001:
                 identical_count += 1
-                print(f"  {ds}: ALL S9 variants IDENTICAL (F1={vals[0]:.4f})")
+                print(f"  {ds}: ALL S8 variants IDENTICAL (F1={vals[0]:.4f})")
             else:
-                print(f"  {ds}: S9 variants differ (range={max(vals)-min(vals):.4f})")
+                print(f"  {ds}: S8 variants differ (range={max(vals)-min(vals):.4f})")
 
     if identical_count > 0:
-        print(f"\n  [CRITICAL] {identical_count}/{total_datasets} datasets have identical S9 results!")
+        print(f"\n  [CRITICAL] {identical_count}/{total_datasets} datasets have identical S8 results!")
         print("  Root cause: local_roulette_weight=0 forces full global roulette adoption.")
     return True
 
 
-# ============================================================================
-# TEST 11: PW strategy - tree count analysis
-# ============================================================================
-def test_pw_single_tree_per_round():
-    """PW selects only 1 tree per client per round. With 3 clients and
-    max_rounds=20, maximum is 60 trees. This may be too few."""
-    print("\n" + "="*70)
-    print("TEST 11: PW strategy tree budget analysis")
-    print("="*70)
-
-    n_clients = 3
-    max_rounds = 20
-    max_trees = n_clients * max_rounds
-    print(f"  PW max trees: {n_clients} clients × {max_rounds} rounds = {max_trees}")
-    print(f"  S1 max trees: {n_clients} × 100 estimators = {n_clients * 100}")
-    print(f"  S2-S7 max trees (t_max): 100")
-    print(f"  -> PW has smaller ensemble budget than other strategies when")
-    print(f"     convergence doesn't kick in early.")
-
-    # Also: PW uses convergence_threshold on accuracy, not spread
-    print(f"\n  PW convergence: based on accuracy IMPROVEMENT < threshold")
-    print(f"  CPF convergence: based on accuracy SPREAD (max-min) < threshold")
-    print(f"  -> Different convergence semantics may cause inconsistent stopping.")
-    return True
-
-
-# ============================================================================
-# MAIN EXECUTION
-# ============================================================================
 if __name__ == "__main__":
     print("=" * 70)
     print("FEDERATED PROACTIVE FOREST - DIAGNOSTIC EFFICACY ANALYSIS")
@@ -520,7 +491,7 @@ if __name__ == "__main__":
     results = {}
     tests = [
         ("TreeMetricExtractor PCD granularity", test_tree_metric_extractor_pcd_is_client_level),
-        ("S9 variant differentiation", test_s9_variants_identical),
+        ("S8 variant differentiation", test_s8_variants_identical),
         ("HybridForest weight sensitivity", test_hybrid_forest_weights),
         ("Progressive convergence threshold", test_progressive_convergence_threshold),
         ("Label encoding roundtrip", test_label_encoding_roundtrip),
@@ -528,8 +499,7 @@ if __name__ == "__main__":
         ("Global vs PerClient selection", test_global_vs_perclient_tree_selection),
         ("StandardScaler impact", test_scaling_impact),
         ("Validation data leakage", test_validation_leak_small_data),
-        ("S9 benchmark collapse", test_benchmark_s9_collapse),
-        ("PW tree budget", test_pw_single_tree_per_round),
+        ("S8 benchmark collapse", test_benchmark_s8_collapse),
     ]
 
     for name, func in tests:

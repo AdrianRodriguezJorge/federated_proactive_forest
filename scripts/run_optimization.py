@@ -29,7 +29,7 @@ def load_base_config(
     """Build base configuration for a given strategy.
 
     Args:
-        strategy: Strategy name (S1-S7, PW, S9)
+        strategy: Strategy name (S1-S7, PW, S8)
         n_clients: Number of federated clients
         seed: Random seed
 
@@ -82,10 +82,10 @@ def load_base_config(
                 "pcd_weight": 0.7,
             }
         )
-    elif strategy == "S9":
+    elif strategy == "S8":
         config["aggregation"].update(
             {
-                "variant": "S9_MEAN",
+                "variant": "S8_MEAN",
                 "local_roulette_weight": 0.1,
                 "window_size": 5,
                 "max_rounds": 20,
@@ -149,7 +149,7 @@ def main() -> None:
         "--strategy",
         type=str,
         required=True,
-        choices=["S1", "S2", "S3", "S4", "S5", "S6", "S7", "PW", "S9"],
+        choices=["S1", "S2", "S3", "S4", "S5", "S6", "S7", "PW", "S8"],
         help="Aggregation strategy to optimize",
     )
     parser.add_argument(

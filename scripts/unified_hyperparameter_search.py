@@ -30,9 +30,6 @@ warnings.filterwarnings(
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from src.application.orchestrators import FLEXOrchestrator
-from src.application.orchestrators.progressive_tree_orchestrator import (
-    ProgressiveTreeOrchestrator,
-)
 from src.domain.dataset.base_adapter import DatasetSplit
 from src.infrastructure.dataset.dataset_factory import DatasetFactory
 from src.infrastructure.persistence.experiment_results import save_experiment_results_json
@@ -113,10 +110,7 @@ def evaluate_config(
         }
     }
 
-    if strategy == "PW":
-        orch = ProgressiveTreeOrchestrator(config)
-    else:
-        orch = FLEXOrchestrator(config)
+    orch = FLEXOrchestrator(config)
         
     try:
         orch.setup_federation(split)
@@ -150,7 +144,7 @@ def evaluate_config(
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Unified Grid Search comparing Paso de 3 vs Paso de 6 across all S strategies + PW."
+        description="Unified Grid Search comparing Paso de 3 vs Paso de 6 across all S strategies."
     )
     parser.add_argument(
         "--n_jobs",
@@ -180,7 +174,7 @@ def main():
     args = parser.parse_args()
 
     datasets = ["Sonar", "Vowel", "Spambase", "Nursery"]
-    strategies = ["S2", "S3", "S4", "S5", "S6", "S7", "PW"]
+    strategies = ["S2", "S3", "S4", "S5", "S6", "S7"]
     paces = [3, 6]
     
     # Hiperparámetros de control fijos
@@ -273,7 +267,7 @@ def main():
     ).reset_index()
 
     # Reordenar las estrategias en un orden lógico
-    strategy_order = {"S2": 1, "S3": 2, "S4": 3, "S5": 4, "S6": 5, "S7": 6, "PW": 7}
+    strategy_order = {"S2": 1, "S3": 2, "S4": 3, "S5": 4, "S6": 5, "S7": 6}
     grouped["order"] = grouped["strategy"].map(strategy_order)
     grouped = grouped.sort_values(by=["order", "pace"])
 

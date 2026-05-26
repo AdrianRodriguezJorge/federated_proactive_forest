@@ -1,4 +1,4 @@
-"""S9 Roulette Aggregation Strategy — Global Attribute Roulette.
+"""S8 Roulette Aggregation Strategy — Global Attribute Roulette.
 
 Aggregates feature-probability vectors (roulettes) from all clients into a
 single global roulette using various mathematical variants:
@@ -43,10 +43,10 @@ class IRouletteAggregationStrategy:
         raise NotImplementedError
 
 
-class S9WeightedAverageStrategy(IRouletteAggregationStrategy):
+class S8WeightedAverageStrategy(IRouletteAggregationStrategy):
     """Weighted average by dataset size."""
 
-    strategy_id = "S9_WEIGHTED"
+    strategy_id = "S8_WEIGHTED"
 
     def aggregate_vectors(
         self,
@@ -59,7 +59,7 @@ class S9WeightedAverageStrategy(IRouletteAggregationStrategy):
         ids = list(client_vectors.keys())
         vectors = np.array([client_vectors[cid] for cid in ids])
         if client_dataset_sizes is None:
-            raise ValueError("S9_WEIGHTED requires client_dataset_sizes.")
+            raise ValueError("S8_WEIGHTED requires client_dataset_sizes.")
         weights = np.array(
             [client_dataset_sizes[cid] for cid in ids], dtype=np.float64
         )
@@ -69,10 +69,10 @@ class S9WeightedAverageStrategy(IRouletteAggregationStrategy):
         return result
 
 
-class S9SimpleMeanStrategy(IRouletteAggregationStrategy):
+class S8SimpleMeanStrategy(IRouletteAggregationStrategy):
     """Simple arithmetic mean (democratic)."""
 
-    strategy_id = "S9_MEAN"
+    strategy_id = "S8_MEAN"
 
     def aggregate_vectors(
         self,
@@ -88,10 +88,10 @@ class S9SimpleMeanStrategy(IRouletteAggregationStrategy):
         return result
 
 
-class S9MedianStrategy(IRouletteAggregationStrategy):
+class S8MedianStrategy(IRouletteAggregationStrategy):
     """Coordinate-wise median."""
 
-    strategy_id = "S9_MEDIAN"
+    strategy_id = "S8_MEDIAN"
 
     def aggregate_vectors(
         self,
@@ -111,10 +111,10 @@ class S9MedianStrategy(IRouletteAggregationStrategy):
         return result
 
 
-class S9ConsensusStrategy(IRouletteAggregationStrategy):
+class S8ConsensusStrategy(IRouletteAggregationStrategy):
     """Performance-based consensus using Macro-F1 scores."""
 
-    strategy_id = "S9_CONSENSUS"
+    strategy_id = "S8_CONSENSUS"
 
     def aggregate_vectors(
         self,
@@ -125,7 +125,7 @@ class S9ConsensusStrategy(IRouletteAggregationStrategy):
     ) -> np.ndarray:
         """Aggregate vectors weighted by client F1 scores."""
         if client_f1_scores is None:
-            raise ValueError("S9_CONSENSUS requires client_f1_scores.")
+            raise ValueError("S8_CONSENSUS requires client_f1_scores.")
         ids = list(client_vectors.keys())
         vectors = np.array([client_vectors[cid] for cid in ids])
         metrics = np.array(
@@ -140,10 +140,10 @@ class S9ConsensusStrategy(IRouletteAggregationStrategy):
         return result
 
 
-class S9ProactivePCDStrategy(IRouletteAggregationStrategy):
+class S8ProactivePCDStrategy(IRouletteAggregationStrategy):
     """Proactive consensus using local PCD (Cepero Diversity)."""
 
-    strategy_id = "S9_PROACTIVE_PCD"
+    strategy_id = "S8_PROACTIVE_PCD"
 
     def aggregate_vectors(
         self,
@@ -155,7 +155,7 @@ class S9ProactivePCDStrategy(IRouletteAggregationStrategy):
         """Aggregate vectors weighted by client PCD scores."""
         if client_pcd_scores is None:
             # Fallback to mean if PCD not available
-            return S9SimpleMeanStrategy().aggregate_vectors(client_vectors)
+            return S8SimpleMeanStrategy().aggregate_vectors(client_vectors)
 
         ids = list(client_vectors.keys())
         vectors = np.array([client_vectors[cid] for cid in ids])
@@ -174,13 +174,13 @@ class S9ProactivePCDStrategy(IRouletteAggregationStrategy):
 
 
 _VARIANT_MAP: Dict[str, type] = {
-    "S9_WEIGHTED": S9WeightedAverageStrategy,
-    "S9_WEIGHTED_AVERAGE": S9WeightedAverageStrategy,
-    "S9_MEAN": S9SimpleMeanStrategy,
-    "S9_SIMPLE_MEAN": S9SimpleMeanStrategy,
-    "S9_MEDIAN": S9MedianStrategy,
-    "S9_CONSENSUS": S9ConsensusStrategy,
-    "S9_PROACTIVE_PCD": S9ProactivePCDStrategy,
+    "S8_WEIGHTED": S8WeightedAverageStrategy,
+    "S8_WEIGHTED_AVERAGE": S8WeightedAverageStrategy,
+    "S8_MEAN": S8SimpleMeanStrategy,
+    "S8_SIMPLE_MEAN": S8SimpleMeanStrategy,
+    "S8_MEDIAN": S8MedianStrategy,
+    "S8_CONSENSUS": S8ConsensusStrategy,
+    "S8_PROACTIVE_PCD": S8ProactivePCDStrategy,
 }
 
 
@@ -194,19 +194,19 @@ def create_roulette_strategy(variant: str) -> IRouletteAggregationStrategy:
         IRouletteAggregationStrategy: Resolved strategy instance.
     """
     key = variant.upper().replace("-", "_")
-    if not key.startswith("S9_"):
-        key = f"S9_{key}"
+    if not key.startswith("S8_"):
+        key = f"S8_{key}"
     if key not in _VARIANT_MAP:
-        return _VARIANT_MAP["S9_MEAN"]()
+        return _VARIANT_MAP["S8_MEAN"]()
     return _VARIANT_MAP[key]()
 
 
 __all__ = [
     "IRouletteAggregationStrategy",
-    "S9WeightedAverageStrategy",
-    "S9SimpleMeanStrategy",
-    "S9MedianStrategy",
-    "S9ConsensusStrategy",
-    "S9ProactivePCDStrategy",
+    "S8WeightedAverageStrategy",
+    "S8SimpleMeanStrategy",
+    "S8MedianStrategy",
+    "S8ConsensusStrategy",
+    "S8ProactivePCDStrategy",
     "create_roulette_strategy",
 ]

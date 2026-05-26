@@ -9,7 +9,7 @@ from src.infrastructure.dataset.dataset_factory import DatasetFactory
 from src.interfaces.streamlit.components.constants import (
     DATASET_PRESETS,
     STRATEGY_LABELS,
-    S9_VARIANT_LABELS,
+    S8_VARIANT_LABELS,
 )
 
 PROJECT_ROOT = Path(__file__).resolve().parents[4]
@@ -183,16 +183,16 @@ def render() -> None:
     window_size = current_config["aggregation"].get("window_size", 5)
     max_rounds = current_config["aggregation"].get("max_rounds", 20)
 
-    s9_variant = current_config.get("aggregation", {}).get(
-        "variant", "S9_MEAN"
+    s8_variant = current_config.get("aggregation", {}).get(
+        "variant", "S8_MEAN"
     )
-    s9_local_roulette_weight = float(
+    s8_local_roulette_weight = float(
         current_config.get("aggregation", {}).get("local_roulette_weight", 0.1)
     )
-    s9_window_size = int(
+    s8_window_size = int(
         current_config.get("aggregation", {}).get("window_size", 5)
     )
-    s9_max_rounds = int(
+    s8_max_rounds = int(
         current_config.get("aggregation", {}).get("max_rounds", 20)
     )
 
@@ -229,7 +229,7 @@ def render() -> None:
     t_max = current_config["aggregation"].get("t_max", n_estimators)
     seed = current_config.get("seed", 42)
 
-    is_pw_s9 = strategy_key in ("pw", "s9_roulette")
+    is_s8 = strategy_key == "s8_roulette"
     is_progressive = strategy_key in (
         "s2_global_accuracy",
         "s3_global_f1",
@@ -237,7 +237,6 @@ def render() -> None:
         "s5_perclient_accuracy",
         "s6_perclient_f1",
         "s7_perclient_f1_pcd",
-        "pw",
     )
 
     # ── Dataset ───────────────────────────────────────────────────────────────
@@ -391,7 +390,7 @@ def render() -> None:
 
     col3, col4 = st.columns(2)
     with col3:
-        if is_pw_s9:
+        if is_s8:
             st.info(
                 "💡 **n_estimators** se calculará automáticamente: "
                 "`ventana * rondas`."
@@ -473,7 +472,7 @@ def render() -> None:
         help="Algoritmo de agregación seleccionado.",
     )
 
-    if not is_pw_s9:
+    if not is_s8:
         t_max = st.number_input(
             "T_MAX (máx. árboles en bosque global)",
             10,
@@ -483,10 +482,7 @@ def render() -> None:
             help="Número máximo de árboles en bosque global tras agregación.",
         )
     else:
-        is_s9 = strategy_key == "s9_roulette"
-        t_max_s9 = s9_window_size * s9_max_rounds
-        t_max_pw = window_size * max_rounds
-        t_max = t_max_s9 if is_s9 else t_max_pw
+        t_max = s8_window_size * s8_max_rounds
         st.caption(f"📏 T_MAX teórico: {t_max} árboles.")
 
     if is_progressive:
@@ -527,104 +523,59 @@ def render() -> None:
             pcd_weight = round(1.0 - f1_weight, 4)
             st.metric("Peso PCD (β)", f"{pcd_weight:.2f}")
 
-    if strategy_key == "pw":
-        st.info("🔄 **Progressive Windows**: Agregación por ventanas.")
-        col5, col6, col7 = st.columns(3)
-        with col5:
-            window_size = st.number_input(
-                "Tamaño ventana (W)",
-                2,
-                20,
-                value=window_size,
-                help="Árboles entrenados por ronda por cliente.",
-            )
-        with col6:
-            max_rounds = st.number_input(
-                "Máximo rondas (R_MAX)",
-                5,
-                50,
-                value=max_rounds,
-                help="Rondas máximas de Round Robin.",
-            )
-        with col7:
-            f1_weight = st.slider(
-                "α Score (F1 vs Diversidad)",
-                0.0,
-                1.0,
-                value=f1_weight,
-                step=0.05,
-                help="Peso F1 en el score dinámico.",
-            )
-            pcd_weight = round(1.0 - f1_weight, 4)
-        use_weighted = st.checkbox(
-            "Ponderar por origen (local/global)",
-            value=use_weighted,
-            help="Los árboles locales y globales tienen pesos distintos.",
-            key="pw_use_weighted",
-        )
-        if use_weighted:
-            pw_local_weight = st.slider(
-                "Peso predicción local (PW)",
-                0.0,
-                1.0,
-                value=pw_local_weight,
-                step=0.05,
-                help="Peso de árboles locales en inferencia PW.",
-            )
-        else:
-            st.caption("⚖️ Cada árbol vota con el mismo peso.")
 
-    if strategy_key == "s9_roulette":
+
+    if strategy_key == "s8_roulette":
         st.info("🎰 **Ruleta Global de Atributos**: Agregación de vectores.")
-        col_s9a, col_s9b = st.columns(2)
-        with col_s9a:
-            s9_variant_options = list(S9_VARIANT_LABELS.keys())
+        col_s8a, col_s8b = st.columns(2)
+        with col_s8a:
+            s8_variant_options = list(S8_VARIANT_LABELS.keys())
             variant_idx = (
-                s9_variant_options.index(s9_variant)
-                if s9_variant in s9_variant_options
+                s8_variant_options.index(s8_variant)
+                if s8_variant in s8_variant_options
                 else 0
             )
-            s9_variant = st.selectbox(
+            s8_variant = st.selectbox(
                 "Variante de agregacion",
-                s9_variant_options,
+                s8_variant_options,
                 index=variant_idx,
-                format_func=lambda k: S9_VARIANT_LABELS[k],
+                format_func=lambda k: S8_VARIANT_LABELS[k],
                 help="Método de agregación de vectores.",
             )
-            s9_window_size = st.number_input(
+            s8_window_size = st.number_input(
                 "Arboles por ventana (W)",
                 2,
                 20,
-                value=s9_window_size,
+                value=s8_window_size,
                 help="Árboles locales antes de enviar vector de ruleta.",
             )
-        with col_s9b:
-            s9_local_roulette_weight = st.slider(
+        with col_s8b:
+            s8_local_roulette_weight = st.slider(
                 "Local Roulette Weight (local_roulette_weight)",
                 0.0,
                 1.0,
-                value=s9_local_roulette_weight,
+                value=s8_local_roulette_weight,
                 step=0.05,
                 help="Peso asignado a la ruleta local del cliente.",
             )
-            s9_max_rounds = st.number_input(
+            s8_max_rounds = st.number_input(
                 "Rondas maximas",
                 5,
                 50,
-                value=s9_max_rounds,
+                value=s8_max_rounds,
                 help="Número máximo de rondas federadas.",
             )
 
     st.divider()
 
     # ── Predicción ────────────────────────────────────────────────────────────
-    if strategy_key == "s9_roulette":
+    if strategy_key == "s8_roulette":
         st.subheader("🎯 Predicción")
         st.caption(
-            "En S9, la inferencia es local usando el modelo de la ruleta."
+            "En S8, la inferencia es local usando el modelo de la ruleta."
         )
         local_w = 0.0
-    elif strategy_key != "pw":
+    else:
         st.subheader("🎯 Predicción Híbrida")
         use_weighted = st.checkbox(
             "Ponderar por origen (local/global)",
@@ -649,8 +600,6 @@ def render() -> None:
         else:
             local_w = 0.5
             st.caption("⚖️ Cada árbol vota con el mismo peso.")
-    else:
-        local_w = pw_local_weight
 
     st.divider()
 
@@ -667,14 +616,10 @@ def render() -> None:
 
         np.random.seed(seed)
 
-        if strategy_key == "s9_roulette":
-            t_max_calc = s9_window_size * s9_max_rounds
-            window_size_calc = s9_window_size
-            max_rounds_calc = s9_max_rounds
-        elif strategy_key == "pw":
-            t_max_calc = window_size * max_rounds
-            window_size_calc = window_size
-            max_rounds_calc = max_rounds
+        if strategy_key == "s8_roulette":
+            t_max_calc = s8_window_size * s8_max_rounds
+            window_size_calc = s8_window_size
+            max_rounds_calc = s8_max_rounds
         else:
             t_max_calc = t_max
             window_size_calc = 5
@@ -683,12 +628,11 @@ def render() -> None:
         is_weight_strat = strategy_key in (
             "s4_global_f1_pcd",
             "s7_perclient_f1_pcd",
-            "pw",
         )
         f1_w_calc = f1_weight if is_weight_strat else 0.5
         pcd_w_calc = pcd_weight if is_weight_strat else 0.5
 
-        pred_local_w = pw_local_weight if strategy_key == "pw" else local_w
+        pred_local_w = local_w
 
         cfg = {
             "dataset": {
@@ -725,8 +669,8 @@ def render() -> None:
                 "global_episode_size": episode_size_agg,
                 "window_size": window_size_calc,
                 "max_rounds": max_rounds_calc,
-                "variant": s9_variant if strategy_key == "s9_roulette" else "",
-                "local_roulette_weight": s9_local_roulette_weight if strategy_key == "s9_roulette" else 0.0,
+                "variant": s8_variant if strategy_key == "s8_roulette" else "",
+                "local_roulette_weight": s8_local_roulette_weight if strategy_key == "s8_roulette" else 0.0,
             },
             "prediction": {
                 "local_weight": pred_local_w,

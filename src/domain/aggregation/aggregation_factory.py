@@ -1,7 +1,7 @@
 """Aggregation strategies factory module.
 
 Provides a unified factory to initialize, configure, and resolve tree
-aggregation strategies (S1-S7, Progressive Windows) under standard interfaces.
+aggregation strategies (S1-S7) under standard interfaces.
 """
 
 from typing import Dict, Optional, Type
@@ -13,16 +13,13 @@ from .strategies.s4_global_f1_pcd import S4GlobalF1PCDStrategy
 from .strategies.s5_perclient_accuracy import S5PerClientAccuracyStrategy
 from .strategies.s6_perclient_f1 import S6PerClientF1Strategy
 from .strategies.s7_perclient_f1_pcd import S7PerClientF1PCDStrategy
-from .strategies.progressive_windows.progressive_windows_strategy import (
-    ProgressiveWindowsStrategy,
-)
 from src.domain.metrics.metrics_service import IDiversityService, IMetricsService
 
 
 class AggregationFactory:
     """Factory for creating aggregation strategies based on configuration.
 
-    Supports S1-S7 strategies and Progressive Windows (PW).
+    Supports S1-S7 strategies.
     """
 
     _strategies: Dict[str, Type[IAggregationStrategy]] = {
@@ -33,14 +30,13 @@ class AggregationFactory:
         "S5": S5PerClientAccuracyStrategy,
         "S6": S6PerClientF1Strategy,
         "S7": S7PerClientF1PCDStrategy,
-        "PW": ProgressiveWindowsStrategy,
     }
 
     @classmethod
     def normalize_strategy_name(cls, raw_strategy: str) -> str:
         """Normalize strategy names to match canonical codes.
 
-        E.g. 's4_global_f1_pcd' -> 'S4', 'pw' -> 'PW'.
+        E.g. 's4_global_f1_pcd' -> 'S4'.
 
         Args:
             raw_strategy (str): Raw input strategy identifier.
@@ -54,10 +50,6 @@ class AggregationFactory:
             strategy_name = raw_strategy.split("_")[0].upper()
         else:
             strategy_name = raw_strategy.upper()
-
-        # Handle variations of Progressive Windows
-        if strategy_name in ["PROGRESSIVE", "PROGRESSIVE_WINDOWS"]:
-            return "PW"
 
         return strategy_name
 

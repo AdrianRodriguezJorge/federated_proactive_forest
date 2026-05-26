@@ -1,7 +1,7 @@
-"""FLEX primitives for S9 (Roulette-based) progressive window training.
+"""FLEX primitives for S8 (Roulette-based) progressive window training.
 
 Handles episodic fitting, convergence tracking, and feature probabilities
-routing on clients under FLEX S9 strategy.
+routing on clients under FLEX S8 strategy.
 """
 
 from typing import Any, Dict, List, Optional
@@ -11,7 +11,7 @@ from flex.model import FlexModel
 from flex.pool.decorators import collect_clients_weights
 
 
-def train_window_pf_s9(
+def train_window_pf_s8(
     client_flex_model: FlexModel,
     client_data: Any,
     active_ids: Optional[List[str]] = None,
@@ -151,7 +151,7 @@ def train_window_pf_s9(
     return client_flex_model
 
 
-def check_convergence_s9(
+def check_convergence_s8(
     client_flex_model: FlexModel, *args: Any, **kwargs: Any
 ) -> bool:
     """Returns True if the client model has converged.

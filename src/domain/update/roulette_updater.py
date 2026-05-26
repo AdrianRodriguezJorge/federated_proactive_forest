@@ -1,4 +1,4 @@
-"""Roulette State Updater for S9 Federated Strategy.
+"""Roulette State Updater for S8 Federated Strategy.
 
 Applies the fusion formula to blend a client's local roulette with the
 server's global roulette:

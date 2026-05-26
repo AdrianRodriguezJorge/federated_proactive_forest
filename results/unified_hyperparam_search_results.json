@@ -147,26 +147,6 @@
             "convergence_round": 8
         },
         {
-            "strategy": "PW",
-            "dataset": "Sonar",
-            "pace": 3,
-            "accuracy": 0.7380952380952381,
-            "f1_macro": 0.7188070602556301,
-            "pcd": 0.7619047619047619,
-            "forest_size": 9.0,
-            "convergence_round": null
-        },
-        {
-            "strategy": "PW",
-            "dataset": "Sonar",
-            "pace": 6,
-            "accuracy": 0.7619047619047619,
-            "f1_macro": 0.7407407407407408,
-            "pcd": 0.8809523809523809,
-            "forest_size": 18.0,
-            "convergence_round": null
-        },
-        {
             "strategy": "S2",
             "dataset": "Vowel",
             "pace": 3,
@@ -285,26 +265,6 @@
             "pcd": 0.8771043771043772,
             "forest_size": 124.0,
             "convergence_round": 6
-        },
-        {
-            "strategy": "PW",
-            "dataset": "Vowel",
-            "pace": 3,
-            "accuracy": 0.6868686868686869,
-            "f1_macro": 0.6898875678287443,
-            "pcd": 0.9696969696969697,
-            "forest_size": 9.0,
-            "convergence_round": null
-        },
-        {
-            "strategy": "PW",
-            "dataset": "Vowel",
-            "pace": 6,
-            "accuracy": 0.6565656565656566,
-            "f1_macro": 0.658156160626046,
-            "pcd": 0.9393939393939394,
-            "forest_size": 18.0,
-            "convergence_round": null
         },
         {
             "strategy": "S2",
@@ -427,26 +387,6 @@
             "convergence_round": 7
         },
         {
-            "strategy": "PW",
-            "dataset": "Spambase",
-            "pace": 3,
-            "accuracy": 0.9229098805646037,
-            "f1_macro": 0.9190141150331232,
-            "pcd": 0.44625407166123776,
-            "forest_size": 9.0,
-            "convergence_round": null
-        },
-        {
-            "strategy": "PW",
-            "dataset": "Spambase",
-            "pace": 6,
-            "accuracy": 0.9163952225841476,
-            "f1_macro": 0.9119923554706165,
-            "pcd": 0.4256243213897937,
-            "forest_size": 18.0,
-            "convergence_round": null
-        },
-        {
             "strategy": "S2",
             "dataset": "Nursery",
             "pace": 3,
@@ -565,26 +505,6 @@
             "pcd": 0.22569444444444445,
             "forest_size": 120.0,
             "convergence_round": 5
-        },
-        {
-            "strategy": "PW",
-            "dataset": "Nursery",
-            "pace": 3,
-            "accuracy": 0.6516203703703703,
-            "f1_macro": 0.38404907975460123,
-            "pcd": 0.46296296296296297,
-            "forest_size": 9.0,
-            "convergence_round": null
-        },
-        {
-            "strategy": "PW",
-            "dataset": "Nursery",
-            "pace": 6,
-            "accuracy": 0.6531635802469136,
-            "f1_macro": 0.38618753509264464,
-            "pcd": 0.43595679012345673,
-            "forest_size": 18.0,
-            "convergence_round": null
         }
     ]
 }

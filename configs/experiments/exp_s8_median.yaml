@@ -1,6 +1,6 @@
 experiment:
-  name: "exp_s9_weighted_iris"
-  description: "S9 Roulette - Weighted Average by dataset size"
+  name: "exp_s8_median_iris"
+  description: "S8 Roulette - Median (robust against outlier clients)"
 
 dataset:
   type: "Iris"
@@ -21,8 +21,8 @@ model:
   verbose: false
 
 aggregation:
-  strategy: "S9"
-  variant: "S9_WEIGHTED"
+  strategy: "S8"
+  variant: "S8_MEDIAN"
   local_roulette_weight: 0.1
   window_size: 5
   max_rounds: 20

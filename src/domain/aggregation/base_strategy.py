@@ -1,7 +1,7 @@
 """Abstract base interfaces for Federated Forest aggregation strategies.
 
 Specifies parameters and signatures required by all global federated trees
-selection strategies (e.g. S1-S7, S9, Progressive Windows).
+selection strategies (e.g. S1-S7, S8, Progressive Windows).
 """
 
 from abc import ABC, abstractmethod

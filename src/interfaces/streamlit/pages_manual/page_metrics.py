@@ -15,10 +15,10 @@ def render() -> None:
         )
         return
 
-    is_s9 = results.strategy_id.startswith("S9")
+    is_s8 = results.strategy_id.startswith("S8")
 
     # ── Comparación de todos los clientes ───────────────────────────
-    if is_s9:
+    if is_s8:
         st.subheader("📈 Comparación de Desempeño entre Clientes")
     else:
         st.subheader("📈 Comparación de todos los Clientes vs Global")
@@ -33,7 +33,7 @@ def render() -> None:
     st.divider()
 
     # ── Selector de modelo ────────────────────────────────────────────────────
-    if is_s9:
+    if is_s8:
         options = [f"👤 {cid}" for cid in results.client_ids]
         if not options:
             st.error("❌ No hay clientes disponibles para analizar.")
@@ -102,7 +102,7 @@ def render() -> None:
             )
 
     # ── KPIs ──────────────────────────────────────────────────────────────────
-    if is_s9:
+    if is_s8:
         st.markdown("#### Métricas del Cliente")
     else:
         st.markdown("#### Métricas Globales")

@@ -1,12 +1,12 @@
-"""Reusable dashboard for S9 Global Attribute Roulette results."""
+"""Reusable dashboard for S8 Global Attribute Roulette results."""
 
 from typing import Any
 import pandas as pd
 import streamlit as st
 
 
-def render_s9_dashboard(results: Any) -> None:
-    """Renders S9 specific metrics, roulette evolution, and cost.
+def render_s8_dashboard(results: Any) -> None:
+    """Renders S8 specific metrics, roulette evolution, and cost.
 
     Args:
         results (Any): FLResults from the federated round.

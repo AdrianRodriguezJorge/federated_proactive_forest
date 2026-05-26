@@ -33,7 +33,7 @@ class OptimizationConfig:
 class HyperparamOptimizer:
     """Wraps Orchestrators for Bayesian hyperparameter optimization.
 
-    Supports all strategies S1-S7, PW (Progressive Windows) and S9 (Roulette).
+    Supports all strategies S1-S7 and S8 (Roulette).
     """
 
     def __init__(
@@ -48,7 +48,7 @@ class HyperparamOptimizer:
 
         Args:
             dataset_split (Any): Target dataset adapter split.
-            strategy (str): Strategy name ('S1'-'S7', 'PW', 'S9').
+            strategy (str): Strategy name ('S1'-'S7', 'S8').
             base_config (Dict[str, Any]): Base configuration dict.
             search_space (Dict[str, Any]): Search space definition.
             verbose (bool): Enable verbose logging during optimization.
@@ -72,8 +72,7 @@ class HyperparamOptimizer:
             "S5",
             "S6",
             "S7",
-            "PW",
-            "S9",
+            "S8",
         ]
         if self.strategy not in valid_strategies:
             raise ValueError(
@@ -208,14 +207,8 @@ class HyperparamOptimizer:
         np.random.seed(seed)
 
         try:
-            if self.strategy == "S9":
+            if self.strategy == "S8":
                 orchestrator = RouletteOrchestrator(config)
-            elif self.strategy == "PW":
-                from src.application.orchestrators.progressive_windows_orchestrator import (
-                    ProgressiveWindowsOrchestrator,
-                )
-
-                orchestrator = ProgressiveWindowsOrchestrator(config)
             else:
                 orchestrator = FLEXOrchestrator.from_config(config)
 

@@ -1,6 +1,6 @@
 experiment:
-  name: "exp_s9_mean_iris"
-  description: "S9 Roulette - Simple Mean (democratic)"
+  name: "exp_s8_mean_iris"
+  description: "S8 Roulette - Simple Mean (democratic)"
 
 dataset:
   type: "Iris"
@@ -21,8 +21,8 @@ model:
   verbose: false
 
 aggregation:
-  strategy: "S9"
-  variant: "S9_MEAN"
+  strategy: "S8"
+  variant: "S8_MEAN"
   local_roulette_weight: 0.1
   window_size: 5
   max_rounds: 20

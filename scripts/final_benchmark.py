@@ -23,9 +23,6 @@ from src.application.orchestrators import FLEXOrchestrator
 from src.application.orchestrators.fed_data_distributor import (
     FedDataDistributor,
 )
-from src.application.orchestrators.progressive_tree_orchestrator import (
-    ProgressiveTreeOrchestrator,
-)
 from src.application.orchestrators.roulette_orchestrator import (
     RouletteOrchestrator,
 )
@@ -51,11 +48,11 @@ STRATEGIES = [
     "s6_perclient_f1",
     "s7_perclient_f1_pcd",
     "pw",
-    "s9_weighted_average",
-    "s9_simple_mean",
-    "s9_median",
-    "s9_consensus",
-    "s9_proactive_pcd",
+    "s8_weighted_average",
+    "s8_simple_mean",
+    "s8_median",
+    "s8_consensus",
+    "s8_proactive_pcd",
 ]
 
 DATASETS = [
@@ -177,13 +174,11 @@ def run_single_strategy(
                     )
                 )
         else:
-            if strategy.startswith("s9_"):
-                variant = strategy.replace("s9_", "S9_").upper()
+            if strategy.startswith("s8_"):
+                variant = strategy.replace("s8_", "S8_").upper()
                 config["aggregation"]["variant"] = variant
                 config["aggregation"]["local_roulette_weight"] = 0.1
                 orch = RouletteOrchestrator(config)
-            elif strategy == "pw":
-                orch = ProgressiveTreeOrchestrator(config)
             else:
                 orch = FLEXOrchestrator(config)
 

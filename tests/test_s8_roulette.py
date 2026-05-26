@@ -1,17 +1,17 @@
 import pytest
 import numpy as np
-from src.domain.aggregation.strategies.s9_roulette_strategy import (
+from src.domain.aggregation.strategies.s8_roulette_strategy import (
     create_roulette_strategy,
-    S9WeightedAverageStrategy,
-    S9SimpleMeanStrategy,
-    S9MedianStrategy,
-    S9ConsensusStrategy,
-    S9ProactivePCDStrategy
+    S8WeightedAverageStrategy,
+    S8SimpleMeanStrategy,
+    S8MedianStrategy,
+    S8ConsensusStrategy,
+    S8ProactivePCDStrategy
 )
 
-def test_s9_weighted_average():
+def test_s8_weighted_average():
     """Verify weighted average strategy weights vectors based on dataset sizes."""
-    strategy = S9WeightedAverageStrategy()
+    strategy = S8WeightedAverageStrategy()
     client_vectors = {
         "client_0": np.array([0.1, 0.9]),
         "client_1": np.array([0.5, 0.5])
@@ -32,9 +32,9 @@ def test_s9_weighted_average():
         strategy.aggregate_vectors(client_vectors, client_dataset_sizes=None)
 
 
-def test_s9_simple_mean():
+def test_s8_simple_mean():
     """Verify simple mean aggregates democratic unweighted average."""
-    strategy = S9SimpleMeanStrategy()
+    strategy = S8SimpleMeanStrategy()
     client_vectors = {
         "client_0": np.array([0.1, 0.9]),
         "client_1": np.array([0.5, 0.5])
@@ -45,9 +45,9 @@ def test_s9_simple_mean():
     assert np.allclose(res, [0.3, 0.7])
 
 
-def test_s9_median():
+def test_s8_median():
     """Verify median aggregation takes coordinate-wise median."""
-    strategy = S9MedianStrategy()
+    strategy = S8MedianStrategy()
     client_vectors = {
         "client_0": np.array([0.1, 0.9]),
         "client_1": np.array([0.3, 0.7]),
@@ -67,9 +67,9 @@ def test_s9_median():
     assert np.allclose(res_zero, [0.5, 0.5])
 
 
-def test_s9_consensus():
+def test_s8_consensus():
     """Verify consensus uses local F1 scores for weighting."""
-    strategy = S9ConsensusStrategy()
+    strategy = S8ConsensusStrategy()
     client_vectors = {
         "client_0": np.array([0.2, 0.8]),
         "client_1": np.array([0.6, 0.4])
@@ -98,9 +98,9 @@ def test_s9_consensus():
     assert np.allclose(res_zero, [0.4, 0.6])
 
 
-def test_s9_proactive_pcd():
+def test_s8_proactive_pcd():
     """Verify proactive PCD strategy weights client roulettes proportional to PCD."""
-    strategy = S9ProactivePCDStrategy()
+    strategy = S8ProactivePCDStrategy()
     client_vectors = {
         "client_0": np.array([0.2, 0.8]),
         "client_1": np.array([0.6, 0.4])
@@ -131,19 +131,19 @@ def test_s9_proactive_pcd():
 
 def test_factory_helper():
     """Verify that factory resolves strings to correct roulette strategies."""
-    assert isinstance(create_roulette_strategy("S9_WEIGHTED"), S9WeightedAverageStrategy)
-    assert isinstance(create_roulette_strategy("weighted"), S9WeightedAverageStrategy)
-    assert isinstance(create_roulette_strategy("S9_MEAN"), S9SimpleMeanStrategy)
-    assert isinstance(create_roulette_strategy("mean"), S9SimpleMeanStrategy)
-    assert isinstance(create_roulette_strategy("S9_MEDIAN"), S9MedianStrategy)
-    assert isinstance(create_roulette_strategy("median"), S9MedianStrategy)
-    assert isinstance(create_roulette_strategy("S9_CONSENSUS"), S9ConsensusStrategy)
-    assert isinstance(create_roulette_strategy("consensus"), S9ConsensusStrategy)
-    assert isinstance(create_roulette_strategy("S9_PROACTIVE_PCD"), S9ProactivePCDStrategy)
-    assert isinstance(create_roulette_strategy("proactive_pcd"), S9ProactivePCDStrategy)
+    assert isinstance(create_roulette_strategy("S8_WEIGHTED"), S8WeightedAverageStrategy)
+    assert isinstance(create_roulette_strategy("weighted"), S8WeightedAverageStrategy)
+    assert isinstance(create_roulette_strategy("S8_MEAN"), S8SimpleMeanStrategy)
+    assert isinstance(create_roulette_strategy("mean"), S8SimpleMeanStrategy)
+    assert isinstance(create_roulette_strategy("S8_MEDIAN"), S8MedianStrategy)
+    assert isinstance(create_roulette_strategy("median"), S8MedianStrategy)
+    assert isinstance(create_roulette_strategy("S8_CONSENSUS"), S8ConsensusStrategy)
+    assert isinstance(create_roulette_strategy("consensus"), S8ConsensusStrategy)
+    assert isinstance(create_roulette_strategy("S8_PROACTIVE_PCD"), S8ProactivePCDStrategy)
+    assert isinstance(create_roulette_strategy("proactive_pcd"), S8ProactivePCDStrategy)
     
     # Fallback to Simple Mean for unrecognized inputs
-    assert isinstance(create_roulette_strategy("unrecognized"), S9SimpleMeanStrategy)
+    assert isinstance(create_roulette_strategy("unrecognized"), S8SimpleMeanStrategy)
 
 
 def test_aggregate_roulettes_unbiased_and_fail_fast():
@@ -155,12 +155,12 @@ def test_aggregate_roulettes_unbiased_and_fail_fast():
         {"client_id": "client_1", "roulette": [0.6, 0.4], "n_samples": 100, "macro_f1": 0.1, "pcd": 0.1}
     ]
     
-    # 1. S9_CONSENSUS with server evaluations provided
+    # 1. S8_CONSENSUS with server evaluations provided
     agg_model = {"weights": weights}
     aggregate_roulettes(
         agg_model,
         None, 
-        variant="S9_CONSENSUS", 
+        variant="S8_CONSENSUS", 
         server_eval_f1={"client_0": 0.8, "client_1": 0.2}
     )
     res = agg_model["aggregated_weights"]
@@ -169,8 +169,8 @@ def test_aggregate_roulettes_unbiased_and_fail_fast():
     # pos_1: 0.8 * 0.8 + 0.4 * 0.2 = 0.72
     assert np.allclose(res["global_roulette"], [0.28, 0.72])
     
-    # 2. S9_CONSENSUS raises ValueError when server evaluations are missing (strict fail-fast)
+    # 2. S8_CONSENSUS raises ValueError when server evaluations are missing (strict fail-fast)
     print("\n[DEBUG TEST] Calling second time (without server_eval_f1)...")
     agg_model_fail = {"weights": weights}
     with pytest.raises(ValueError, match="CRITICAL: Unbiased server-side F1-score evaluation is missing"):
-        aggregate_roulettes(agg_model_fail, None, variant="S9_CONSENSUS")
+        aggregate_roulettes(agg_model_fail, None, variant="S8_CONSENSUS")

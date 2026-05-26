@@ -40,7 +40,7 @@ def render() -> None:
         f"**Descartados por Progressive:** {n_total - n_sel}"
     )
 
-    # Show detailed convergence info if available (S2-S7, PW)
+    # Show detailed convergence info if available (S2-S7)
     has_logs = hasattr(results, "round_logs") and results.round_logs
     if sid not in ["s1_simple_pool", "s1"] and has_logs:
         st.info(info_text)

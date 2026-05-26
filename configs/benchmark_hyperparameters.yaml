@@ -134,11 +134,11 @@ strategies:
       f1_weight: 0.3
       pcd_weight: 0.7
 
-  # Global Attribute Roulette Strategies (S9 Variants)
-  s9_weighted_average:
+  # Global Attribute Roulette Strategies (S8 Variants)
+  s8_weighted_average:
     aggregation:
-      strategy: "s9_weighted_average"
-      variant: "S9_WEIGHTED_AVERAGE"
+      strategy: "s8_weighted_average"
+      variant: "S8_WEIGHTED_AVERAGE"
       local_roulette_weight: 0.1
       max_rounds: 20
       global_convergence_threshold: 0.002
@@ -151,10 +151,10 @@ strategies:
       f1_weight: 0.3
       pcd_weight: 0.7
 
-  s9_simple_mean:
+  s8_simple_mean:
     aggregation:
-      strategy: "s9_simple_mean"
-      variant: "S9_SIMPLE_MEAN"
+      strategy: "s8_simple_mean"
+      variant: "S8_SIMPLE_MEAN"
       local_roulette_weight: 0.1
       max_rounds: 20
       global_convergence_threshold: 0.002
@@ -167,10 +167,10 @@ strategies:
       f1_weight: 0.3
       pcd_weight: 0.7
 
-  s9_median:
+  s8_median:
     aggregation:
-      strategy: "s9_median"
-      variant: "S9_MEDIAN"
+      strategy: "s8_median"
+      variant: "S8_MEDIAN"
       local_roulette_weight: 0.1
       max_rounds: 20
       global_convergence_threshold: 0.002
@@ -183,10 +183,10 @@ strategies:
       f1_weight: 0.3
       pcd_weight: 0.7
 
-  s9_consensus:
+  s8_consensus:
     aggregation:
-      strategy: "s9_consensus"
-      variant: "S9_CONSENSUS"
+      strategy: "s8_consensus"
+      variant: "S8_CONSENSUS"
       local_roulette_weight: 0.1
       max_rounds: 20
       global_convergence_threshold: 0.002
@@ -199,10 +199,10 @@ strategies:
       f1_weight: 0.3
       pcd_weight: 0.7
 
-  s9_proactive_pcd:
+  s8_proactive_pcd:
     aggregation:
-      strategy: "s9_proactive_pcd"
-      variant: "S9_PROACTIVE_PCD"
+      strategy: "s8_proactive_pcd"
+      variant: "S8_PROACTIVE_PCD"
       local_roulette_weight: 0.1
       max_rounds: 20
       global_convergence_threshold: 0.002

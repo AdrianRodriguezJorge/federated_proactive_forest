@@ -6,7 +6,6 @@ import numpy as np
 
 from src.domain.dataset.base_adapter import DatasetSplit
 from src.application.orchestrators.fl_orchestrator import FLEXOrchestrator
-from src.application.orchestrators.progressive_windows_orchestrator import ProgressiveWindowsOrchestrator
 from src.application.orchestrators.roulette_orchestrator import RouletteOrchestrator
 
 # Setup logging to stdout with INFO level to capture all detailed flow logs
@@ -20,8 +19,7 @@ ALL_STRATEGIES = [
     ("S5_perclient_accuracy", "S5"),
     ("S6_perclient_f1", "S6"),
     ("S7_perclient_f1_pcd", "S7"),
-    ("PW_progressive_windows", "PW"),
-    ("S9_WEIGHTED", "S9_WEIGHTED"),
+    ("S8_WEIGHTED", "S8_WEIGHTED"),
 ]
 
 def generate_data():
@@ -54,7 +52,7 @@ def main():
                 "local_convergence_threshold": 0.001
             },
             "aggregation": {
-                "strategy": strategy_id if not strategy_id.startswith("S9_") else "S9",
+                "strategy": strategy_id if not strategy_id.startswith("S8_") else "S8",
                 "variant": strategy_id,
                 "window_size": 2,
                 "max_rounds": 1,
@@ -64,9 +62,7 @@ def main():
             }
         }
         
-        if strategy_id == "PW":
-            orch = ProgressiveWindowsOrchestrator(config)
-        elif strategy_id.startswith("S9_"):
+        if strategy_id.startswith("S8_"):
             orch = RouletteOrchestrator(config)
         else:
             orch = FLEXOrchestrator(config)

@@ -65,8 +65,9 @@ class ComparativeProgressiveForest:
             new_trees = len(self._classifier._trees) - models_built
             models_built = len(self._classifier._trees)
 
-            min_accuracy = min(self._classifier._m_progressive_accuracy)
-            max_accuracy = max(self._classifier._m_progressive_accuracy)
+            current_episode_accs = self._classifier._m_progressive_accuracy[-new_trees:]
+            min_accuracy = min(current_episode_accs) if current_episode_accs else 0.0
+            max_accuracy = max(current_episode_accs) if current_episode_accs else 0.0
             episode_accuracy = max_accuracy - min_accuracy
 
             # Convergence check based strictly on Thesis (Algoritmo 5):

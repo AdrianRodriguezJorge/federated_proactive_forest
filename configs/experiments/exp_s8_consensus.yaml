@@ -1,6 +1,6 @@
 experiment:
-  name: "exp_s9_consensus_iris"
-  description: "S9 Roulette - Consensus (proportionally-weighted by local F1 performance)"
+  name: "exp_s8_consensus_iris"
+  description: "S8 Roulette - Consensus (proportionally-weighted by local F1 performance)"
 
 dataset:
   type: "Iris"
@@ -21,8 +21,8 @@ model:
   verbose: false
 
 aggregation:
-  strategy: "S9"
-  variant: "S9_CONSENSUS"
+  strategy: "S8"
+  variant: "S8_CONSENSUS"
   local_roulette_weight: 0.1
   window_size: 5
   max_rounds: 20

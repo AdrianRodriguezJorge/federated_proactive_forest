@@ -1,18 +1,18 @@
-"""Demonstration of S9 local_roulette_weight=0 collapse across federated rounds."""
+"""Demonstration of S8 local_roulette_weight=0 collapse across federated rounds."""
 import sys, os
 import numpy as np
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from src.domain.update.roulette_updater import RouletteUpdater
-from src.domain.aggregation.strategies.s9_roulette_strategy import (
-    S9WeightedAverageStrategy, S9SimpleMeanStrategy, S9MedianStrategy,
-    S9ConsensusStrategy, S9ProactivePCDStrategy
+from src.domain.aggregation.strategies.s8_roulette_strategy import (
+    S8WeightedAverageStrategy, S8SimpleMeanStrategy, S8MedianStrategy,
+    S8ConsensusStrategy, S8ProactivePCDStrategy
 )
 
 
 def run_simulation(local_roulette_weight: float):
     print(f"\n==========================================")
-    print(f"SIMULATING S9 FEDERATION WITH local_roulette_weight = {local_roulette_weight}")
+    print(f"SIMULATING S8 FEDERATION WITH local_roulette_weight = {local_roulette_weight}")
     print(f"==========================================")
 
     # 3 features
@@ -37,11 +37,11 @@ def run_simulation(local_roulette_weight: float):
     pcds = {"c1": 0.3, "c2": 0.4, "c3": 0.35}
 
     strategies = {
-        "Simple Mean": S9SimpleMeanStrategy(),
-        "Weighted Average": S9WeightedAverageStrategy(),
-        "Median": S9MedianStrategy(),
-        "Consensus": S9ConsensusStrategy(),
-        "Proactive PCD": S9ProactivePCDStrategy(),
+        "Simple Mean": S8SimpleMeanStrategy(),
+        "Weighted Average": S8WeightedAverageStrategy(),
+        "Median": S8MedianStrategy(),
+        "Consensus": S8ConsensusStrategy(),
+        "Proactive PCD": S8ProactivePCDStrategy(),
     }
 
     for round_idx in range(1, 4):

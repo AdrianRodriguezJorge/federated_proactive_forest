@@ -10,7 +10,7 @@ Para cada conjunto de datos se compara el rendimiento del modelo centralizado fr
 
 | Dataset | Centralized F1 | Best Federated F1 | F1 Winner | Centralized Acc | Best Federated Acc | Acc Winner |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
-| **Iris** | **0.954981** | 0.910662 (s9_weighted_average) | Centralized | **0.956000** | 0.911111 (s9_weighted_average) | Centralized |
+| **Iris** | **0.954981** | 0.910662 (s8_weighted_average) | Centralized | **0.956000** | 0.911111 (s8_weighted_average) | Centralized |
 | **Car** | 0.945782 | **0.946906 (s4_global_f1_pcd)** | Federated | **0.976626** | 0.971098 (s4_global_f1_pcd) | Centralized |
 | **Nursery** | 0.954848 | **0.959833 (s3_global_f1)** | Federated | **0.995911** | 0.975823 (s2_global_accuracy) | Centralized |
 | **Vowel** | **0.968468** | 0.858628 (s1_simple_pool) | Centralized | **0.971919** | 0.858586 (s1_simple_pool) | Centralized |
@@ -32,7 +32,7 @@ Comparación de la diversidad correctiva porcentual (PCD) entre el modelo centra
 | **Car** | 0.309630 | **0.369942 (s1_simple_pool)** | Federated |
 | **Nursery** | 0.396870 | **0.438272 (pw)** | Federated |
 | **Vowel** | 0.937000 | **0.979798 (s1_simple_pool)** | Federated |
-| **Optdigits** | **0.583070** | 0.551601 (s9_median) | Centralized |
+| **Optdigits** | **0.583070** | 0.551601 (s8_median) | Centralized |
 | **Sonar** | 0.907250 | **1.000000 (s1_simple_pool)** | Federated |
 | **Spambase** | 0.330740 | **0.360087 (pw)** | Federated |
 
@@ -60,8 +60,8 @@ Resultados de las pruebas estadísticas aplicadas sobre los valores de F1-score:
 | **s1_simple_pool** | 0.901846 | 0.015625 | -0.038517 | **Sí** (Rendimiento inferior) |
 | **s4_global_f1_pcd** | 0.898981 | 0.046875 | -0.041381 | **Sí** (Rendimiento inferior) |
 | **pw (Progressive Windows)** | 0.865113 | 0.015625 | -0.075249 | **Sí** (Rendimiento inferior) |
-| **s9_median** | 0.829128 | 0.015625 | -0.111234 | **Sí** (Rendimiento inferior) |
-| **s9_proactive_pcd** | 0.827864 | 0.015625 | -0.112498 | **Sí** (Rendimiento inferior) |
-| **s9_consensus** | 0.827856 | 0.015625 | -0.112506 | **Sí** (Rendimiento inferior) |
-| **s9_simple_mean** | 0.827856 | 0.015625 | -0.112506 | **Sí** (Rendimiento inferior) |
-| **s9_weighted_average** | 0.827856 | 0.015625 | -0.112506 | **Sí** (Rendimiento inferior) |
+| **s8_median** | 0.829128 | 0.015625 | -0.111234 | **Sí** (Rendimiento inferior) |
+| **s8_proactive_pcd** | 0.827864 | 0.015625 | -0.112498 | **Sí** (Rendimiento inferior) |
+| **s8_consensus** | 0.827856 | 0.015625 | -0.112506 | **Sí** (Rendimiento inferior) |
+| **s8_simple_mean** | 0.827856 | 0.015625 | -0.112506 | **Sí** (Rendimiento inferior) |
+| **s8_weighted_average** | 0.827856 | 0.015625 | -0.112506 | **Sí** (Rendimiento inferior) |

@@ -1,4 +1,4 @@
-"""Roulette Orchestrator — S9 Global Attribute Roulette strategy.
+"""Roulette Orchestrator — S8 Global Attribute Roulette strategy.
 
 Implements a multi-round federated loop where, instead of exchanging trees,
 clients and server exchange feature-probability vectors (roulettes).
@@ -41,9 +41,9 @@ from src.infrastructure.flex.flex_roulette_pf import (
     deploy_global_roulette,
     set_global_roulette,
 )
-from src.infrastructure.flex.flex_s9_progressive import (
-    check_convergence_s9,
-    train_window_pf_s9,
+from src.infrastructure.flex.flex_s8_progressive import (
+    check_convergence_s8,
+    train_window_pf_s8,
 )
 from src.infrastructure.flex.flex_train_pf import (
     init_server_model_pf,
@@ -60,9 +60,9 @@ from src.infrastructure.metrics.sklearn_metrics_service import (
 
 @dataclass
 class RouletteResults(FLResults):
-    """Extended FLResults for the S9 strategy with roulette-specific data."""
+    """Extended FLResults for the S8 strategy with roulette-specific data."""
 
-    roulette_variant: str = "S9_MEAN"
+    roulette_variant: str = "S8_MEAN"
     local_roulette_weight: float = 0.1
     n_features: int = 0
     total_communication_bytes: int = 0
@@ -72,7 +72,7 @@ class RouletteResults(FLResults):
 
 
 class RouletteOrchestrator:
-    """Federated Learning orchestrator for S9 Global Attribute Roulette."""
+    """Federated Learning orchestrator for S8 Global Attribute Roulette."""
 
     def __init__(
         self,
@@ -96,9 +96,9 @@ class RouletteOrchestrator:
         self.diversity_svc = PredictionBasedDiversityService()
         self.label_svc = SimpleLabelService()
 
-        # S9-specific config
+        # S8-specific config
         agg_cfg = self.config.get("aggregation", {})
-        self.variant = agg_cfg.get("variant", "S9_MEAN")
+        self.variant = agg_cfg.get("variant", "S8_MEAN")
         self.local_roulette_weight = float(agg_cfg.get("local_roulette_weight", 0.1))
         self.window_size = int(agg_cfg.get("window_size", 5))
         self.max_rounds = int(agg_cfg.get("max_rounds", 20))
@@ -151,14 +151,14 @@ class RouletteOrchestrator:
                 init_model_func=init_server_model_pf,
                 config=self.config,
             )
-            self.step_callback("FlexPool inicializado (Roulette S9)", 10)
+            self.step_callback("FlexPool inicializado (Roulette S8)", 10)
         except Exception as e:
             self.flex_pool = None
             self.logger.error(f"Error al inicializar FlexPool: {e}")
             raise
 
     def run_federated_round(self, n_bootstrap: int = 0) -> RouletteResults:
-        """Execute the full multi-round S9 federated experiment.
+        """Execute the full multi-round S8 federated experiment.
 
         Args:
             n_bootstrap (int): Bootstrap repetitions for statistical CI.
@@ -175,9 +175,9 @@ class RouletteOrchestrator:
                 "Federation not set up. Call setup_federation() first."
             )
 
-        self.step_callback("Iniciando S9 Roulette Federada...", 5)
+        self.step_callback("Iniciando S8 Roulette Federada...", 5)
         self.logger.info(
-            f"Starting S9 with variant={self.variant}, local_roulette_weight={self.local_roulette_weight}"
+            f"Starting S8 with variant={self.variant}, local_roulette_weight={self.local_roulette_weight}"
         )
 
         updater = RouletteUpdater(local_roulette_weight=self.local_roulette_weight)
@@ -200,7 +200,7 @@ class RouletteOrchestrator:
             round_idx = round_num + 1
             progress = 10 + int(round_num * 75 / self.max_rounds)
             self.step_callback(
-                f"S9 Ronda {round_idx}/{self.max_rounds} "
+                f"S8 Ronda {round_idx}/{self.max_rounds} "
                 f"(Activos: {len(active_client_ids)})...",
                 progress,
             )
@@ -219,7 +219,7 @@ class RouletteOrchestrator:
 
             # Local training
             self.flex_pool.clients.map(
-                train_window_pf_s9, active_ids=active_client_ids
+                train_window_pf_s8, active_ids=active_client_ids
             )
 
             # Check convergence for just-trained clients
@@ -261,8 +261,8 @@ class RouletteOrchestrator:
             y_val = self.dataset_split.y_val
 
             is_consensus_var = self.variant in (
-                "S9_CONSENSUS",
-                "S9_PROACTIVE_PCD",
+                "S8_CONSENSUS",
+                "S8_PROACTIVE_PCD",
             )
             if is_consensus_var and (X_val is None or y_val is None):
                 raise ValueError(
@@ -382,7 +382,7 @@ class RouletteOrchestrator:
             final_round = round_idx
 
         # ── Final evaluation & Results Consolidation ─────────────────────────
-        self.step_callback("Consolidando resultados S9...", 90)
+        self.step_callback("Consolidando resultados S8...", 90)
 
         X_test = self.dataset_split.X_test
         y_test = self.dataset_split.y_test
@@ -486,10 +486,10 @@ class RouletteOrchestrator:
             n_bootstrap=n_bootstrap,
         )
 
-        self.step_callback("S9 Roulette completada", 100)
+        self.step_callback("S8 Roulette completada", 100)
 
         return RouletteResults(
-            strategy_id=f"S9_{self.variant.replace('S9_', '')}",
+            strategy_id=f"S8_{self.variant.replace('S8_', '')}",
             global_accuracy=global_acc,
             global_macro_f1=global_f1,
             n_trees_global=total_trees,

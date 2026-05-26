@@ -60,9 +60,9 @@ def run():
     print(f"Accuracy: {res.global_accuracy}")
     if hasattr(orch, 'cleanup'): orch.cleanup()
 
-    print("\nIniciando prueba S9 en entorno Non-IID (simulando clases faltantes)...")
+    print("\nIniciando prueba S8 en entorno Non-IID (simulando clases faltantes)...")
     from src.application.orchestrators.roulette_orchestrator import RouletteOrchestrator
-    config_s9 = {
+    config_s8 = {
         "federation": {"n_clients": 3, "distribution": "dirichlet", "alpha": 0.1},
         "model": {
             "n_estimators": 10, 
@@ -71,23 +71,23 @@ def run():
             "class_names": ["0", "1", "2"]
         },
         "aggregation": {
-            "strategy": "S9",
-            "variant": "S9_WEIGHTED",
+            "strategy": "S8",
+            "variant": "S8_WEIGHTED",
             "max_rounds": 1
         }
     }
     try:
-        orch_s9 = RouletteOrchestrator(config_s9)
-        orch_s9.setup_federation(split)
-        res_s9 = orch_s9.run_federated_round(n_bootstrap=0)
-        print("[S9] Ejecución exitosa.")
-        print(f"S9 Global Trees: {res_s9.n_trees_global}")
+        orch_s8 = RouletteOrchestrator(config_s8)
+        orch_s8.setup_federation(split)
+        res_s8 = orch_s8.run_federated_round(n_bootstrap=0)
+        print("[S8] Ejecución exitosa.")
+        print(f"S8 Global Trees: {res_s8.n_trees_global}")
     except Exception as e:
-        print(f"[S9 ERROR]: {str(e)}")
+        print(f"[S8 ERROR]: {str(e)}")
         import traceback
         traceback.print_exc()
     finally:
-        if hasattr(orch_s9, 'cleanup'): orch_s9.cleanup()
+        if hasattr(orch_s8, 'cleanup'): orch_s8.cleanup()
 
 if __name__ == "__main__":
     run()

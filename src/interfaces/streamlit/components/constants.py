@@ -119,19 +119,16 @@ STRATEGY_LABELS = {
     "s7_perclient_f1_pcd": (
         "S7 — Per-Client, orden por α·F1 + β·PCD + Progressive"
     ),
-    "pw": (
-        "PW — Progressive Windows (ventanas + score dinámico F1+Diversidad)"
-    ),
-    "s9_roulette": (
-        "S9 — Ruleta Global de Atributos (intercambio de vectores "
+    "s8_roulette": (
+        "S8 — Ruleta Global de Atributos (intercambio de vectores "
         "de probabilidad)"
     ),
 }
 
-S9_VARIANT_LABELS = {
-    "S9_MEAN": "Media Simple (democrática)",
-    "S9_WEIGHTED": "Promedio Ponderado (por tamaño de dataset)",
-    "S9_MEDIAN": "Mediana (robusta contra outliers)",
-    "S9_CONSENSUS": "Consenso (ponderado por F1 local)",
-    "S9_PROACTIVE_PCD": "Proactivo PCD (ponderado por diversidad Cepero)",
+S8_VARIANT_LABELS = {
+    "S8_MEAN": "Media Simple (democrática)",
+    "S8_WEIGHTED": "Promedio Ponderado (por tamaño de dataset)",
+    "S8_MEDIAN": "Mediana (robusta contra outliers)",
+    "S8_CONSENSUS": "Consenso (ponderado por F1 local)",
+    "S8_PROACTIVE_PCD": "Proactivo PCD (ponderado por diversidad Cepero)",
 }

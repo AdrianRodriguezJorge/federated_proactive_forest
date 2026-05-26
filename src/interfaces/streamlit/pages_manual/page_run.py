@@ -123,9 +123,9 @@ def render() -> None:
 
         try:
             strategy_key = cfg.get("aggregation", {}).get("strategy", "")
-            is_s9 = strategy_key == "s9_roulette"
+            is_s8 = strategy_key == "s8_roulette"
 
-            if is_s9:
+            if is_s8:
                 from src.application.orchestrators.roulette_orchestrator import (
                     RouletteOrchestrator,
                 )
@@ -174,28 +174,28 @@ def render() -> None:
                 )
                 st.metric("📡 Coste Comm.", f"{comm_kb:.2f} KB")
             with row2_c2:
-                is_s9_tag = "S9" in results.strategy_id
+                is_s8_tag = "S8" in results.strategy_id
                 var_tag = getattr(results, "roulette_variant", "N/A")
                 strat_label = (
-                    f"S9 ({var_tag})" if is_s9_tag else results.strategy_id
+                    f"S8 ({var_tag})" if is_s8_tag else results.strategy_id
                 )
                 st.metric("🧠 Estrategia", strat_label)
             with row2_c3:
-                if is_s9:
+                if is_s8:
                     weight_val = getattr(results, "local_roulette_weight", 0.0)
                     st.metric("⚖️ Peso Ruleta Local", f"{weight_val:.2f}")
                 else:
                     st.metric("🌲 Árboles Global", results.n_trees_global)
 
-            if is_s9:
+            if is_s8:
                 with st.expander(
                     "🎰 Ver detalles de la Ruleta Global", expanded=False
                 ):
-                    from src.interfaces.streamlit.components.s9_dashboard import (
-                        render_s9_dashboard,
+                    from src.interfaces.streamlit.components.s8_dashboard import (
+                        render_s8_dashboard,
                     )
 
-                    render_s9_dashboard(results)
+                    render_s8_dashboard(results)
             else:
                 with st.expander(
                     "📊 Ver evolución de convergencia", expanded=False
@@ -250,28 +250,28 @@ def render() -> None:
             comm_kb = getattr(results, "total_communication_bytes", 0) / 1024
             st.metric("📡 Coste Comm.", f"{comm_kb:.2f} KB")
         with row2_c2:
-            is_s9_tag = "S9" in results.strategy_id
+            is_s8_tag = "S8" in results.strategy_id
             var_tag = getattr(results, "roulette_variant", "N/A")
             strat_label = (
-                f"S9 ({var_tag})" if is_s9_tag else results.strategy_id
+                f"S8 ({var_tag})" if is_s8_tag else results.strategy_id
             )
             st.metric("🧠 Estrategia", strat_label)
         with row2_c3:
-            if is_s9_tag:
+            if is_s8_tag:
                 weight_val = getattr(results, "local_roulette_weight", 0.0)
                 st.metric("⚖️ Peso Ruleta Local", f"{weight_val:.2f}")
             else:
                 st.metric("🌲 Árboles Global", results.n_trees_global)
 
-        if is_s9_tag:
+        if is_s8_tag:
             with st.expander(
                 "🎰 Ver detalles de la Ruleta Global", expanded=False
             ):
-                from src.interfaces.streamlit.components.s9_dashboard import (
-                    render_s9_dashboard,
+                from src.interfaces.streamlit.components.s8_dashboard import (
+                    render_s8_dashboard,
                 )
 
-                render_s9_dashboard(results)
+                render_s8_dashboard(results)
         else:
             with st.expander(
                 "📊 Ver evolución de convergencia", expanded=False

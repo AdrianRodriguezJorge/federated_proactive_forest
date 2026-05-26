@@ -106,14 +106,14 @@ st.sidebar.markdown("---")
 fl_config = st.session_state.get("fl_config") or {}
 strategy = fl_config.get("aggregation", {}) or {}
 strategy_id = strategy.get("strategy", "")
-is_s9 = strategy_id == "s9_roulette"
+is_s8 = strategy_id == "s8_roulette"
 
 pages = [
     "⚙️  Configuración",
     "▶️  Ejecutar",
 ]
 
-if is_s9:
+if is_s8:
     pages.append("🎰 Evolución de Ruleta")
 else:
     pages.append("🏆 Ranking de Árboles")

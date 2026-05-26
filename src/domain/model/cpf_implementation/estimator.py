@@ -852,7 +852,7 @@ class ProactiveForestClassifier(DecisionForestClassifier):
             if verbose:
                 print(f"  Árbol {len(self._trees)} | acc={acc:.4f}")
 
-    # -- FL S9 Roulette: methods to expose/inject the feature roulette --
+    # -- FL S8 Roulette: methods to expose/inject the feature roulette --
 
     def get_feature_probabilities(self) -> List[float]:
         """Return the current feature probability vector (roulette state).
@@ -860,7 +860,7 @@ class ProactiveForestClassifier(DecisionForestClassifier):
         After training (fit or buildEpisode), this vector reflects
         how the Proactive algorithm has adjusted the exploration
         probabilities for each feature based on accumulated Feature
-        Importance. In the S9 federated strategy, this vector is
+        Importance. In the S8 federated strategy, this vector is
         sent to the server for aggregation.
 
         Returns:

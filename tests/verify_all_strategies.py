@@ -9,7 +9,6 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from src.domain.dataset.base_adapter import DatasetSplit
 from src.application.orchestrators.fl_orchestrator import FLEXOrchestrator
-from src.application.orchestrators.progressive_windows_orchestrator import ProgressiveWindowsOrchestrator
 from src.application.orchestrators.roulette_orchestrator import RouletteOrchestrator
 
 def run_strategies_iris():
@@ -38,7 +37,7 @@ def run_strategies_iris():
         dataset_name="Iris"
     )
     
-    # List of all 13 strategies:
+    # List of all 12 strategies:
     strategies = [
         # FLEX-based strategies S1 - S7
         ("S1_simple_pool", "S1"),
@@ -48,14 +47,12 @@ def run_strategies_iris():
         ("S5_perclient_accuracy", "S5"),
         ("S6_perclient_f1", "S6"),
         ("S7_perclient_f1_pcd", "S7"),
-        # Progressive Windows Strategy
-        ("PW_progressive_windows", "PW"),
-        # Roulette-based strategies S9 variants
-        ("S9_WEIGHTED", "S9_WEIGHTED"),
-        ("S9_MEAN", "S9_MEAN"),
-        ("S9_MEDIAN", "S9_MEDIAN"),
-        ("S9_CONSENSUS", "S9_CONSENSUS"),
-        ("S9_PROACTIVE_PCD", "S9_PROACTIVE_PCD"),
+        # Roulette-based strategies S8 variants
+        ("S8_WEIGHTED", "S8_WEIGHTED"),
+        ("S8_MEAN", "S8_MEAN"),
+        ("S8_MEDIAN", "S8_MEDIAN"),
+        ("S8_CONSENSUS", "S8_CONSENSUS"),
+        ("S8_PROACTIVE_PCD", "S8_PROACTIVE_PCD"),
     ]
     
     results_summary = {}
@@ -75,7 +72,7 @@ def run_strategies_iris():
                 "local_convergence_threshold": 0.0001
             },
             "aggregation": {
-                "strategy": strategy_id if not strategy_id.startswith("S9_") else "S9",
+                "strategy": strategy_id if not strategy_id.startswith("S8_") else "S8",
                 "variant": strategy_id,
                 "window_size": 2,
                 "max_rounds": 3,
@@ -85,9 +82,7 @@ def run_strategies_iris():
         }
         
         # Instantiate orchestrator
-        if strategy_id == "PW":
-            orch = ProgressiveWindowsOrchestrator(config)
-        elif strategy_id.startswith("S9_"):
+        if strategy_id.startswith("S8_"):
             orch = RouletteOrchestrator(config)
         else:
             orch = FLEXOrchestrator(config)

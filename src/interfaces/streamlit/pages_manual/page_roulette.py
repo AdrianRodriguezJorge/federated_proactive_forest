@@ -1,27 +1,27 @@
-"""Página 5 — Evolución de la Ruleta Global (S9)."""
+"""Página 5 — Evolución de la Ruleta Global (S8)."""
 
 import pandas as pd
 import streamlit as st
 
 
 def render() -> None:
-    """Renders page_roulette Streamlit page for strategy S9."""
-    st.header("🎰 Evolución de la Ruleta Global (S9)")
+    """Renders page_roulette Streamlit page for strategy S8."""
+    st.header("🎰 Evolución de la Ruleta Global (S8)")
 
     results = st.session_state.get("fl_results")
     if not results or not hasattr(results, "roulette_history"):
-        st.warning("⚠️ Esta página solo está para experimentos S9.")
+        st.warning("⚠️ Esta página solo está para experimentos S8.")
         return
 
     st.subheader("📈 Historial de Probabilidades de Atributos")
 
     exp_title = "📈 Evolución de Probabilidades de Atributos"
     with st.expander(exp_title, expanded=True):
-        from src.interfaces.streamlit.components.s9_dashboard import (
-            render_s9_dashboard,
+        from src.interfaces.streamlit.components.s8_dashboard import (
+            render_s8_dashboard,
         )
 
-        render_s9_dashboard(results)
+        render_s8_dashboard(results)
 
     st.divider()
 

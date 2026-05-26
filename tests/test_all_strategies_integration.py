@@ -2,10 +2,9 @@ import pytest
 import numpy as np
 from src.domain.dataset.base_adapter import DatasetSplit
 from src.application.orchestrators.fl_orchestrator import FLEXOrchestrator
-from src.application.orchestrators.progressive_windows_orchestrator import ProgressiveWindowsOrchestrator
 from src.application.orchestrators.roulette_orchestrator import RouletteOrchestrator
 
-# Parametrization list for all 13 aggregation strategies
+# Parametrization list for all 12 aggregation strategies
 ALL_STRATEGIES = [
     ("S1_simple_pool", "S1"),
     ("S2_global_accuracy", "S2"),
@@ -14,12 +13,11 @@ ALL_STRATEGIES = [
     ("S5_perclient_accuracy", "S5"),
     ("S6_perclient_f1", "S6"),
     ("S7_perclient_f1_pcd", "S7"),
-    ("PW_progressive_windows", "PW"),
-    ("S9_WEIGHTED", "S9_WEIGHTED"),
-    ("S9_MEAN", "S9_MEAN"),
-    ("S9_MEDIAN", "S9_MEDIAN"),
-    ("S9_CONSENSUS", "S9_CONSENSUS"),
-    ("S9_PROACTIVE_PCD", "S9_PROACTIVE_PCD"),
+    ("S8_WEIGHTED", "S8_WEIGHTED"),
+    ("S8_MEAN", "S8_MEAN"),
+    ("S8_MEDIAN", "S8_MEDIAN"),
+    ("S8_CONSENSUS", "S8_CONSENSUS"),
+    ("S8_PROACTIVE_PCD", "S8_PROACTIVE_PCD"),
 ]
 
 @pytest.fixture(scope="module")
@@ -52,7 +50,7 @@ def test_strategy_execution(name, strategy_id, synthetic_split):
             "local_convergence_threshold": 0.0001
         },
         "aggregation": {
-            "strategy": strategy_id if not strategy_id.startswith("S9_") else "S9",
+            "strategy": strategy_id if not strategy_id.startswith("S8_") else "S8",
             "variant": strategy_id,
             "window_size": 2,
             "max_rounds": 2,
@@ -62,9 +60,7 @@ def test_strategy_execution(name, strategy_id, synthetic_split):
     }
     
     # Instantiate the correct orchestrator based on strategy
-    if strategy_id == "PW":
-        orch = ProgressiveWindowsOrchestrator(config)
-    elif strategy_id.startswith("S9_"):
+    if strategy_id.startswith("S8_"):
         orch = RouletteOrchestrator(config)
     else:
         orch = FLEXOrchestrator(config)
