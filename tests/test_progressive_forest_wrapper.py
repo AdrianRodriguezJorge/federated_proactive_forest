@@ -51,7 +51,7 @@ def test_cpf_early_stopping_convergence():
     ]
     
     mock_clf = MockProactiveForestClassifier(n_estimators=100, accuracies_to_simulate=simulated_accs)
-    cpf = ComparativeProgressiveForest(mock_clf, verbose=True, convergence_threshold=0.002)
+    cpf = ComparativeProgressiveForest(mock_clf, verbose=True, local_convergence_threshold=0.002)
     
     # Train mock
     cpf.fit(np.zeros((10, 2)), np.zeros(10), np.zeros((10, 2)), np.zeros(10))
@@ -68,8 +68,8 @@ def test_progressive_forest_integration():
     X_val = np.random.rand(15, 2)
     y_val = np.random.randint(0, 2, 15)
     
-    forest = ProactiveForest(n_estimators=20, alpha=0.1, class_names=["0", "1"])
-    pf = ProgressiveForest(forest, verbose=True, convergence_threshold=0.5) # High threshold to trigger early stopping
+    forest = ProactiveForest(n_estimators=20, alpha_pf=0.1, class_names=["0", "1"])
+    pf = ProgressiveForest(forest, verbose=True, local_convergence_threshold=0.5) # High threshold to trigger early stopping
     
     pf.fit_with_early_stopping(X_train, y_train, X_val, y_val)
     

@@ -51,7 +51,7 @@ def test_tree_metric_extractor_pcd_is_client_level():
     X, y = iris.data, iris.target.astype(str)
     from src.domain.model.proactive_forest import ProactiveForest
 
-    model = ProactiveForest(n_estimators=20, alpha=0.1, class_names=["0","1","2"])
+    model = ProactiveForest(n_estimators=20, alpha_pf=0.1, class_names=["0","1","2"])
     model.fit(X[:100], y[:100])
     trees = model.get_trees()
 
@@ -161,11 +161,11 @@ def test_hybrid_forest_weights():
     X_tr, X_test, y_tr, y_test = train_test_split(X, y, test_size=0.3, stratify=y, random_state=42)
 
     from src.domain.model.proactive_forest import ProactiveForest
-    m1 = ProactiveForest(n_estimators=30, alpha=0.1, class_names=["0","1","2"])
+    m1 = ProactiveForest(n_estimators=30, alpha_pf=0.1, class_names=["0","1","2"])
     m1.fit(X_tr[:50], y_tr[:50].astype(str))
     local_trees = m1.get_trees()
 
-    m2 = ProactiveForest(n_estimators=30, alpha=0.1, class_names=["0","1","2"])
+    m2 = ProactiveForest(n_estimators=30, alpha_pf=0.1, class_names=["0","1","2"])
     m2.fit(X_tr[50:], y_tr[50:].astype(str))
     global_trees = m2.get_trees()
 
@@ -205,7 +205,7 @@ def test_progressive_convergence_threshold():
     # Train models to get trees
     all_trees = []
     for seed in range(3):
-        m = ProactiveForest(n_estimators=40, alpha=0.1, class_names=["0","1","2"], random_state=seed*10)
+        m = ProactiveForest(n_estimators=40, alpha_pf=0.1, class_names=["0","1","2"], random_state=seed*10)
         m.fit(X[:100], y[:100])
         all_trees.extend(m.get_trees())
 
@@ -233,7 +233,7 @@ def test_progressive_convergence_threshold():
                               tree_local_id=e.tree_local_id, accuracy=e.accuracy,
                               macro_f1=e.macro_f1, pcd=e.pcd) for e in ranked],
             X_val=X[100:], y_val_norm=y_val_norm,
-            episode_size=5, t_max=100,
+            episode_size=5, max_trees=100,
             convergence_threshold=thresh, label_service=label_svc
         )
         final_acc = logs[-1]["accuracy"] if logs else 0
@@ -335,7 +335,7 @@ def test_global_vs_perclient_tree_selection():
     client_meta = {}
     for i in range(3):
         start, end = i*33, (i+1)*33+1
-        m = ProactiveForest(n_estimators=30, alpha=0.1, class_names=["0","1","2"], random_state=i*10)
+        m = ProactiveForest(n_estimators=30, alpha_pf=0.1, class_names=["0","1","2"], random_state=i*10)
         m.fit(X[start:end], y[start:end])
         cid = f"c{i}"
         client_trees[cid] = m.get_trees()
@@ -385,7 +385,7 @@ def test_scaling_impact():
     X_tr, X_test, y_tr, y_test = train_test_split(X, y, test_size=0.3, stratify=y, random_state=42)
 
     # Without scaling
-    m1 = ProactiveForest(n_estimators=50, alpha=0.1, class_names=["0","1","2"], random_state=42)
+    m1 = ProactiveForest(n_estimators=50, alpha_pf=0.1, class_names=["0","1","2"], random_state=42)
     m1.fit(X_tr, y_tr)
     preds1 = m1.predict(X_test)
     f1_no_scale = f1_score(y_test, preds1, average="macro")
@@ -394,7 +394,7 @@ def test_scaling_impact():
     scaler = StandardScaler()
     X_tr_s = scaler.fit_transform(X_tr)
     X_test_s = scaler.transform(X_test)
-    m2 = ProactiveForest(n_estimators=50, alpha=0.1, class_names=["0","1","2"], random_state=42)
+    m2 = ProactiveForest(n_estimators=50, alpha_pf=0.1, class_names=["0","1","2"], random_state=42)
     m2.fit(X_tr_s, y_tr)
     preds2 = m2.predict(X_test_s)
     f1_with_scale = f1_score(y_test, preds2, average="macro")
@@ -428,7 +428,7 @@ def test_validation_leak_small_data():
 
     with warnings.catch_warnings(record=True) as w:
         warnings.simplefilter("always")
-        m = ProactiveForest(n_estimators=10, alpha=0.1, class_names=["a","b"])
+        m = ProactiveForest(n_estimators=10, alpha_pf=0.1, class_names=["a","b"])
         try:
             m.fit(X_small, y_small)
             has_warning = any("Data leakage" in str(warning.message) for warning in w)

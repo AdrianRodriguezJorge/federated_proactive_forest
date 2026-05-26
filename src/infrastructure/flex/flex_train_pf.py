@@ -63,7 +63,7 @@ def train_pf(client_flex_model: FlexModel, client_data: Any) -> FlexModel:
     n_estimators = model_config.get(
         "n_estimators", config.get("n_estimators", 100)
     )
-    alpha = model_config.get("alpha", config.get("alpha", 0.1))
+    alpha_pf = model_config.get("alpha_pf", config.get("alpha_pf", 0.1))
     local_convergence_threshold = model_config.get(
         "local_convergence_threshold", 0.002
     )
@@ -98,10 +98,10 @@ def train_pf(client_flex_model: FlexModel, client_data: Any) -> FlexModel:
         # First round: instantiate and fit local model
         pf = ProactiveForest(
             n_estimators=n_estimators,
-            alpha=alpha,
+            alpha_pf=alpha_pf,
             verbose=config.get("verbose", False),
             class_names=class_names,
-            convergence_threshold=local_convergence_threshold,
+            local_convergence_threshold=local_convergence_threshold,
             random_state=config.get("random_state", 42),
         )
         pf.fit(

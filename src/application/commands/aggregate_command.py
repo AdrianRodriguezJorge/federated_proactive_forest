@@ -23,7 +23,7 @@ class AggregateCommand:
         client_metadata: Dict[str, Any],
         X_val: Optional[np.ndarray] = None,
         y_val: Optional[np.ndarray] = None,
-        t_max: Optional[int] = None,
+        max_trees: Optional[int] = None,
         **kwargs: Any,
     ) -> Dict[str, Any]:
         """Aggregate client models into a global model.
@@ -33,7 +33,7 @@ class AggregateCommand:
             client_metadata (Dict[str, Any]): Dict of client_id -> metadata.
             X_val (Optional[np.ndarray]): Validation features.
             y_val (Optional[np.ndarray]): Validation labels.
-            t_max (Optional[int]): Maximum trees in global model.
+            max_trees (Optional[int]): Maximum trees in global model.
             **kwargs (Any): Strategy-specific parameters.
 
         Returns:
@@ -50,7 +50,7 @@ class AggregateCommand:
             client_metadata,
             X_val=X_val,
             y_val=y_val,
-            t_max=t_max,
+            max_trees=max_trees,
             **kwargs,
         )
 

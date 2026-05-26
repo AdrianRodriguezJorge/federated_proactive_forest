@@ -25,39 +25,40 @@ class ProactiveForest(GlobalRandomForest, ABCForest):
     def __init__(
         self,
         n_estimators: int = 100,
-        alpha: float = 0.1,
+        alpha_pf: float = 0.1,
         random_state: int = 42,
         verbose: bool = False,
         class_names: Optional[List[str]] = None,
-        convergence_threshold: float = 0.002,
+        local_convergence_threshold: float = 0.002,
     ):
         """Initializes the Proactive Forest model.
 
         Args:
             n_estimators (int): Number of trees to train in the forest.
-            alpha (float): Diversity rate parameter (Cepero parameter).
+            alpha_pf (float): Diversity rate parameter (Cepero parameter).
             random_state (int): Seed for reproducibility.
             verbose (bool): Whether to print training progress and logs.
             class_names (Optional[List[str]]): List of class names.
-            convergence_threshold (float): Improvement threshold.
+            local_convergence_threshold (float): Improvement threshold.
         """
         super().__init__(n_estimators=n_estimators)
 
-        self.alpha = alpha
+        self.alpha_pf = alpha_pf
         self.random_state = random_state
         self.verbose = verbose
         self.class_names = class_names
-        self.convergence_threshold = convergence_threshold
+        self.local_convergence_threshold = local_convergence_threshold
         self._is_fitted: bool = False
 
         self._classifier = ProactiveForestClassifier(
             n_estimators=n_estimators,
-            alpha=alpha,
+            alpha=alpha_pf,
             bootstrap=True,
             split_criterion="entropy",
             random_state=random_state,
         )
         self._cpf: Optional[ComparativeProgressiveForest] = None
+
 
         if class_names is not None and len(class_names) > 0:
             self.class_names = class_names
@@ -136,7 +137,7 @@ class ProactiveForest(GlobalRandomForest, ABCForest):
         self._cpf = ComparativeProgressiveForest(
             self._classifier,
             verbose=self.verbose,
-            convergence_threshold=self.convergence_threshold,
+            local_convergence_threshold=self.local_convergence_threshold,
         )
         self._cpf.fit(X_train, y_train, X_val, y_val_labels)
         self._is_fitted = True

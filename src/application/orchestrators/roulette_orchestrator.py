@@ -103,7 +103,7 @@ class RouletteOrchestrator:
         self.window_size = int(agg_cfg.get("window_size", 5))
         self.max_rounds = int(agg_cfg.get("max_rounds", 20))
         self.min_rounds = int(agg_cfg.get("min_rounds", 5))
-        self.convergence_threshold = float(
+        self.local_convergence_threshold = float(
             self.config.get("model", {}).get(
                 "local_convergence_threshold", 0.002
             )
@@ -113,7 +113,7 @@ class RouletteOrchestrator:
         if "model" not in self.config:
             self.config["model"] = {}
         self.config["model"]["n_estimators"] = calculated_n_estimators
-        self.t_max = calculated_n_estimators
+        self.max_trees = calculated_n_estimators
 
         self._setup_logging()
 

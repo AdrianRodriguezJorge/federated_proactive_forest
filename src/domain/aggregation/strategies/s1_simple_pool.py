@@ -34,7 +34,6 @@ class S1SimplePoolStrategy(IAggregationStrategy):
         y_val: Optional[np.ndarray] = None,
         max_trees: Optional[int] = None,
         max_trees_per_client: Optional[int] = None,
-        t_max: Optional[int] = None,
         **kwargs: Any,
     ) -> Tuple[
         List[Any],
@@ -54,7 +53,6 @@ class S1SimplePoolStrategy(IAggregationStrategy):
             y_val (Optional[np.ndarray]): Validation labels.
             max_trees (Optional[int]): Maximum total trees to select.
             max_trees_per_client (Optional[int]): Unused parameter.
-            t_max (Optional[int]): Unused parameter.
             **kwargs (Any): Additional parameters.
 
         Returns:

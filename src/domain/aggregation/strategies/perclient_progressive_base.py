@@ -76,7 +76,6 @@ class PerClientProgressiveStrategy(ABC):
         y_val: Optional[np.ndarray] = None,
         max_trees: Optional[int] = None,
         max_trees_per_client: Optional[int] = None,
-        t_max: Optional[int] = None,
         **kwargs: Any,
     ) -> Tuple[
         List[Any],
@@ -97,9 +96,8 @@ class PerClientProgressiveStrategy(ABC):
             client_metadata (Dict[str, Any]): Client metadata mapping.
             X_val (Optional[np.ndarray]): Validation features.
             y_val (Optional[np.ndarray]): Validation labels.
-            max_trees (Optional[int]): Unused fallback parameter.
+            max_trees (Optional[int]): Max trees limit in ensemble.
             max_trees_per_client (Optional[int]): Max trees per client limit.
-            t_max (Optional[int]): Max trees total allowed.
             **kwargs (Any): Additional parameters.
 
         Returns:
@@ -195,7 +193,7 @@ class PerClientProgressiveStrategy(ABC):
             X_val=X_val,
             y_val_norm=y_val_norm,
             episode_size=episode_size,
-            t_max=t_max if t_max is not None else self.T_MAX,
+            max_trees=max_trees if max_trees is not None else self.T_MAX,
             convergence_threshold=kwargs.get(
                 "global_convergence_threshold", self.CONVERGENCE
             ),

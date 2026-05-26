@@ -18,17 +18,17 @@ class ComparativeProgressiveForest:
         self,
         classifier: Any,
         verbose: bool = False,
-        convergence_threshold: float = 0.002,
+        local_convergence_threshold: float = 0.002,
     ):
         """Initializes CPF tracking.
 
         Args:
             classifier (Any): Instancia de ProactiveForestClassifier.
             verbose (bool): Si True, imprime logs de progreso.
-            convergence_threshold (float): Umbral de convergencia.
+            local_convergence_threshold (float): Umbral de convergencia.
         """
         self._classifier = classifier
-        self.CONVERGENCE = convergence_threshold
+        self.CONVERGENCE = local_convergence_threshold
         self.EPISODE = 5
         self.verbose = verbose
 
@@ -149,18 +149,18 @@ class ProgressiveForest:
         self,
         forest: Any,
         verbose: bool = False,
-        convergence_threshold: float = 0.002,
+        local_convergence_threshold: float = 0.002,
     ):
         """Initializes Progressive Forest.
 
         Args:
             forest (Any): Classifier or forest instance.
             verbose (bool): Print debugging info.
-            convergence_threshold (float): Convergence threshold.
+            local_convergence_threshold (float): Convergence threshold.
         """
         self.forest = forest
         self.verbose = verbose
-        self.convergence_threshold = convergence_threshold
+        self.local_convergence_threshold = local_convergence_threshold
         self._cpf = None
 
     def fit_with_early_stopping(
@@ -189,7 +189,7 @@ class ProgressiveForest:
         self._cpf = ComparativeProgressiveForest(
             classifier,
             verbose=self.verbose,
-            convergence_threshold=self.convergence_threshold,
+            local_convergence_threshold=self.local_convergence_threshold,
         )
         self._cpf.fit(X_train, y_train, X_val, y_val)
 

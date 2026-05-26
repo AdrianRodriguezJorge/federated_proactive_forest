@@ -143,25 +143,25 @@ class HyperparamOptimizer:
                 config["prediction"]["global_weight"] = 1.0 - value
             elif param_path == "use_weighted":
                 config.setdefault("prediction", {})["use_weighted"] = value
-            elif param_path == "t_max":
-                config.setdefault("aggregation", {})["t_max"] = value
+            elif param_path == "max_trees":
+                config.setdefault("aggregation", {})["max_trees"] = value
             elif param_path == "n_clients":
                 config.setdefault("federation", {})["n_clients"] = value
             elif param_path == "n_estimators":
                 config.setdefault("model", {})["n_estimators"] = value
             elif param_path == "alpha_pf":
-                config.setdefault("model", {})["alpha"] = value
+                config.setdefault("model", {})["alpha_pf"] = value
             elif param_path == "window_size":
                 config.setdefault("aggregation", {})["window_size"] = value
             elif param_path == "max_rounds":
                 config.setdefault("aggregation", {})["max_rounds"] = value
-            elif param_path == "convergence_threshold":
+            elif param_path == "global_convergence_threshold":
                 config.setdefault("aggregation", {})[
-                    "convergence_threshold"
+                    "global_convergence_threshold"
                 ] = value
-            elif param_path == "local_convergence":
+            elif param_path == "local_convergence_threshold":
                 config.setdefault("model", {})[
-                    "convergence_threshold"
+                    "local_convergence_threshold"
                 ] = value
             elif param_path == "local_roulette_weight":
                 config.setdefault("aggregation", {})["local_roulette_weight"] = value
@@ -338,10 +338,13 @@ class HyperparamOptimizer:
         agg = self.base_config.get("aggregation", {})
         defaults["f1_weight"] = agg.get("f1_weight", 0.5)
         defaults["pcd_weight"] = agg.get("pcd_weight", 0.5)
-        defaults["t_max"] = agg.get("t_max", 100)
+        defaults["max_trees"] = agg.get("max_trees", 100)
         defaults["window_size"] = agg.get("window_size", 5)
         defaults["max_rounds"] = agg.get("max_rounds", 20)
         defaults["local_roulette_weight"] = agg.get("local_roulette_weight", 0.1)
+        defaults["global_convergence_threshold"] = agg.get(
+            "global_convergence_threshold", 0.002
+        )
 
         pred = self.base_config.get("prediction", {})
         defaults["local_weight"] = pred.get("local_weight", 0.4)
@@ -353,9 +356,9 @@ class HyperparamOptimizer:
 
         model = self.base_config.get("model", {})
         defaults["n_estimators"] = model.get("n_estimators", 100)
-        defaults["alpha_pf"] = model.get("alpha", 0.1)
-        defaults["local_convergence"] = model.get(
-            "convergence_threshold", 0.002
+        defaults["alpha_pf"] = model.get("alpha_pf", 0.1)
+        defaults["local_convergence_threshold"] = model.get(
+            "local_convergence_threshold", 0.002
         )
 
         return defaults

@@ -40,7 +40,7 @@ class ProgressiveSelector:
         X_val: np.ndarray,
         y_val_norm: np.ndarray,
         episode_size: int,
-        t_max: int,
+        max_trees: int,
         convergence_threshold: float,
         min_episodes: int = 1,
         label_service: Optional[SimpleLabelService] = None,
@@ -59,7 +59,7 @@ class ProgressiveSelector:
             X_val (np.ndarray): Validation features.
             y_val_norm (np.ndarray): Normalised true target validation labels.
             episode_size (int): Tree count to add in each episode.
-            t_max (int): Max ensemble size.
+            max_trees (int): Max ensemble size.
             convergence_threshold (float): Required accuracy improvement.
             min_episodes (int): Minimum number of episodes before stopping.
             label_service (Optional[SimpleLabelService]): Transform encoder.
@@ -86,7 +86,7 @@ class ProgressiveSelector:
         remaining_candidates = candidate_entries.copy()
         episode_idx = 0
 
-        while len(selected_entries) < t_max and remaining_candidates:
+        while len(selected_entries) < max_trees and remaining_candidates:
             episode_idx += 1
 
             # PROACTIVE RE-RANKING (marginal PCD)

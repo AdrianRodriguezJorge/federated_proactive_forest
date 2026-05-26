@@ -59,20 +59,23 @@ class ModelConfig(BaseModel):
 
     Attributes:
         n_estimators (int): Number of trees in the forest. Defaults to 100.
-        alpha (float): Tolerance/Proactivity parameter (alpha).
+        alpha_pf (float): Tolerance/Proactivity parameter (alpha_pf).
             Defaults to 0.1.
         bootstrap (bool): Whether to use bootstrap sampling. Defaults to True.
         max_depth (Optional[int]): Maximum depth of each decision tree.
             Defaults to None.
         split_criterion (str): Criterion used to determine best split
             ('entropy' or 'gini'). Defaults to "entropy".
+        local_convergence_threshold (float): Improvement threshold for local client training.
+            Defaults to 0.002.
     """
 
     n_estimators: int = 100
-    alpha: float = 0.1
+    alpha_pf: float = 0.1
     bootstrap: bool = True
     max_depth: Optional[int] = None
     split_criterion: str = "entropy"
+    local_convergence_threshold: float = 0.002
 
 
 class AggregationConfig(BaseModel):
@@ -85,25 +88,30 @@ class AggregationConfig(BaseModel):
             Defaults to 0.7.
         pcd_weight (float): Weight for PCD in multi-metric strategies.
             Defaults to 0.3.
-        t_max (Optional[int]): Maximum number of trees to retain in pool.
+        max_trees (Optional[int]): Maximum number of trees to retain in pool.
             Defaults to None.
         window_size (int): Size of the evaluation sliding window.
             Defaults to 5.
         max_rounds (int): Maximum communication rounds. Defaults to 20.
         min_rounds (int): Minimum number of rounds before early stopping.
             Defaults to 5.
-        convergence_threshold (float): Convergence criteria.
+        global_convergence_threshold (float): Convergence criteria.
             Defaults to 0.002.
     """
 
     strategy: str = "S1"
     f1_weight: float = 0.7
     pcd_weight: float = 0.3
-    t_max: Optional[int] = None
+    max_trees: Optional[int] = None
     window_size: int = 5
     max_rounds: int = 20
     min_rounds: int = 5
-    convergence_threshold: float = 0.002
+    global_convergence_threshold: float = 0.002
+    global_episode_size: int = 5
+    min_episodes: int = 5
+    trees_per_client_per_episode: int = 1
+
+
 
 
 class PredictionConfig(BaseModel):

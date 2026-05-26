@@ -8,7 +8,7 @@ def test_proactive_forest_fit_predict():
     X = np.random.rand(50, 2)
     y = np.random.randint(0, 2, 50)
     
-    model = ProactiveForest(n_estimators=5, alpha=0.1)
+    model = ProactiveForest(n_estimators=5, alpha_pf=0.1)
     model.fit(X, y)
     
     assert len(model.estimators_) > 0
@@ -25,10 +25,10 @@ def test_proactive_forest_progressive_stopping():
     y = np.random.randint(0, 2, 100)
     
     # Con un umbral de convergencia muy alto, debería parar pronto
-    # El parámetro es convergence_threshold
+    # El parámetro es local_convergence_threshold
     model = ProactiveForest(
         n_estimators=100, 
-        convergence_threshold=0.5 # Muy alto, parará casi de inmediato
+        local_convergence_threshold=0.5 # Muy alto, parará casi de inmediato
     )
     model.fit(X, y)
     

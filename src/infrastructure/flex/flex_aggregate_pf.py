@@ -63,7 +63,7 @@ def aggregate_trees_pf(
 
     X_val = kwargs.get("X_val")
     y_val = kwargs.get("y_val")
-    t_max = kwargs.get("t_max")
+    max_trees = kwargs.get("max_trees")
     current_global_trees = kwargs.get("current_global_trees")
     current_round = kwargs.get("current_round")
 
@@ -75,7 +75,7 @@ def aggregate_trees_pf(
             "f1_weight": agg_config.get("f1_weight", 0.5),
             "pcd_weight": agg_config.get("pcd_weight", 1.0 - agg_config.get("f1_weight", 0.5)),
             "global_convergence_threshold": agg_config.get(
-                "global_convergence_threshold", agg_config.get("convergence_threshold", 0.002)
+                "global_convergence_threshold", 0.002
             ),
             "global_episode_size": agg_config.get("global_episode_size", 5),
             "local_weight": server_config.get("prediction", {}).get(
@@ -99,7 +99,7 @@ def aggregate_trees_pf(
         client_metadata,
         X_val=X_val,
         y_val=y_val,
-        t_max=t_max,
+        max_trees=max_trees,
         metrics_service=metrics_svc,
         diversity_service=diversity_svc,
         **aggregate_kwargs,

@@ -37,7 +37,6 @@ class IAggregationStrategy(ABC):
         y_val: Optional[np.ndarray] = None,
         max_trees: Optional[int] = None,
         max_trees_per_client: Optional[int] = None,
-        t_max: Optional[int] = None,
         **kwargs: Any,
     ) -> Tuple[
         List[Any],
@@ -53,9 +52,8 @@ class IAggregationStrategy(ABC):
             client_metadata (Dict[str, Any]): Dict mapping client_id to meta.
             X_val (Optional[np.ndarray]): Validation features.
             y_val (Optional[np.ndarray]): Validation labels.
-            max_trees (Optional[int]): Maximum number of trees (S2-S4).
-            max_trees_per_client (Optional[int]): Max trees per client (S5-S7).
-            t_max (Optional[int]): Maximum trees in global model (T_MAX).
+            max_trees (Optional[int]): Maximum number of trees to select.
+            max_trees_per_client (Optional[int]): Max trees per client.
             **kwargs (Any): Strategy-specific parameters.
 
         Returns:
@@ -63,7 +61,7 @@ class IAggregationStrategy(ABC):
                 - List[Any]: Trees in global forest.
                 - Dict[str, List[int]]: Global indices of selected trees.
                 - List[Any]: TreeEntry list in ranking order.
-                - Optional[int]: Selected T_MAX tree count.
+                - Optional[int]: Selected tree count.
                 - List[Dict[str, Any]]: Strategy evaluation log metrics.
         """
         pass

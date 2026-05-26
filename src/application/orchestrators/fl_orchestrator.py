@@ -240,8 +240,8 @@ class FLEXOrchestrator:
         n_estimators = self._get_config_value(
             "model", "n_estimators", default=100
         )
-        t_max = self._get_config_value(
-            "aggregation", "t_max", default=n_estimators
+        max_trees = self._get_config_value(
+            "aggregation", "max_trees", default=n_estimators
         )
 
         X_val_server = self.dataset_split.X_val
@@ -256,7 +256,7 @@ class FLEXOrchestrator:
             "server_config": self.config,
             "X_val": X_val_server,
             "y_val": y_val_server,
-            "t_max": t_max,
+            "max_trees": max_trees,
             "metrics_service": self.metrics_svc,
             "diversity_service": self.diversity_svc,
         }

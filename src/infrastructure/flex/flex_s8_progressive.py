@@ -68,15 +68,15 @@ def train_window_pf_s8(
         class_names = config.get("model", {}).get("class_names", [])
         pf = ProactiveForest(
             n_estimators=config.get("n_estimators", 100),
-            alpha=config.get("alpha", 0.1),
+            alpha_pf=config.get("model", {}).get("alpha_pf", config.get("alpha_pf", 0.1)),
             class_names=class_names,
-            convergence_threshold=config.get("model", {}).get(
+            local_convergence_threshold=config.get("model", {}).get(
                 "local_convergence_threshold", 0.002
             ),
         )
         pf._is_fitted = True
         pf._cpf = ComparativeProgressiveForest(
-            pf._classifier, convergence_threshold=pf.convergence_threshold
+            pf._classifier, local_convergence_threshold=pf.local_convergence_threshold
         )
         pf._classifier._n_instances, pf._classifier._n_features = X_train.shape
         all_labels = np.unique(np.concatenate([y_train, y_val]))
@@ -122,8 +122,8 @@ def train_window_pf_s8(
         acc_diff = episode_acc - prev_episode_acc
 
     if (
-        acc_diff < pf.convergence_threshold
-        or episode_acc < pf.convergence_threshold
+        acc_diff < pf.local_convergence_threshold
+        or episode_acc < pf.local_convergence_threshold
     ):
         stop_counter += 1
         if stop_counter >= 2 and rounds_completed >= min_rounds:

@@ -1,251 +1,39 @@
 # Search spaces for hyperparameter optimization
-# Each strategy defines which parameters to optimize and their ranges
 
 # ============================================================================
-# S1: Simple Pool
+# UNIFIED: Joint search space for finding optimal shared configuration
 # ============================================================================
-S1:
-  alpha_pf:
-    type: float
-    low: 0.05
-    high: 0.9
-    step: 0.05
-
-  local_weight:
-    type: float
-    low: 0.0
-    high: 1.0
-    step: 0.1
-
-  local_convergence:
-    type: float
-    low: 0.0001
-    high: 0.01
-    log: true
-
-# ============================================================================
-# S2: Global Accuracy with Progressive Forest
-# ============================================================================
-S2:
-  alpha_pf:
-    type: float
-    low: 0.05
-    high: 0.9
-    step: 0.05
-
-  t_max:
-    type: int
-    low: 30
-    high: 150
-    step: 10
-
-  local_weight:
-    type: float
-    low: 0.0
-    high: 1.0
-    step: 0.1
-
-  convergence_threshold:
-    type: float
-    low: 0.0001
-    high: 0.01
-    log: true
-
-  local_convergence:
-    type: float
-    low: 0.0001
-    high: 0.01
-    log: true
-
-# ============================================================================
-# S3: Global Macro-F1 with Progressive Forest
-# ============================================================================
-S3:
-  alpha_pf:
-    type: float
-    low: 0.05
-    high: 0.9
-    step: 0.05
-
-  t_max:
-    type: int
-    low: 30
-    high: 150
-    step: 10
-
-  local_weight:
-    type: float
-    low: 0.0
-    high: 1.0
-    step: 0.1
-
-  convergence_threshold:
-    type: float
-    low: 0.0001
-    high: 0.01
-    log: true
-
-  local_convergence:
-    type: float
-    low: 0.0001
-    high: 0.01
-    log: true
-
-# ============================================================================
-# S4: Global F1 + PCD with Progressive Forest
-# ============================================================================
-S4:
-  alpha_pf:
-    type: float
-    low: 0.05
-    high: 0.9
-    step: 0.05
-
-  t_max:
-    type: int
-    low: 30
-    high: 150
-    step: 10
-
-  f1_weight:
-    type: float
-    low: 0.0
-    high: 1.0
-    step: 0.1
-
-  local_weight:
-    type: float
-    low: 0.0
-    high: 1.0
-    step: 0.1
-
-  convergence_threshold:
-    type: float
-    low: 0.0001
-    high: 0.01
-    log: true
-
-  local_convergence:
-    type: float
-    low: 0.0001
-    high: 0.01
-    log: true
-
-# ============================================================================
-# S5: Per-Client Accuracy with Progressive Forest
-# ============================================================================
-S5:
-  alpha_pf:
-    type: float
-    low: 0.05
-    high: 0.9
-    step: 0.05
-
-  t_max:
-    type: int
-    low: 30
-    high: 150
-    step: 10
-
-  local_weight:
-    type: float
-    low: 0.0
-    high: 1.0
-    step: 0.1
-
-  convergence_threshold:
-    type: float
-    low: 0.0001
-    high: 0.01
-    log: true
-
-  local_convergence:
-    type: float
-    low: 0.0001
-    high: 0.01
-    log: true
-
-# ============================================================================
-# S6: Per-Client Macro-F1 with Progressive Forest
-# ============================================================================
-S6:
-  alpha_pf:
-    type: float
-    low: 0.05
-    high: 0.9
-    step: 0.05
-
-  t_max:
-    type: int
-    low: 30
-    high: 150
-    step: 10
-
-  local_weight:
-    type: float
-    low: 0.0
-    high: 1.0
-    step: 0.1
-
-  convergence_threshold:
-    type: float
-    low: 0.0001
-    high: 0.01
-    log: true
-
-  local_convergence:
-    type: float
-    low: 0.0001
-    high: 0.01
-    log: true
-
-# ============================================================================
-# S7: Per-Client F1 + PCD with Progressive Forest
-# ============================================================================
-S7:
-  alpha_pf:
-    type: float
-    low: 0.05
-    high: 0.9
-    step: 0.05
-
-  t_max:
-    type: int
-    low: 30
-    high: 150
-    step: 10
-
-  f1_weight:
-    type: float
-    low: 0.0
-    high: 1.0
-    step: 0.1
-
-  local_weight:
-    type: float
-    low: 0.0
-    high: 1.0
-    step: 0.1
-
-  convergence_threshold:
-    type: float
-    low: 0.0001
-    high: 0.01
-    log: true
-
-  local_convergence:
-    type: float
-    low: 0.0001
-    high: 0.01
-    log: true
-
-# ============================================================================
-# S8: Global Attribute Roulette (Roulette Strategy)
-# ============================================================================
-S8:
-  variant:
+UNIFIED:
+  local_convergence_threshold:
     type: categorical
-    choices: ["S8_MEAN", "S8_CONSENSUS", "S8_MEDIAN", "S8_WEIGHTED", "S8_PROACTIVE_PCD"]
+    choices: [0.001, 0.002, 0.005]
+
+  local_weight:
+    type: float
+    low: 0.0
+    high: 1.0
+    step: 0.1
+
+  use_weighted:
+    type: categorical
+    choices: [true, false]
+
+
+  max_trees:
+    type: int
+    low: 50
+    high: 150
+    step: 20
+
+  global_convergence_threshold:
+    type: categorical
+    choices: [0.001, 0.002, 0.005]
+
+  f1_weight:
+    type: float
+    low: 0.0
+    high: 1.0
+    step: 0.1
 
   local_roulette_weight:
     type: float
@@ -253,32 +41,13 @@ S8:
     high: 1.0
     step: 0.1
 
-  alpha_pf:
-    type: float
-    low: 0.05
-    high: 0.9
-    step: 0.05
+  pace_combination:
+    type: categorical
+    choices: ["3_1", "6_2", "9_3", "5_1", "10_3"]
 
-  window_size:
-    type: int
-    low: 3
-    high: 15
-    step: 1
+  roulette_pace:
+    type: categorical
+    choices: ["5_30", "10_15", "15_10"]
 
-  max_rounds:
-    type: int
-    low: 10
-    high: 40
-    step: 5
 
-  convergence_threshold:
-    type: float
-    low: 0.0001
-    high: 0.01
-    log: true
 
-  local_convergence:
-    type: float
-    low: 0.0001
-    high: 0.01
-    log: true

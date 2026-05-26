@@ -141,7 +141,7 @@ def get_default_config() -> Dict[str, Any]:
         },
         "model": {
             "n_estimators": 100,
-            "alpha": 0.1,
+            "alpha_pf": 0.1,
             "split_criterion": "entropy",
             "feature_selection": "prob",
             "use_progressive_stopping": True,
@@ -156,7 +156,7 @@ def get_default_config() -> Dict[str, Any]:
             "global_episode_size": 5,
             "window_size": 5,
             "max_rounds": 20,
-            "alpha": 0.5,
+            "alpha_pf": 0.5,
         },
         "prediction": {
             "local_weight": 0.4,
@@ -201,12 +201,10 @@ def render() -> None:
     )
     episode_size = current_config["model"].get("local_episode_size", 5)
     convergence_agg = current_config["aggregation"].get(
-        "global_convergence_threshold",
-        current_config["aggregation"].get("convergence", convergence),
+        "global_convergence_threshold", convergence
     )
     episode_size_agg = current_config["aggregation"].get(
-        "global_episode_size",
-        current_config["aggregation"].get("episode_size", episode_size),
+        "global_episode_size", episode_size
     )
 
     f1_weight = current_config["aggregation"].get("f1_weight", 0.5)
@@ -220,13 +218,13 @@ def render() -> None:
     local_w = current_config.get("prediction", {}).get("local_weight", 0.4)
 
     n_estimators = current_config["model"].get("n_estimators", 100)
-    alpha_pf = current_config["model"].get("alpha", 0.1)
+    alpha_pf = current_config["model"].get("alpha_pf", 0.1)
     split_crit = current_config["model"].get("split_criterion", "entropy")
     feat_sel = current_config["model"].get("feature_selection", "prob")
     use_cpf = current_config["model"].get("use_progressive_stopping", True)
     verbose_cpf = current_config.get("verbose", False)
 
-    t_max = current_config["aggregation"].get("t_max", n_estimators)
+    max_trees = current_config["aggregation"].get("max_trees", n_estimators)
     seed = current_config.get("seed", 42)
 
     is_s8 = strategy_key == "s8_roulette"
@@ -473,17 +471,17 @@ def render() -> None:
     )
 
     if not is_s8:
-        t_max = st.number_input(
-            "T_MAX (máx. árboles en bosque global)",
+        max_trees = st.number_input(
+            "max_trees (máx. árboles en bosque global)",
             10,
             500,
-            value=t_max,
+            value=max_trees,
             step=10,
             help="Número máximo de árboles en bosque global tras agregación.",
         )
     else:
-        t_max = s8_window_size * s8_max_rounds
-        st.caption(f"📏 T_MAX teórico: {t_max} árboles.")
+        max_trees = s8_window_size * s8_max_rounds
+        st.caption(f"📏 max_trees teórico: {max_trees} árboles.")
 
     if is_progressive:
         st.caption(
@@ -617,11 +615,11 @@ def render() -> None:
         np.random.seed(seed)
 
         if strategy_key == "s8_roulette":
-            t_max_calc = s8_window_size * s8_max_rounds
+            max_trees_calc = s8_window_size * s8_max_rounds
             window_size_calc = s8_window_size
             max_rounds_calc = s8_max_rounds
         else:
-            t_max_calc = t_max
+            max_trees_calc = max_trees
             window_size_calc = 5
             max_rounds_calc = 20
 
@@ -653,7 +651,7 @@ def render() -> None:
             },
             "model": {
                 "n_estimators": n_estimators,
-                "alpha": alpha_pf,
+                "alpha_pf": alpha_pf,
                 "split_criterion": split_crit,
                 "feature_selection": feat_sel,
                 "use_progressive_stopping": use_cpf,
@@ -662,7 +660,7 @@ def render() -> None:
             },
             "aggregation": {
                 "strategy": strategy_key,
-                "t_max": t_max_calc,
+                "max_trees": max_trees_calc,
                 "f1_weight": f1_w_calc,
                 "pcd_weight": pcd_w_calc,
                 "global_convergence_threshold": convergence_agg,

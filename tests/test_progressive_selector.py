@@ -100,7 +100,7 @@ def test_progressive_selector_early_stopping():
         X_val=X_val,
         y_val_norm=y_val,
         episode_size=2,
-        t_max=10,
+        max_trees=10,
         convergence_threshold=0.01
     )
     
@@ -133,7 +133,7 @@ def test_progressive_selector_proactive_re_ranking():
         X_val=X_val,
         y_val_norm=y_val,
         episode_size=1,  # 1 tree per episode
-        t_max=2,
+        max_trees=2,
         convergence_threshold=0.001,
         ranker=ranker
     )
@@ -185,7 +185,7 @@ def test_progressive_selector_per_client_ranking():
         X_val=X_val,
         y_val_norm=y_val,
         episode_size=1,
-        t_max=4,
+        max_trees=4,
         convergence_threshold=0.001,
         ranker=ranker,
         is_per_client=True

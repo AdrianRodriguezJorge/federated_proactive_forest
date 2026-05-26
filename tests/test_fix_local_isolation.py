@@ -29,7 +29,7 @@ def test_local_isolation_flow():
     
     config = {
         "federation": {"n_clients": 2, "distribution": "iid"},
-        "model": {"n_estimators": 5, "alpha": 0.1},
+        "model": {"n_estimators": 5, "alpha_pf": 0.1},
         "aggregation": {"strategy": "local_isolation"}
     }
     
@@ -49,9 +49,9 @@ def test_local_isolation_flow():
             X_c, y_c = client_dataset.to_numpy()
             
             model = ProactiveForest(
-                n_estimators=5, alpha=0.1, 
+                n_estimators=5, alpha_pf=0.1, 
                 class_names=split.class_names,
-                convergence_threshold=0.002
+                local_convergence_threshold=0.002
             )
             model.fit(X_c, y_c)
             preds = model.predict(split.X_test)

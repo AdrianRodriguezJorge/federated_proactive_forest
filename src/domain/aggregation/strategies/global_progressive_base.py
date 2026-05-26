@@ -79,7 +79,6 @@ class GlobalProgressiveStrategy(ABC):
         X_val: Optional[np.ndarray] = None,
         y_val: Optional[np.ndarray] = None,
         max_trees: Optional[int] = None,
-        t_max: Optional[int] = None,
         **kwargs: Any,
     ) -> Tuple[
         List[Any],
@@ -95,8 +94,7 @@ class GlobalProgressiveStrategy(ABC):
             client_metadata (Dict[str, Any]): Client metadata mapping.
             X_val (Optional[np.ndarray]): Validation features.
             y_val (Optional[np.ndarray]): Validation labels.
-            max_trees (Optional[int]): Unused fallback parameter.
-            t_max (Optional[int]): Max trees limit in ensemble.
+            max_trees (Optional[int]): Max trees limit in ensemble.
             **kwargs (Any): Additional options.
 
         Returns:
@@ -166,7 +164,7 @@ class GlobalProgressiveStrategy(ABC):
             X_val=X_val,
             y_val_norm=y_val_norm,
             episode_size=kwargs.get("global_episode_size", self.EPISODE_SIZE),
-            t_max=t_max if t_max is not None else self.T_MAX,
+            max_trees=max_trees if max_trees is not None else self.T_MAX,
             convergence_threshold=kwargs.get(
                 "global_convergence_threshold", self.CONVERGENCE
             ),

@@ -44,7 +44,7 @@ def test_model_config_defaults():
     """Verify default values for ModelConfig."""
     config = ModelConfig()
     assert config.n_estimators == 100
-    assert config.alpha == 0.1
+    assert config.alpha_pf == 0.1
     assert config.bootstrap is True
     assert config.split_criterion == "entropy"
 
