@@ -460,19 +460,6 @@
                 "error": null,
                 "timestamp": "2026-05-24T01:44:35.866144"
             },
-            "pw": {
-                "success": true,
-                "metrics": {
-                    "f1": 0.8666666666666667,
-                    "accuracy": 0.8666666666666667,
-                    "pcd": 0.26666666666666666,
-                    "forest_size": 11.0
-                },
-                "convergence_round": null,
-                "duration_seconds": 0.26,
-                "error": null,
-                "timestamp": "2026-05-24T01:44:35.868494"
-            },
             "s8_weighted_average": {
                 "success": true,
                 "metrics": {
@@ -630,19 +617,6 @@
                 "duration_seconds": 12.41,
                 "error": null,
                 "timestamp": "2026-05-24T01:45:27.440184"
-            },
-            "pw": {
-                "success": true,
-                "metrics": {
-                    "f1": 0.9290751310811706,
-                    "accuracy": 0.953757225433526,
-                    "pcd": 0.3526011560693642,
-                    "forest_size": 16.0
-                },
-                "convergence_round": null,
-                "duration_seconds": 3.29,
-                "error": null,
-                "timestamp": "2026-05-24T01:45:27.443710"
             },
             "s8_weighted_average": {
                 "success": true,
@@ -802,19 +776,6 @@
                 "error": null,
                 "timestamp": "2026-05-24T01:51:29.218699"
             },
-            "pw": {
-                "success": true,
-                "metrics": {
-                    "f1": 0.9194573111454223,
-                    "accuracy": 0.9629629629629629,
-                    "pcd": 0.4382716049382716,
-                    "forest_size": 14.0
-                },
-                "convergence_round": null,
-                "duration_seconds": 10.07,
-                "error": null,
-                "timestamp": "2026-05-24T01:51:29.223216"
-            },
             "s8_weighted_average": {
                 "success": true,
                 "metrics": {
@@ -972,19 +933,6 @@
                 "duration_seconds": 24.61,
                 "error": null,
                 "timestamp": "2026-05-24T01:53:37.946680"
-            },
-            "pw": {
-                "success": true,
-                "metrics": {
-                    "f1": 0.7137167176570497,
-                    "accuracy": 0.7171717171717171,
-                    "pcd": 0.8888888888888888,
-                    "forest_size": 13.0
-                },
-                "convergence_round": null,
-                "duration_seconds": 4.3,
-                "error": null,
-                "timestamp": "2026-05-24T01:53:37.951732"
             },
             "s8_weighted_average": {
                 "success": true,
@@ -1144,19 +1092,6 @@
                 "error": null,
                 "timestamp": "2026-05-24T02:04:41.665977"
             },
-            "pw": {
-                "success": true,
-                "metrics": {
-                    "f1": 0.9520548340374555,
-                    "accuracy": 0.9519572953736656,
-                    "pcd": 0.5320284697508897,
-                    "forest_size": 17.0
-                },
-                "convergence_round": null,
-                "duration_seconds": 40.59,
-                "error": null,
-                "timestamp": "2026-05-24T02:04:41.675963"
-            },
             "s8_weighted_average": {
                 "success": true,
                 "metrics": {
@@ -1315,19 +1250,6 @@
                 "error": null,
                 "timestamp": "2026-05-24T02:06:57.277469"
             },
-            "pw": {
-                "success": true,
-                "metrics": {
-                    "f1": 0.7529411764705882,
-                    "accuracy": 0.7619047619047619,
-                    "pcd": 0.9047619047619048,
-                    "forest_size": 12.0
-                },
-                "convergence_round": null,
-                "duration_seconds": 1.61,
-                "error": null,
-                "timestamp": "2026-05-24T02:06:57.282873"
-            },
             "s8_weighted_average": {
                 "success": true,
                 "metrics": {
@@ -1485,19 +1407,6 @@
                 "duration_seconds": 79.2,
                 "error": null,
                 "timestamp": "2026-05-24T02:12:01.051933"
-            },
-            "pw": {
-                "success": true,
-                "metrics": {
-                    "f1": 0.9218799840510368,
-                    "accuracy": 0.9262472885032538,
-                    "pcd": 0.3600867678958785,
-                    "forest_size": 15.0
-                },
-                "convergence_round": null,
-                "duration_seconds": 17.02,
-                "error": null,
-                "timestamp": "2026-05-24T02:12:01.059108"
             },
             "s8_weighted_average": {
                 "success": true,

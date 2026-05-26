@@ -30,11 +30,11 @@ Comparación de la diversidad correctiva porcentual (PCD) entre el modelo centra
 | :--- | :---: | :---: | :---: |
 | **Iris** | 0.112000 | **0.333333 (s1_simple_pool)** | Federated |
 | **Car** | 0.309630 | **0.369942 (s1_simple_pool)** | Federated |
-| **Nursery** | 0.396870 | **0.438272 (pw)** | Federated |
+| **Nursery** | 0.396870 | 0.331019 (s1_simple_pool) | Centralized |
 | **Vowel** | 0.937000 | **0.979798 (s1_simple_pool)** | Federated |
 | **Optdigits** | **0.583070** | 0.551601 (s8_median) | Centralized |
 | **Sonar** | 0.907250 | **1.000000 (s1_simple_pool)** | Federated |
-| **Spambase** | 0.330740 | **0.360087 (pw)** | Federated |
+| **Spambase** | 0.330740 | **0.340564 (s1_simple_pool)** | Federated |
 
 ---
 
@@ -59,7 +59,6 @@ Resultados de las pruebas estadísticas aplicadas sobre los valores de F1-score:
 | **s7_perclient_f1_pcd** | 0.902673 | 0.156250 | -0.037689 | **No** (Desempeño comparable) |
 | **s1_simple_pool** | 0.901846 | 0.015625 | -0.038517 | **Sí** (Rendimiento inferior) |
 | **s4_global_f1_pcd** | 0.898981 | 0.046875 | -0.041381 | **Sí** (Rendimiento inferior) |
-| **pw (Progressive Windows)** | 0.865113 | 0.015625 | -0.075249 | **Sí** (Rendimiento inferior) |
 | **s8_median** | 0.829128 | 0.015625 | -0.111234 | **Sí** (Rendimiento inferior) |
 | **s8_proactive_pcd** | 0.827864 | 0.015625 | -0.112498 | **Sí** (Rendimiento inferior) |
 | **s8_consensus** | 0.827856 | 0.015625 | -0.112506 | **Sí** (Rendimiento inferior) |
