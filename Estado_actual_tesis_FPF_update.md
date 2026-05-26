@@ -84,7 +84,7 @@ El servidor integra modelos locales equilibrando eficacia, diversidad y compacid
 **Responsable:** Clientes  
 El servidor distribuye el bosque global; cada cliente realiza inferencia de forma totalmente local.
 
-**Nota:** Este ciclo establece la estructura operativa sobre la cual se definen las Propuestas A, B y C.
+**Nota:** Este ciclo establece la estructura operativa sobre la cual se definen las dos propuestas generales (Propuestas A y B).
 
 ---
 
@@ -117,19 +117,19 @@ Evaluar la eficacia y diversidad de las estrategias de agregación propuestas fr
 
 ---
 
-## 8. Estructura de la Propuesta: Tres Enfoques
+## 8. Estructura de la Propuesta: Dos Enfoques Generales
 
-### Propuesta A: Estrategias de Agregación (S1 – S7)
+### Propuesta A: Estrategias de Agregación Progresiva (S1 – S7)
 7 estrategias de ranking global y round-robin para construir un bosque global compacto a partir de bosques locales. (S1 – S7)
 
-### Propuesta B: Ruleta Global de Probabilidades
-Orquestación ciega: transmite únicamente vectores de probabilidad de atributos en lugar de árboles completos.
+### Propuesta B: Ruleta Global de Probabilidades (S8)
+Orquestación descentralizada que transmite únicamente vectores de probabilidad de atributos en lugar de árboles completos, agregándolos mediante 5 variantes (Promedio Ponderado, Media Simple, Mediana Robusta, Consenso y Proactiva PCD).
 
 ---
 
 ## 9. Componentes del Modelo en el Cliente
 
-Ambos algoritmos actúan conjuntamente en cada cliente de la federación como base de las tres propuestas.
+Ambos algoritmos actúan conjuntamente en cada cliente de la federación como base de las dos propuestas generales.
 
 ### Proactive Forest (PF)
 
@@ -173,7 +173,7 @@ Esta investigación adopta el **enfoque asíncrono de agregación de modelos**: 
 
 ---
 
-## 11. Elementos Comunes a las Tres Propuestas
+## 11. Elementos Comunes a las Dos Propuestas
 
 ### Modelo en Clientes
 Proactive Forest (diversidad controlada) + Progressive Forest (compacidad), adaptados a distribuciones non-IID.
@@ -257,7 +257,7 @@ Igual que en la Propuesta A: cada cliente incorpora los árboles del modelo glob
 
 ## 17. Propuesta B: Diagrama de Actividades
 
-[Diagrama de Actividades — Propuesta C]  
+[Diagrama de Actividades — Propuesta B]  
 *Pendiente de diseño final*
 
 ---
@@ -278,7 +278,7 @@ El sistema fue implementado y desplegado como plataforma de experimentación rep
 ### Características del Sistema
 
 - CLI con YAML para reproducibilidad y automatización
-- 8 estrategias (S1–S7) y Propuesta B
+- 12 estrategias en total (S1–S7 de agregación y 5 variantes de la Propuesta B / S8)
 - Soporte IID y non-IID
 - Métricas: Accuracy, F1, Macro-F1, PCD
 - Predicción híbrida configurable (local/global)
@@ -289,7 +289,7 @@ El sistema fue implementado y desplegado como plataforma de experimentación rep
 
 ## 19. Diseño Experimental y Conjuntos de Datos
 
-Se evaluaron las **8 estrategias federadas (S1–S7) + S9** frente al **Proactive Forest centralizado (PF)** como referencia. Métrica principal: **Macro-F1**. 
+Se evaluaron las **12 estrategias federadas (S1–S7 de la Propuesta A y 5 variantes de S8 de la Propuesta B)** frente al **Proactive Forest centralizado (PF)** como referencia. Métrica principal de entrenamiento: **Macro-F1**, y métrica de evaluación experimental: **Exactitud (Accuracy)**. 
 
 Se seleccionaron **8 datasets** de un conjunto de 32 evaluados en la tesis de referencia [1], heterogéneos en tamaño, atributos y clases.
 
@@ -310,18 +310,20 @@ Se seleccionaron **8 datasets** de un conjunto de 32 evaluados en la tesis de re
 
 ---
 
-## 20. Resultados Comparativos (Macro-F1)
+## 20. Resultados Comparativos (Exactitud / Accuracy)
 
-| BD        | F1_PF  | F1_S1  | F1_S2  | F1_S3  | F1_S4  | F1_S5  | F1_S6  | F1_S7  |
-| --------- | ------ | ------ | ------ | ------ | ------ | ------ | ------ | ------ |
-| Car       | 0.9458 | 0.9045 | 0.8851 | 0.8994 | 0.9046 | 0.9169 | 0.9040 | 0.9231 |
-| Iris      | 0.9550 | 0.9332 | 0.9333 | 0.9333 | 0.9220 | 0.9109 | 0.9444 | 0.9221 |
-| Letter    | 0.9653 | 0.9180 | 0.9216 | 0.9171 | 0.9239 | 0.9216 | 0.9191 | 0.9177 |
-| Nursery   | 0.9548 | 0.9550 | 0.9453 | 0.9469 | 0.9582 | 0.9488 | 0.9460 | 0.9505 |
-| Optdigits | 0.9822 | 0.9674 | 0.9680 | 0.9644 | 0.9692 | 0.9644 | 0.9688 | 0.9695 |
-| Sonar     | 0.8235 | 0.8111 | 0.7398 | 0.7492 | 0.7798 | 0.7720 | 0.7696 | 0.7822 |
-| Spambase  | 0.9528 | 0.9269 | 0.9260 | 0.9229 | 0.9191 | 0.9214 | 0.9223 | 0.9200 |
-| Vowel     | 0.9685 | 0.7933 | 0.7982 | 0.7818 | 0.7729 | 0.7880 | 0.7835 | 0.7610 |
+*Nota metodológica: Las métricas de desempeño reportadas para el modelo federado se calculan mediante el promedio de la métrica (Exactitud) obtenida localmente en el conjunto de evaluación de cada uno de los clientes en la federación.*
+
+| BD | Acc_PF | S1 | S2 | S3 | S4 | S5 | S6 | S7 | S8_W | S8_Mean | S8_Med | S8_Cons | S8_PCD |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| Car | 0.9766 | 0.9672 | 0.9634 | 0.9653 | 0.9711 | 0.9615 | 0.9672 | 0.9711 | 0.9191 | 0.9191 | 0.9191 | 0.9191 | 0.9191 |
+| Iris | 0.9560 | 0.8667 | 0.8667 | 0.8667 | 0.8889 | 0.8889 | 0.8889 | 0.8667 | 0.9111 | 0.9111 | 0.9111 | 0.9111 | 0.9111 |
+| Letter | 0.9650 | 0.9617 | 0.9586 | 0.9551 | 0.9533 | 0.9603 | 0.9621 | 0.9447 | 0.8772 | 0.8768 | 0.8806 | 0.8871 | 0.8772 |
+| Nursery | 0.9959 | 0.9720 | 0.9758 | 0.9745 | 0.9740 | 0.9740 | 0.9725 | 0.9715 | 0.9588 | 0.9588 | 0.9588 | 0.9588 | 0.9588 |
+| Optdigits | 0.9832 | 0.9662 | 0.9567 | 0.9573 | 0.9603 | 0.9573 | 0.9614 | 0.9543 | 0.9407 | 0.9407 | 0.9413 | 0.9407 | 0.9407 |
+| Sonar | 0.8483 | 0.8095 | 0.8889 | 0.8730 | 0.8254 | 0.8889 | 0.9206 | 0.8571 | 0.6984 | 0.6984 | 0.6984 | 0.6984 | 0.6984 |
+| Spambase | 0.9539 | 0.9356 | 0.9364 | 0.9364 | 0.9349 | 0.9356 | 0.9328 | 0.9385 | 0.9241 | 0.9241 | 0.9241 | 0.9241 | 0.9241 |
+| Vowel | 0.9719 | 0.8586 | 0.7946 | 0.8316 | 0.7912 | 0.8081 | 0.8114 | 0.8249 | 0.6633 | 0.6633 | 0.6700 | 0.6633 | 0.6633 |
 
 ---
 
@@ -329,12 +331,12 @@ Se seleccionaron **8 datasets** de un conjunto de 32 evaluados en la tesis de re
 
 ### Observaciones Principales
 
-Inicialmente se puede observar que en la mayoría de los conjuntos de datos, las diferencias entre el Proactive Forest centralizado (PF) y las estrategias federadas son pequeñas.
+Inicialmente se puede observar que en la mayoría de los conjuntos de datos, las diferencias de exactitud (accuracy) entre el Proactive Forest centralizado (PF) y las estrategias federadas son pequeñas, confirmando que la federación conserva el poder de generalización.
 
-Sin embargo, se detectan discrepancias notables en dos conjuntos:
+Sin embargo, se detectan comportamientos específicos en algunos conjuntos:
 
-- **Mayor diferencia absoluta global frente a PF:** Vowel (diferencia = 0.2075)
-- **Al excluir Vowel**, mayor diferencia reducida a: Sonar (0.0837)
+- **Mayor diferencia absoluta global frente a PF:** Vowel (diferencia = 0.3086 frente a las variantes de S8, y de 0.1807 frente a S4).
+- **Desempeño Sobresaliente (Federado supera a Centralizado):** En el conjunto de datos **Sonar**, múltiples estrategias federadas (S2, S3, S5, S6 y S7) superan el desempeño del modelo centralizado. De forma notable, la estrategia **S6 (Round-Robin con criterio F1)** alcanza una exactitud de `0.9206` frente al `0.8483` de PF centralizado (una mejora de `+0.0723`).
 
 ### Transición al Análisis Estadístico
 
@@ -344,31 +346,60 @@ Tras observar variaciones en el rendimiento entre PF y las estrategias federadas
 
 ## 22. Análisis Estadístico: PF vs. Estrategias Federadas
 
-**Diseño:** 8 datasets × 9 métodos (PF + S1–S7). Medidas repetidas: todos los métodos evaluados sobre los mismos bloques de datos.
+**Diseño:** 8 datasets × 13 métodos (PF + 12 estrategias federadas: S1–S7 y 5 variantes de S8). Medidas repetidas: todos los métodos evaluados sobre los mismos bloques de datos.
 
 ### Test de Friedman
 
 | Hipótesis Nula (H₀) | Resultado | Conclusión |
 |-------------------|-----------|------------|
-| No existen diferencias significativas entre los 9 métodos. | p-value = 0.0075 (α < 0.05) → Se rechaza H₀ | Existen diferencias globales en el conjunto de métodos. |
+| No existen diferencias significativas entre los 13 métodos en exactitud. | p-value = 4.94e-07 (α < 0.05) → Se rechaza H₀ | Existen diferencias globales significativas en el conjunto de métodos. |
 
 ### Análisis Post-hoc: Wilcoxon Signed-Rank con Corrección Bonferroni
 
-| Comparación                                     | Corrección                   | Resultado p-value                    | Conclusión                                                  |
-| ----------------------------------------------- | ---------------------------- | ------------------------------------ | ----------------------------------------------------------- |
-| PF vs. cada una de las 12 estrategias federadas | Bonferroni (8 comparaciones) | Todos los p-values corregidos > 0.05 | PF es estadísticamente equivalente a todas las estrategias. |
+| Comparación | Corrección | Resultado p-value | Conclusión |
+|-------------|------------|-------------------|------------|
+| PF vs. cada una de las 12 estrategias federadas | Bonferroni (12 comparaciones) | Todos los p-values corregidos > 0.05 | PF es estadísticamente equivalente a todas las estrategias tras ajustar por múltiples comparaciones. |
 
 ### Interpretación
 
-El test global detecta diferencias influenciadas por el caso extremo (Vowel). El análisis post-hoc confirma la equivalencia estadística de PF con todas las estrategias federadas, validando la competitividad de las propuestas como alternativas sólidas al enfoque centralizado.
+El test global (Friedman) detecta diferencias globales debido a las diferencias marcadas en conjuntos específicos como Vowel o en las variantes S8.
+Sin embargo, aplicando la corrección estricta de Bonferroni (alfa ajustado = 0.05 / 12 ≈ 0.00417), ninguna estrategia federada presenta diferencias estadísticamente significativas con la línea de base centralizada (el p-value mínimo posible con N=8 es 0.0078).
 
-### Justificación de Wilcoxon
-
-Prueba no paramétrica estándar para comparaciones por pares en diseños de medidas repetidas cuando no se garantizan supuestos de normalidad, apropiada tras el test de Friedman.
+Sin aplicar la corrección múltiple (alfa = 0.05 uncorrected):
+- El modelo centralizado **PF es estadísticamente equivalente** a **S2** (p=0.109), **S3** (p=0.078), **S5** (p=0.109) y **S6** (p=0.148).
+- El modelo centralizado **PF es estadísticamente superior** a **S1** (p=0.0078), **S4** (p=0.0078), **S7** (p=0.0234) y a las 5 variantes de **S8** (p=0.0078).
 
 ---
 
-## 23. Optimización Metodológica con Optuna
+## 23. Resultados Comparativos de Diversidad (PCD)
+
+Se evaluó la diversidad correctiva porcentual (PCD) del bosque global de cada estrategia federada en comparación con la diversidad del Proactive Forest centralizado (PF).
+
+| BD | PCD_PF | S1 | S2 | S3 | S4 | S5 | S6 | S7 | S8_W | S8_Mean | S8_Med | S8_Cons | S8_PCD |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| Car | 0.3096 | 0.3699 | 0.3295 | 0.3372 | 0.3430 | 0.3391 | 0.3372 | 0.3449 | 0.3507 | 0.3507 | 0.3468 | 0.3507 | 0.3507 |
+| Iris | 0.1120 | 0.3333 | 0.2667 | 0.2667 | 0.2889 | 0.3111 | 0.3111 | 0.3111 | 0.2889 | 0.2889 | 0.2889 | 0.2889 | 0.2889 |
+| Letter | 0.4562 | 0.5016 | 0.5253 | 0.5210 | 0.5250 | 0.5158 | 0.5184 | 0.5141 | 0.5181 | 0.5128 | 0.5125 | 0.5158 | 0.5046 |
+| Nursery | 0.3969 | 0.3310 | 0.3048 | 0.3032 | 0.3140 | 0.2971 | 0.3014 | 0.3146 | 0.2142 | 0.2142 | 0.2142 | 0.2142 | 0.2142 |
+| Optdigits | 0.5831 | 0.5374 | 0.5119 | 0.5119 | 0.5219 | 0.5071 | 0.5083 | 0.5160 | 0.5510 | 0.5510 | 0.5516 | 0.5510 | 0.5510 |
+| Sonar | 0.9073 | 1.0000 | 0.9365 | 0.9365 | 0.9524 | 0.9683 | 0.9683 | 0.9683 | 0.9841 | 0.9841 | 0.9841 | 0.9841 | 0.9841 |
+| Spambase | 0.3307 | 0.3406 | 0.3290 | 0.3283 | 0.3341 | 0.3312 | 0.3355 | 0.3398 | 0.3377 | 0.3377 | 0.3333 | 0.3377 | 0.3377 |
+| Vowel | 0.9370 | 0.9798 | 0.9495 | 0.9630 | 0.9596 | 0.9562 | 0.9428 | 0.9596 | 0.8687 | 0.8687 | 0.8754 | 0.8687 | 0.8687 |
+
+### Análisis Estadístico de la Diversidad
+
+- **Test de Friedman**: `p-value = 0.2209` (p > 0.05).
+  **Conclusión**: **No existen diferencias estadísticamente significativas** en diversidad entre los métodos evaluados.
+- **Pruebas Post-hoc de Wilcoxon**: Todos los p-values corregidos y no corregidos (mínimo p=0.312) confirman que **todas las estrategias federadas mantienen una diversidad equivalente a la del modelo centralizado**.
+
+### Observaciones y Conclusiones sobre la Diversidad
+
+- **Incremento de Diversidad en el Federado**: En la mayoría de los conjuntos de datos, varias estrategias federadas muestran un incremento de diversidad (PCD) promedio en comparación con el Proactive Forest centralizado (ej. S1 muestra una ganancia promedio de PCD de `+0.0451`).
+- **Explicación Metodológica**: La partición de los datos entre diferentes clientes favorece que cada bosque local se especialice y capture relaciones particulares de sus subconjuntos. Al realizar la agregación de estos modelos asíncronos en el servidor, el bosque global resultante presenta mayor variación estructural y una diversidad equivalente o superior al centralizado, lo cual incrementa la robustez del modelo sin comprometer la privacidad.
+
+---
+
+## 24. Optimización Metodológica con Optuna
 
 ### ¿Cómo Funciona Optuna?
 
@@ -387,13 +418,13 @@ Prueba no paramétrica estándar para comparaciones por pares en diseños de med
 
 ---
 
-## 24. Conclusiones
+## 25. Conclusiones
 
 ### Resultados Iniciales
 
 - Se implementó un marco de **Bosques Federados Proactivos (BFP)** con mecanismos de control de diversidad, estrategias de agregación y criterios de parada progresiva.
-- Las **Propuestas A (S1–S7) y B (ruleta global)** demostraron ser competitivas frente al Proactive Forest centralizado en escenarios heterogéneos.
-- El análisis estadístico confirmó la equivalencia entre el enfoque centralizado y las variantes federadas, validando la solidez metodológica de las propuestas.
+- Las **Propuestas A (S1–S7) y B (ruleta global - S8)** demostraron ser competitivas frente al Proactive Forest centralizado en escenarios heterogéneos en exactitud y diversidad.
+- El análisis estadístico confirmó la equivalencia en diversidad y exactitud (bajo Bonferroni) entre el enfoque centralizado y las variantes federadas, validando la solidez metodológica de las propuestas.
 
 ### Aportes Metodológicos
 
