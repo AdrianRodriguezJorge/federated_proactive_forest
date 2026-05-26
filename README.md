@@ -30,7 +30,7 @@ By balancing **accuracy** (individual tree classification performance) and **div
 
 ## 🎯 Key Capabilities
 
-*   🌳 **13 Aggregation Strategies**: Native support for S1–S7 (ranking-based), PW (Progressive Windows), and 5 distinct variants of the S9 Global Roulette strategy.
+*   🌳 **12 Aggregation Strategies**: Native support for S1–S7 (ranking-based) and 5 distinct variants of the S9 Global Roulette strategy.
 *   📡 **Native FLEX Integration**: Built directly upon the FLEX Federated Learning Framework to ensure robust client-server orchestration, parallel execution, and standardized connection pools.
 *   📉 **Non-IID Heterogeneity Handling**: Full Dirichlet-based data partitioning simulates realistic real-world client data skew, allowing researchers to evaluate strategy resilience under severe distribution shifts.
 *   ⚖️ **Weighted Hybrid Prediction**: An intelligent voting mechanism that mathematically combines local client expertise with global generalized knowledge using highly configurable weight ratios.
@@ -245,7 +245,6 @@ To systematically evaluate how local trees are selected, merged, and distributed
 | **S5** | Per-Client Accuracy Ranking | Local Out-of-Bag Acc | **Medium** (Per-client subset) | Selection done independently per client based on local validation accuracy. |
 | **S6** | Per-Client Macro-F1 Ranking | Local Out-of-Bag F1 | **Medium** (Per-client subset) | Selection done independently per client based on local validation Macro-F1. |
 | **S7** | Per-Client Hybrid Ranking | Local F1 + Local PCD | **Medium** (Per-client diversity) | Client-level selection maximizing local accuracy and local diversity. |
-| **PW** | Progressive Windows | Adaptive Convergence | **Low/Medium** (Incremental) | Windows of trees are merged dynamically; stops when metric convergence is hit. |
 | **S9_MEAN** | Roulette Simple Mean | Attribute Mean | **Ultra-Low** (Vector only) | Aggregates feature probabilities via simple arithmetic mean of vectors. |
 | **S9_WEIGHTED** | Roulette Weighted Avg | Client Data Size Weight | **Ultra-Low** (Vector only) | Vector aggregation weighted proportionally to client training set sizes. |
 | **S9_MEDIAN** | Roulette Robust Median | Coordinate Median | **Ultra-Low** (Vector only) | Employs median filtering to neutralize noisy/adversarial client vectors. |
@@ -314,7 +313,7 @@ src/
 ├── domain/                         # 📦 Pure Enterprise & Algorithm Core (Framework-Agnostic)
 │   ├── model/                      #   ├── ProactiveForest (Ensemble building, convergence)
 │   │                               #   └── DecisionTree (Custom split, entropy/gini evaluation)
-│   ├── aggregation/                #   ├── Selection Strategies (S1-S7, PW, S9)
+│   ├── aggregation/                #   ├── Selection Strategies (S1-S7, S9)
 │   │                               #   └── StrategyFactory
 │   ├── metrics/                    #   └── ForestEvaluator (OOB scoring, multi-class validation)
 │   ├── services/                   #   ├── LabelService (Centralized cross-client index mapping)
@@ -323,7 +322,6 @@ src/
 │
 ├── application/                    # 🎯 Orchestration & Application Boundaries
 │   ├── orchestrators/              #   ├── FLEXOrchestrator (Standard FL coordinator)
-│   │                               #   ├── PWOrchestrator (Progressive Windows loop)
 │   │                               #   ├── RouletteOrchestrator (S9 attribute vector loop)
 │   │                               #   └── FedDataDistributor (Dirichlet & IID data splitter)
 │   └── ResultConsolidator.py       #   └── Consolidated test performance parser
@@ -392,7 +390,6 @@ aggregation:
 *   `exp_s1_simple_pool.yaml`: Baseline combining all client trees.
 *   `exp_s4_global_f1_pcd.yaml`: Global F1-score and PCD-diversity ranking.
 *   `exp_s7_perclient_f1_pcd.yaml`: Per-client adaptive selection based on local metrics.
-*   `exp_pw_progressive_windows.yaml`: Progressive Window orchestration with adaptive stopping.
 *   `exp_s9_consensus.yaml`: Performance-consensus-weighted Global Attribute Roulette.
 *   `exp_s9_proactive_pcd.yaml`: S9 variation prioritizing features that optimize class-correct diversity.
 *   `exp_s9_mean.yaml`, `exp_s9_median.yaml`, `exp_s9_weighted.yaml`: Basic statistical Roulette aggregations.
@@ -559,7 +556,6 @@ The following tables showcase the performance (Macro F1-score) and ensemble size
 | **s5_perclient_accuracy**| 0.8887 | 0.9210 | 0.9537 | 0.8093 | 0.9572 | 0.8858 | 0.9321 |
 | **s6_perclient_f1** | 0.8887 | 0.9374 | 0.9554 | 0.8120 | 0.9613 | 0.9182 | 0.9291 |
 | **s7_perclient_f1_pcd** | 0.8667 | 0.9337 | 0.9502 | 0.8256 | 0.9542 | 0.8534 | 0.9350 |
-| **pw (Progressive Windows)** | 0.8667 | 0.9291 | 0.9195 | 0.7137 | 0.9521 | 0.7529 | 0.9219 |
 | **s9_weighted_average** | 0.9107 | 0.7795 | 0.9243 | 0.6583 | 0.9409 | 0.6614 | 0.9200 |
 | **s9_simple_mean** | 0.9107 | 0.7795 | 0.9243 | 0.6583 | 0.9409 | 0.6614 | 0.9200 |
 | **s9_median** | 0.9107 | 0.7795 | 0.9243 | 0.6666 | 0.9415 | 0.6614 | 0.9200 |
@@ -570,7 +566,6 @@ The following tables showcase the performance (Macro F1-score) and ensemble size
 | Strategy | Iris | Car | Nursery | Vowel | Optdigits | Sonar | Spambase |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
 | **FLEX Baselines (S1-S7)**| ~110 | ~112 | ~114 | ~120 | ~115 | ~111 | ~118 |
-| **pw (Progressive Windows)** | 11.0 | 16.0 | 14.0 | 13.0 | 17.0 | 12.0 | 15.0 |
 | **S9 Roulette Variants**| 21.6 | 21.6 | 21.6 | 28.3 | 30.0 | 21.6 | 30.0 |
 
 *   **`hyperparameter_search.py`**: Automated hyperparameter discovery using Optuna. Systematically explores optimal alpha, F1/PCD weights, and client count configurations.
@@ -612,7 +607,6 @@ The following tables showcase the performance (Macro F1-score) and ensemble size
 | **High Class Imbalance** | `S7` (Per-Client Hybrid) | **Medium** | **Medium** | PCD diversity stops clients from voting only for local majority classes. |
 | **High Network Bandwidth** | `S4` (Global Hybrid) | **High** | **High** | Maximizes overall ensemble performance using global OOB validations. |
 | **Fast Baseline Search** | `S1` (Simple Pool) | **High** | **High** | Quickest setup; includes all trees with zero filtering overhead. |
-| **Fast Convergence Needs** | `PW` (Progressive Windows)| **Low/Medium** | **Minimal** | Dynamically stops training rounds early when convergence is met. |
 
 ---
 
