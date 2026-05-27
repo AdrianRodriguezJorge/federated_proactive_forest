@@ -57,7 +57,6 @@ STRATEGIES = [
     "s5_perclient_accuracy",
     "s6_perclient_f1",
     "s7_perclient_f1_pcd",
-    "pw",
     "s8_weighted_average",
     "s8_simple_mean",
     "s8_median",

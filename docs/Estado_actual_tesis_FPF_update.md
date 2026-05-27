@@ -151,28 +151,6 @@ Ambos algoritmos actúan conjuntamente en cada cliente de la federación como ba
 
 ---
 
-## 10. División de Enfoques en la Literatura de Aprendizaje Federado Horizontal
-
-### Agregación de Modelos (Asíncrona)
-
-- Cada cliente entrena su bosque de forma independiente y envía árboles completos al servidor.
-- Altamente escalable y tolerante a clientes lentos.
-- Compatible con arquitecturas de *ensemble*.
-- **Limitación:** Genera bosques globales crecientes y sensibles a la heterogeneidad.
-
-### Agregación de Estadísticas (Síncrona)
-
-- Comparte histogramas, gradientes o bines de características para reconstruir decisiones de partición.
-- Puede replicar con precisión un algoritmo centralizado.
-- Más estable ante distribuciones heterogéneas.
-- **Limitación:** Requiere sincronización estricta y depende del cliente más lento.
-
-### Decisión de Esta Investigación
-
-Esta investigación adopta el **enfoque asíncrono de agregación de modelos**: mayor independencia del servidor, integración natural de Proactive Forest y Progressive Forest, y habilitación de mecanismos de selección y control de compacidad.
-
----
-
 ## 11. Elementos Comunes a las Dos Propuestas
 
 ### Modelo en Clientes
