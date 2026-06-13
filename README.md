@@ -4,18 +4,15 @@
 
 By balancing **accuracy** (individual tree classification performance) and **diversity** (using advanced information-theoretic and prediction-based diversity criteria), this framework bridges the gap between traditional federated ensemble methods and communication-efficient distributed intelligence.
 
-> **Current Release**: **v3.0.0** — Production-ready with comprehensive benchmarking, statistical validation, and optimized FLEX integration.
-
 ---
 
-[![Version](https://img.shields.io/badge/version-3.0.0-blue.svg)](pyproject.toml)
 [![Python Version](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Framework](https://img.shields.io/badge/framework-FLEX-orange.svg)](https://github.com/nik-f-v/flex-framework)
 
 ---
 
-## ✨ What's New in v3.0.0
+## ✨ What's New
 
 *   **Deterministic Validation & Seeding Fixes**: Resolved client-side seed alignment and server-side ledger state persistence issues to eliminate run-to-run duplicate results and guarantee scientific reproducibility.
 *   **Single-Fold Benchmark Pipeline**: Introduced `benchmark_single_fold.py` with full results saved to `results/benchmark_single_fold_results.json` and reproducible via `configs/benchmark_hyperparameters.yaml`.
@@ -44,7 +41,7 @@ By balancing **accuracy** (individual tree classification performance) and **div
 ## 📋 Table of Contents
 
 1.  [🌲 Header & Introduction](#-federated-proactive-forest)
-2.  [✨ What's New in v3.0.0](#-whats-new-in-v300)
+2.  [✨ What's New](#-whats-new)
 3.  [🎯 Key Capabilities](#-key-capabilities)
 4.  [🚀 Installation & System Requirements](#-installation--system-requirements)
 5.  [⚡ Quick Start Guide](#-quick-start-guide)
@@ -231,14 +228,13 @@ Data partitioning across clients is handled transparently by the `FedDataDistrib
 
 ## 🏆 Aggregation Strategies & Tree Selection
 
-To systematically evaluate how local trees are selected, merged, and distributed, the framework implements **13 distinct aggregation strategies** alongside a pure **local isolation** training baseline.
+To systematically evaluate how local trees are selected, merged, and distributed, the framework implements **12 distinct aggregation strategies**.
 
 ### 📋 Unified Aggregation Strategy Table
 
 | Strategy ID | Name | Core Criterion | Bandwidth Overhead | Mathematical Objective |
 | :--- | :--- | :--- | :--- | :--- |
-| **Baseline** | `local_isolation` | None (No Sharing) | **Zero** | Local-only training, zero network transfer. |
-| **S1** | Simple Pool | Complete Merge | **High** (All trees sent) | Baseline; combines all client-trained trees without filtering. |
+| **S1** | Simple Pool | Complete Merge | **High** (All trees sent) | Combines all client-trained trees without filtering. |
 | **S2** | Global Accuracy Ranking | Out-of-Bag Accuracy | **Medium** (Sorted subset) | Filters and ranks trees on a global Validation Set by accuracy. |
 | **S3** | Global Macro-F1 Ranking | Out-of-Bag Macro-F1 | **Medium** (Sorted subset) | Ranks globally using Macro-F1 to handle class-imbalanced pools. |
 | **S4** | Global Hybrid Ranking | Macro-F1 + Diversity (PCD) | **Medium** (Cooperative PCD) | Ranks globally via $\alpha \cdot \text{F1} + \beta \cdot \text{PCD}$ to maximize ensemble diversity. |
@@ -593,7 +589,7 @@ aggregation:
 ```
 
 ### 📂 Pre-configured Scenarios in `configs/experiments/`
-*   `exp_s1_simple_pool.yaml`: Baseline combining all client trees.
+*   `exp_s1_simple_pool.yaml`: Reference configuration combining all client trees.
 *   `exp_s4_global_f1_pcd.yaml`: Global F1-score and PCD-diversity ranking.
 *   `exp_s7_perclient_f1_pcd.yaml`: Per-client adaptive selection based on local metrics.
 *   `exp_s8_consensus.yaml`: Performance-consensus-weighted Global Attribute Roulette.
@@ -615,7 +611,7 @@ python -m src.interfaces.cli.main --dataset Iris --clients 3 --strategy s7_percl
 
 The repository includes research notebooks to facilitate interactive algorithm exploration and hyperparameter searches under `src/interfaces/notebooks/`:
 
-*   **`baselines/centralized_baselines_comparison.ipynb`**: Evaluates centralized Random Forests vs. centralized Proactive Forests to set reference baselines for federated gains.
+*   **`baselines/centralized_baselines_comparison.ipynb`**: Evaluates centralized Random Forests vs. centralized Proactive Forests to set reference performance levels for federated gains.
 *   **`optimization/optuna_s1.ipynb` through `optuna_s8.ipynb`**: Integrates **Optuna** to execute automated search space exploration on the strategies, helping researchers systematically discover optimal configurations for `alpha`, `f1_weight`, and client count thresholds.
 
 ---
@@ -708,7 +704,7 @@ pytest tests/
 
 ### 📋 Test Modules Overview
 *   **`test_aggregation.py`**: Validates the tree combination math for S1 (Simple Pool) and verifies selection boundaries.
-*   **`test_fix_local_isolation.py`**: Ensures the isolated client baseline correctly sets up local models, splits data, and measures out-of-bag scores without interacting with the network.
+*   **`test_fix_local_isolation.py`**: Ensures client local models are set up correctly, data is split, and out-of-bag scores are measured without network interaction.
 *   **`test_label_service.py`**: Validates class/index consistency. Ensures that transforming multi-class arrays and executing `inverse_transform` yields identical strings.
 *   **`test_metrics.py`**: Verifies dynamic Percentage Correct Diversity (PCD) calculations under extreme settings (such as zero diversity vs. maximum diversity).
 *   **`test_proactive_forest.py`**: Validates core tree growth, split probabilities, and early stopping threshold activation.
@@ -720,7 +716,7 @@ pytest tests/
 The `scripts/` directory contains high-performance utilities designed for rigorous scientific validation and comparative analysis.
 
 ### 🏆 Automated Benchmarking (`final_benchmark.py`)
-Comprehensive evaluation protocol: **10-fold cross-validation** over **5 repetitions** across all **8 datasets**, testing all **13 strategies** plus the local isolation baseline.
+Comprehensive evaluation protocol: **10-fold cross-validation** over **5 repetitions** across all **8 datasets**, testing all **12 strategies**.
 
 **Key Features:**
 *   **Automatic Parallelism**: Leverages `joblib` with configurable `n_workers` for efficient resource utilization.
@@ -771,7 +767,7 @@ The following tables showcase the performance (Macro F1-score) and ensemble size
 ##### Average Forest Size (Number of Trees)
 | Strategy | Iris | Car | Nursery | Vowel | Optdigits | Sonar | Spambase |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| **FLEX Baselines (S1-S7)**| ~110 | ~112 | ~114 | ~120 | ~115 | ~111 | ~118 |
+| **FLEX Strategies (S1-S7)**| ~110 | ~112 | ~114 | ~120 | ~115 | ~111 | ~118 |
 | **S8 Roulette Variants**| 21.6 | 21.6 | 21.6 | 28.3 | 30.0 | 21.6 | 30.0 |
 
 *   **`run_unified_optimization.py`**: Unified Bayesian hyperparameter optimization script using Optuna. Optimizes a single joint hyperparameter vector across representative strategies (S1, S4, S7, S8) and datasets (Sonar, Vowel, Spambase, Nursery) to find a robust configuration profile.
@@ -807,7 +803,7 @@ The following tables showcase the performance (Macro F1-score) and ensemble size
 | **Edge Device / Minimal IoT** | `S8_CONSENSUS` | **Ultra-Low** | **Minimal** | Exchanges 1D vectors; consensus handles unreliable nodes. |
 | **High Class Imbalance** | `S7` (Per-Client Hybrid) | **Medium** | **Medium** | PCD diversity stops clients from voting only for local majority classes. |
 | **High Network Bandwidth** | `S4` (Global Hybrid) | **High** | **High** | Maximizes overall ensemble performance using global OOB validations. |
-| **Fast Baseline Search** | `S1` (Simple Pool) | **High** | **High** | Quickest setup; includes all trees with zero filtering overhead. |
+| **Fast Standard Search** | `S1` (Simple Pool) | **High** | **High** | Quickest setup; includes all trees with zero filtering overhead. |
 
 ---
 
@@ -853,11 +849,10 @@ If you utilize this framework, its evaluation results, or its strategies in your
 }
 
 @software{federated_proactive_forest_2026,
-  title={Federated Proactive Forest v3.0: Comprehensive Tree Aggregation Strategies for Communication-Efficient Federated Learning},
+  title={Federated Proactive Forest: Comprehensive Tree Aggregation Strategies for Communication-Efficient Federated Learning},
   author={Rodríguez, Adrián},
   year={2026},
-  url={https://github.com/AdrianRodriguezJorge/federated_proactive_forest},
-  version={3.0.0}
+  url={https://github.com/AdrianRodriguezJorge/federated_proactive_forest}
 }
 ```
 
