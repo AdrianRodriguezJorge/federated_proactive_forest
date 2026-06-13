@@ -21,7 +21,7 @@ By balancing **accuracy** (individual tree classification performance) and **div
 *   **Single-Fold Benchmark Pipeline**: Introduced `benchmark_single_fold.py` with full results saved to `results/benchmark_single_fold_results.json` and reproducible via `configs/benchmark_hyperparameters.yaml`.
 *   **Enhanced Testing Suite**: Comprehensive test coverage for aggregation strategies, label services, and federated orchestration.
 *   **Improved CLI Integration**: Streamlined command-line interface with better error handling and configuration validation.
-*   **Optimized Hyperparameter Search**: Updated `hyperparameter_search.py` and `optimize_pcd_weight.py` for faster convergence analysis.
+*   **Optimized Hyperparameter Search**: Integrated Optuna-driven Bayesian search and optimization (`run_unified_optimization.py`, `unified_hyperparameter_search.py`) for faster convergence analysis.
 *   **Production-Grade Benchmarking**: Fully automated benchmark pipeline (`final_benchmark.py`) with robust checkpoint and recovery mechanisms.
 *   **Statistical Validation**: Non-parametric Friedman tests and Wilcoxon post-hoc analyses with Bonferroni correction for rigorous strategy comparison.
 *   **Python 3.12+ Standardization**: Full compatibility and optimization for Python 3.12+ with updated dependency versions.
@@ -322,9 +322,10 @@ src/
 │
 ├── application/                    # 🎯 Orchestration & Application Boundaries
 │   ├── orchestrators/              #   ├── FLEXOrchestrator (Standard FL coordinator)
-│   │                               #   └── RouletteOrchestrator (S8 attribute vector loop)
-│   │                               #   └── FedDataDistributor (Dirichlet & IID data splitter)
-│   └── ResultConsolidator.py       #   └── Consolidated test performance parser
+│   │                               #   ├── RouletteOrchestrator (S8 attribute vector loop)
+│   │                               #   ├── FedDataDistributor (Dirichlet & IID data splitter)
+│   │                               #   └── result_consolidator (Test performance parser)
+│   └── hyperparam_optimizer.py     #   └── Local Bayesian Optuna tuner
 │
 ├── infrastructure/                 # 🔌 Infrastructure Adapters
 │   ├── dataset/                    #   ├── DatasetFactory
@@ -375,150 +376,178 @@ To maintain high extensibility, readability, and code quality, the following des
 * **Details**: These orchestrators act as unified controllers that wrap all complex sub-systems (data distribution, client actor mapping, aggregation, model deployment, and results consolidation) into single, readable workflows.
 * **Justification**: Simplifies the entry points for the Streamlit UI and CLI, preventing them from having to coordinate multiple low-level FLEX primitives.
 
+#### 6. **Builder Pattern**
+* **Implementation**: Implemented by the `TreeBuilder` class in `src/domain/model/cpf_implementation/tree_builder.py`.
+* **Details**: Separates the complex, step-by-step recursive creation of decision trees (`build_tree`) from their model representations (`DecisionTree` / `ProactiveForest`).
+* **Justification**: Isolates the recursive splitting logic from high-level estimator interfaces, improving readability and code maintenance.
+
+#### 7. **Decorator Pattern**
+* **Implementation**: Used at both the language level (Python's `@abstractmethod`, `@classmethod`, `@property`) and framework level (FLEX framework's `@collect_clients_weights`, `@init_server_model`, etc.).
+* **Details**: Wraps server and client primitives to inject serialization, communication, and synchronization behaviors dynamically without cluttering domain logic.
+* **Justification**: Separates core algorithmic logic from the communication/orchestration framework constraints.
+
+#### 8. **Mediator Pattern**
+* **Implementation**: Facilitated architecturally by `FLEXOrchestrator` and `RouletteOrchestrator`.
+* **Details**: In horizontal federated learning, clients must not communicate directly. The central server (orchestrated by these controllers) acts as a mediator, coordinating weight collections and distributing aggregated states.
+* **Justification**: Maintains independence and decoupling between distributed worker nodes.
+
 ---
 
 ### 📊 Design Class Diagram
 
-The following Mermaid diagram maps the design patterns and architectural layers. It illustrates how components are distributed across **Domain, Application, Infrastructure, and Interface** boundaries, and how they relate through ports and adapters:
+The following PlantUML diagram maps the design patterns and architectural layers. It illustrates how components are distributed across **Domain, Application, Infrastructure, and Interface** boundaries, and how they relate through ports and adapters:
 
-```mermaid
-classDiagram
-    %% Hexagonal Architectural Layers
-    namespace Domain_Layer_Core_and_Ports {
-        class IAggregationStrategy {
-            <<Interface>>
-            +metrics_svc: IMetricsService
-            +diversity_svc: IDiversityService
-            +aggregate(client_trees, client_metadata, ...) Tuple
-            +strategy_id() str
-        }
-        class IDatasetAdapter {
-            <<Interface>>
-            +load() DatasetSplit
-            +name() str
-            +n_classes() int
-        }
-        class IMetricsService {
-            <<Interface>>
-            +compute_accuracy() float
-            +compute_f1() float
-        }
-        class IDiversityService {
-            <<Interface>>
-            +compute_diversity() float
-        }
-        class ProactiveForest {
-            -n_estimators: int
-            -alpha: float
-            -trees: List~DecisionTree~
-            +fit(X, y)
-            +predict(X) np.ndarray
-        }
-        class DecisionTree {
-            -root: Node
-            +predict(X)
-        }
-        class DatasetSplit {
-            +X_train: np.ndarray
-            +y_train: np.ndarray
-            +X_test: np.ndarray
-            +y_test: np.ndarray
-            +get_all_labels() np.ndarray
-        }
-        class SimpleLabelService {
-            +fit(labels)
-            +transform(labels) np.ndarray
-            +inverse_transform(indices) np.ndarray
-        }
-        class AggregationFactory {
-            +create_strategy(name) IAggregationStrategy
-        }
+```plantuml
+@startuml
+skinparam class {
+    BackgroundColor #F8F9FA
+    ArrowColor #2D5889
+    BorderColor #2D5889
+}
+skinparam stereotypeCBackgroundColor #D9E1F2
+
+package "Capa de Interfaces (Presentación)" {
+    class StreamlitAppUI {
+        + run()
+    }
+    class CLIEntryPoint {
+        + main()
+    }
+}
+
+package "Capa de Aplicación (Orquestación)" {
+    class FLEXOrchestrator {
+        - config: dict
+        - metrics_svc: IMetricsService
+        - diversity_svc: IDiversityService
+        - label_svc: SimpleLabelService
+        + setup_federation(dataset_split: DatasetSplit)
+        + run_federated_round(): FLResults
+    }
+    class RouletteOrchestrator {
+        - config: dict
+        + setup_federation(dataset_split: DatasetSplit)
+        + run_federated_round(): FLResults
+    }
+    class FedDataDistributor {
+        + distribute(dataset_split: DatasetSplit, seed: int): Tuple
+    }
+}
+
+package "Capa de Dominio (Núcleo Hexagonal)" {
+    interface IAggregationStrategy <<Strategy>> {
+        + metrics_svc: IMetricsService
+        + diversity_svc: IDiversityService
+        + aggregate(client_trees, client_metadata, ...): Tuple
+        + strategy_id(): String
     }
 
-    namespace Domain_Strategies_and_Services {
-        class S1SimplePoolStrategy {
-            +aggregate(...) Tuple
-        }
-        class S7PerClientF1PCDStrategy {
-            +aggregate(...) Tuple
-        }
-        class S8RouletteStrategy {
-            +aggregate(...) Tuple
-        }
-        class PredictionBasedDiversityService {
-            +compute_pcd(predictions) float
-        }
+    interface IDatasetAdapter <<Port>> {
+        + load(): DatasetSplit
+        + name(): String
+        + n_classes(): int
     }
 
-    namespace Application_Layer_Orchestrators {
-        class FLEXOrchestrator {
-            -config: dict
-            -metrics_svc: IMetricsService
-            -diversity_svc: IDiversityService
-            -label_svc: SimpleLabelService
-            +setup_federation(dataset_split)
-            +run_federated_round() FLResults
-        }
-        class RouletteOrchestrator {
-            -config: dict
-            +setup_federation(dataset_split)
-            +run_federated_round() FLResults
-        }
-        class FedDataDistributor {
-            +distribute(dataset_split, seed) Tuple
-        }
+    interface IMetricsService <<Port>> {
+        + compute_accuracy(): float
+        + compute_f1(): float
     }
 
-    namespace Infrastructure_Adapters {
-        class CsvDatasetAdapter {
-            -file_path: str
-            +load() DatasetSplit
-        }
-        class FlexPoolFactory {
-            +create_client_server_pool(...) FlexPool
-        }
+    interface IDiversityService <<Port>> {
+        + compute_diversity(): float
     }
 
-    namespace Presentation_Interfaces {
-        class StreamlitAppUI {
-            +run()
-        }
-        class CLIEntryPoint {
-            +main()
-        }
+    class ProactiveForest {
+        - n_estimators: int
+        - alpha: float
+        - trees: List<DecisionTree>
+        + fit(X, y)
+        + predict(X): np.ndarray
     }
 
-    %% Relationships and Pattern Mapping
-    
-    %% Strategy Pattern Inheritance
-    IAggregationStrategy <|-- S1SimplePoolStrategy
-    IAggregationStrategy <|-- S7PerClientF1PCDStrategy
-    IAggregationStrategy <|-- S8RouletteStrategy
-    
-    %% Adapter Pattern Implementation
-    IDatasetAdapter <|.. CsvDatasetAdapter
-    IDiversityService <|.. PredictionBasedDiversityService
+    class DecisionTree {
+        - root: Node
+        + predict(X)
+    }
 
-    %% Composition & Aggregation
-    ProactiveForest *-- DecisionTree : contains
-    IDatasetAdapter --> DatasetSplit : produces
+    class TreeBuilder <<Builder>> {
+        + build_tree(X, y, n_classes): DecisionTree
+    }
 
-    %% Dependency Injection (DI) & Associations
-    IAggregationStrategy --> IMetricsService : injected
-    IAggregationStrategy --> IDiversityService : injected
+    class DatasetSplit {
+        + X_train: np.ndarray
+        + y_train: np.ndarray
+        + X_test: np.ndarray
+        + y_test: np.ndarray
+        + get_all_labels(): np.ndarray
+    }
 
-    %% Facade/Orchestration Usage
-    FLEXOrchestrator --> IAggregationStrategy : uses
-    FLEXOrchestrator --> IDatasetAdapter : uses
-    FLEXOrchestrator --> FedDataDistributor : uses
-    FLEXOrchestrator --> SimpleLabelService : uses
-    FLEXOrchestrator --> AggregationFactory : resolves strategy via
-    
-    %% Interface Layer Calling Orchestrators
-    CLIEntryPoint --> FLEXOrchestrator : coordinates
-    StreamlitAppUI --> FLEXOrchestrator : coordinates
-    StreamlitAppUI --> RouletteOrchestrator : coordinates
-    FLEXOrchestrator --> FlexPoolFactory : uses
+    class SimpleLabelService {
+        + fit(labels)
+        + transform(labels): np.ndarray
+        + inverse_transform(indices): np.ndarray
+    }
+
+    class AggregationFactory <<Factory>> {
+        + create_strategy(name: String): IAggregationStrategy
+    }
+
+    class S1SimplePoolStrategy {
+        + aggregate(...): Tuple
+    }
+
+    class S7PerClientF1PCDStrategy {
+        + aggregate(...): Tuple
+    }
+
+    class S8RouletteStrategy {
+        + aggregate(...): Tuple
+    }
+
+    class PredictionBasedDiversityService {
+        + compute_pcd(predictions): float
+    }
+}
+
+package "Capa de Infraestructura (Adaptadores)" {
+    class CsvDatasetAdapter <<Adapter>> {
+        - file_path: str
+        + load(): DatasetSplit
+    }
+    class FlexPoolFactory <<Factory>> {
+        + create_client_server_pool(...): FlexPool
+    }
+}
+
+' Relaciones entre componentes
+CLIEntryPoint --> FLEXOrchestrator : "Usa para ejecutar"
+StreamlitAppUI --> FLEXOrchestrator : "Usa para ejecutar"
+StreamlitAppUI --> RouletteOrchestrator : "Usa para ejecutar"
+
+FLEXOrchestrator --> IDatasetAdapter : "Carga datos mediante"
+FLEXOrchestrator --> IAggregationStrategy : "Aplica"
+FLEXOrchestrator --> FedDataDistributor : "Delega particionamiento"
+FLEXOrchestrator --> SimpleLabelService : "Normaliza etiquetas con"
+FLEXOrchestrator --> AggregationFactory : "Resuelve estrategia via"
+FLEXOrchestrator --> FlexPoolFactory : "Crea pool FLEX con"
+
+' Herencias e Implementaciones
+S1SimplePoolStrategy .up.|> IAggregationStrategy : "Implementa"
+S7PerClientF1PCDStrategy .up.|> IAggregationStrategy : "Implementa"
+S8RouletteStrategy .up.|> IAggregationStrategy : "Implementa"
+
+CsvDatasetAdapter .up.|> IDatasetAdapter : "Implementa"
+PredictionBasedDiversityService .up.|> IDiversityService : "Implementa"
+
+IAggregationStrategy o-- IMetricsService : "Inyecta"
+IAggregationStrategy o-- IDiversityService : "Inyecta"
+
+' Composición y Creación
+ProactiveForest "1" *-- "many" DecisionTree : "Contiene"
+ProactiveForest --> TreeBuilder : "Delega creación a"
+TreeBuilder ..> DecisionTree : "Construye"
+IDatasetAdapter ..> DatasetSplit : "Produce"
+@enduml
 ```
 
 ---
@@ -650,10 +679,10 @@ class NewDatasetAdapter(IDatasetAdapter):
 ```
 
 ### Step 2: Register in the Dataset Factory
-Open `src/infrastructure/dataset/dataset_factory.py` and register your dataset's metadata presets:
+Open `src/infrastructure/dataset/dataset_factory.py` and register your dataset's metadata presets in the `DATASET_METADATA` registry:
 
 ```python
-DATASET_PRESETS = {
+DATASET_METADATA = {
     "NewDataset": {
         "target_column": "target",
         "sep": ",",
@@ -745,14 +774,14 @@ The following tables showcase the performance (Macro F1-score) and ensemble size
 | **FLEX Baselines (S1-S7)**| ~110 | ~112 | ~114 | ~120 | ~115 | ~111 | ~118 |
 | **S8 Roulette Variants**| 21.6 | 21.6 | 21.6 | 28.3 | 30.0 | 21.6 | 30.0 |
 
-*   **`hyperparameter_search.py`**: Automated hyperparameter discovery using Optuna. Systematically explores optimal alpha, F1/PCD weights, and client count configurations.
+*   **`run_unified_optimization.py`**: Unified Bayesian hyperparameter optimization script using Optuna. Optimizes a single joint hyperparameter vector across representative strategies (S1, S4, S7, S8) and datasets (Sonar, Vowel, Spambase, Nursery) to find a robust configuration profile.
     ```bash
-    python scripts/hyperparameter_search.py
+    python scripts/run_unified_optimization.py
     ```
 
-*   **`optimize_pcd_weight.py`**: Isolated PCD weight optimization. Determines the optimal balance between performance (F1-score) and diversity (PCD) for hybrid strategies (S4, S7).
+*   **`unified_hyperparameter_search.py`**: Grid search comparing Pace 3 (slower, finer-grained growth check) vs Pace 6 (faster, coarser-grained growth check) across progressive strategies over 4 datasets (Sonar, Vowel, Spambase, Nursery).
     ```bash
-    python scripts/optimize_pcd_weight.py
+    python scripts/unified_hyperparameter_search.py
     ```
 
 *   **`Friedman_test_new_results.py`**: Non-parametric statistical analysis. Performs Friedman rank-sum test to determine if strategy differences are statistically significant.
@@ -763,11 +792,6 @@ The following tables showcase the performance (Macro F1-score) and ensemble size
 *   **`weighted_vs_uniform.py`**: Comparative analysis between weighted and uniform aggregation weights in S8 Roulette strategies.
     ```bash
     python scripts/weighted_vs_uniform.py
-    ```
-
-*   **`run_cli_last_config.py`**: Convenience script that re-runs the last used configuration from `configs/last_config.json`.
-    ```bash
-    python scripts/run_cli_last_config.py
     ```
 
 ---
