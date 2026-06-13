@@ -298,15 +298,15 @@ aggregation:
 
 To guarantee absolute scientific integrity, the following major engineering fixes have been implemented:
 
-*   **Unified Label Mapping (`LabelService`)**: Heterogeneous clients partitioning non-IID datasets often lack representatives of specific classes. The custom `SimpleLabelService` acts as a centralized coordinate mapper, guaranteeing that all client models, servers, and evaluation metrics map identical indices to identical text labels. This eliminates index shifts where "Class 1" on Client A translates to "Class 2" on the Server.
-*   **Removal of Biased Fallback**: Standardized prediction logic across all strategies to strictly avoid fallback voting. Instead of predicting the local client's majority class when an out-of-vocabulary split or unknown feature is queried, the forest evaluation pipeline propagates a standardized zero-weight vote to prevent local representation skew.
 *   **Strict Hybrid Predictor Isolation**: Client-server self-representation bias has been resolved. In per-client hybrid predictions, a client's local forest is strictly isolated and excluded from the "global forest" subset it downloads. This ensures that validation scores do not artificially inflate through self-evaluation.
 
 ---
 
 ## 🏗️ System Architecture & Hexagonal Design
 
-The repository strictly adheres to **Hexagonal Architecture (Ports and Adapters)**. This guarantees complete separation between core algorithmic models, application orchestrators, and presentation interfaces.
+The repository strictly adheres to **Hexagonal Architecture (Ports and Adapters)**. This guarantees complete separation between core algorithmic models, application orchestrators, infrastructure adapters, and presentation interfaces.
+
+### 📁 Codebase Structure Map
 
 ```
 src/
@@ -322,7 +322,7 @@ src/
 │
 ├── application/                    # 🎯 Orchestration & Application Boundaries
 │   ├── orchestrators/              #   ├── FLEXOrchestrator (Standard FL coordinator)
-│   │                               #   ├── RouletteOrchestrator (S8 attribute vector loop)
+│   │                               #   └── RouletteOrchestrator (S8 attribute vector loop)
 │   │                               #   └── FedDataDistributor (Dirichlet & IID data splitter)
 │   └── ResultConsolidator.py       #   └── Consolidated test performance parser
 │
@@ -338,11 +338,188 @@ src/
     └── notebooks/                  #   └── research notebooks & Optuna search space analysis
 ```
 
-### 💡 Rationale behind Hexagonal Design
-By decoupling the core logic inside `src/domain` from frameworks like `FLEX` or `Streamlit`, we ensure:
-1.  **Framework Independence**: The FLEX orchestrator can be replaced by other federated backends (like Flower or gRPC) without modifying the `ProactiveForest` codebase.
-2.  **Rigorously Testable Domain**: Test suites run fully in-memory without starting dummy servers, yielding highly predictable test execution.
-3.  **Code Maintenance**: Data processing pipeline adapters can change separately without altering tree splitting logic.
+### 💡 Architectural Justification & Hexagonal Ports/Adapters
+
+The main driver behind choosing **Hexagonal Architecture** is the complete decoupling of domain logic from third-party frameworks and client/server transport mechanisms. 
+
+1. **Framework Independence**: The orchestration logic uses interfaces ("ports") to interact with data and external frameworks. The `FLEXOrchestrator` relies on FLEX under the hood, but the core `ProactiveForest` and its `IAggregationStrategy` subclasses have zero knowledge of FLEX. This allows swapping FLEX with other federated environments (e.g. Flower, gRPC, or even PySyft) by just writing a new infrastructure adapter.
+2. **Strict Domain Isolation**: The business rules—such as how trees are grown under the proactive learning strategy, and how diversity (PCD) is computed—are kept pure inside `src/domain`. They do not depend on Pandas, Streamlit, or FLEX, which minimizes the impact of third-party dependency updates on core algorithms.
+3. **Rigorous Testability**: Because the domain is isolated, tests in `tests/` can run entirely in-memory using pure mock adapters without initializing network pools, multi-process actors, or complex Streamlit state contexts. This guarantees extremely fast and predictable test execution.
+
+---
+
+### 🎨 Design Patterns & Principles
+
+To maintain high extensibility, readability, and code quality, the following design patterns are actively utilized:
+
+#### 1. **Strategy Pattern**
+* **Implementation**: Defined by the `IAggregationStrategy` abstract class in `src/domain/aggregation/base_strategy.py`.
+* **Details**: Every client-server aggregation algorithm (from `S1SimplePoolStrategy` up to `S8RouletteStrategy`) inherits from `IAggregationStrategy` and implements the `aggregate(...)` method.
+* **Justification**: This decouples the orchestrator from concrete selection algorithms. When adding a new strategy, developers only need to write a new strategy class implementing `IAggregationStrategy`, without modifying the orchestration train loops.
+
+#### 2. **Factory Pattern**
+* **Implementation**: Implemented in `AggregationFactory` (`src/domain/aggregation/aggregation_factory.py`) and `DatasetFactory` (`src/infrastructure/dataset/dataset_factory.py`).
+* **Details**: `AggregationFactory` normalizes configuration strings (like `"s7_perclient_f1_pcd"`) to retrieve the corresponding concrete strategy class and construct it with the required dependency services.
+* **Justification**: Centralizes object creation, keeping the client code clean of class imports and instantiations.
+
+#### 3. **Dependency Injection (DI)**
+* **Implementation**: Constructor-based injection of `IMetricsService` and `IDiversityService` interfaces into `IAggregationStrategy` implementations.
+* **Details**: Instead of hardcoding sklearn metrics or custom PCD calculations, the strategy receives them as instances implementing interfaces, which can easily be replaced by mock objects during testing.
+
+#### 4. **Adapter Pattern**
+* **Implementation**: Implemented in `IDatasetAdapter` and concrete adapters like `CsvDatasetAdapter`.
+* **Details**: The domain specifies a port (`IDatasetAdapter`) requiring a `load() -> DatasetSplit` method. The infrastructure layer provides `CsvDatasetAdapter` which reads files, encodes labels, and creates splits, wrapping these file-system specifics into a unified domain DTO (`DatasetSplit`).
+
+#### 5. **Facade / Orchestrator Pattern**
+* **Implementation**: Implemented by `FLEXOrchestrator` and `RouletteOrchestrator`.
+* **Details**: These orchestrators act as unified controllers that wrap all complex sub-systems (data distribution, client actor mapping, aggregation, model deployment, and results consolidation) into single, readable workflows.
+* **Justification**: Simplifies the entry points for the Streamlit UI and CLI, preventing them from having to coordinate multiple low-level FLEX primitives.
+
+---
+
+### 📊 Design Class Diagram
+
+The following Mermaid diagram maps the design patterns and architectural layers. It illustrates how components are distributed across **Domain, Application, Infrastructure, and Interface** boundaries, and how they relate through ports and adapters:
+
+```mermaid
+classDiagram
+    %% Hexagonal Architectural Layers
+    namespace Domain_Layer_Core_and_Ports {
+        class IAggregationStrategy {
+            <<Interface>>
+            +metrics_svc: IMetricsService
+            +diversity_svc: IDiversityService
+            +aggregate(client_trees, client_metadata, ...) Tuple
+            +strategy_id() str
+        }
+        class IDatasetAdapter {
+            <<Interface>>
+            +load() DatasetSplit
+            +name() str
+            +n_classes() int
+        }
+        class IMetricsService {
+            <<Interface>>
+            +compute_accuracy() float
+            +compute_f1() float
+        }
+        class IDiversityService {
+            <<Interface>>
+            +compute_diversity() float
+        }
+        class ProactiveForest {
+            -n_estimators: int
+            -alpha: float
+            -trees: List~DecisionTree~
+            +fit(X, y)
+            +predict(X) np.ndarray
+        }
+        class DecisionTree {
+            -root: Node
+            +predict(X)
+        }
+        class DatasetSplit {
+            +X_train: np.ndarray
+            +y_train: np.ndarray
+            +X_test: np.ndarray
+            +y_test: np.ndarray
+            +get_all_labels() np.ndarray
+        }
+        class SimpleLabelService {
+            +fit(labels)
+            +transform(labels) np.ndarray
+            +inverse_transform(indices) np.ndarray
+        }
+        class AggregationFactory {
+            +create_strategy(name) IAggregationStrategy
+        }
+    }
+
+    namespace Domain_Strategies_and_Services {
+        class S1SimplePoolStrategy {
+            +aggregate(...) Tuple
+        }
+        class S7PerClientF1PCDStrategy {
+            +aggregate(...) Tuple
+        }
+        class S8RouletteStrategy {
+            +aggregate(...) Tuple
+        }
+        class PredictionBasedDiversityService {
+            +compute_pcd(predictions) float
+        }
+    }
+
+    namespace Application_Layer_Orchestrators {
+        class FLEXOrchestrator {
+            -config: dict
+            -metrics_svc: IMetricsService
+            -diversity_svc: IDiversityService
+            -label_svc: SimpleLabelService
+            +setup_federation(dataset_split)
+            +run_federated_round() FLResults
+        }
+        class RouletteOrchestrator {
+            -config: dict
+            +setup_federation(dataset_split)
+            +run_federated_round() FLResults
+        }
+        class FedDataDistributor {
+            +distribute(dataset_split, seed) Tuple
+        }
+    }
+
+    namespace Infrastructure_Adapters {
+        class CsvDatasetAdapter {
+            -file_path: str
+            +load() DatasetSplit
+        }
+        class FlexPoolFactory {
+            +create_client_server_pool(...) FlexPool
+        }
+    }
+
+    namespace Presentation_Interfaces {
+        class StreamlitAppUI {
+            +run()
+        }
+        class CLIEntryPoint {
+            +main()
+        }
+    }
+
+    %% Relationships and Pattern Mapping
+    
+    %% Strategy Pattern Inheritance
+    IAggregationStrategy <|-- S1SimplePoolStrategy
+    IAggregationStrategy <|-- S7PerClientF1PCDStrategy
+    IAggregationStrategy <|-- S8RouletteStrategy
+    
+    %% Adapter Pattern Implementation
+    IDatasetAdapter <|.. CsvDatasetAdapter
+    IDiversityService <|.. PredictionBasedDiversityService
+
+    %% Composition & Aggregation
+    ProactiveForest *-- DecisionTree : contains
+    IDatasetAdapter --> DatasetSplit : produces
+
+    %% Dependency Injection (DI) & Associations
+    IAggregationStrategy --> IMetricsService : injected
+    IAggregationStrategy --> IDiversityService : injected
+
+    %% Facade/Orchestration Usage
+    FLEXOrchestrator --> IAggregationStrategy : uses
+    FLEXOrchestrator --> IDatasetAdapter : uses
+    FLEXOrchestrator --> FedDataDistributor : uses
+    FLEXOrchestrator --> SimpleLabelService : uses
+    FLEXOrchestrator --> AggregationFactory : resolves strategy via
+    
+    %% Interface Layer Calling Orchestrators
+    CLIEntryPoint --> FLEXOrchestrator : coordinates
+    StreamlitAppUI --> FLEXOrchestrator : coordinates
+    StreamlitAppUI --> RouletteOrchestrator : coordinates
+    FLEXOrchestrator --> FlexPoolFactory : uses
+```
 
 ---
 

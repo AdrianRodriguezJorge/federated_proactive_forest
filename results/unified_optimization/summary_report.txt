@@ -1,0 +1,104 @@
+======================================================================
+OPTIMIZATION SUMMARY REPORT
+======================================================================
+
+Strategy: UNIFIED_BAYESIAN
+Dataset: sonar_vowel_spambase_nursery
+Metric: mean_normalized_accuracy
+
+----------------------------------------------------------------------
+RESULTS SUMMARY
+----------------------------------------------------------------------
+Total trials: 68
+Completed trials: 63
+Pruned trials: 0
+Failed trials: 2
+
+----------------------------------------------------------------------
+BEST RESULT
+----------------------------------------------------------------------
+Best trial: #55
+Best mean_normalized_accuracy: 0.694163
+
+Best hyperparameters:
+  - local_convergence_threshold: 0.002
+  - local_weight: 0.4
+  - use_weighted: True
+  - max_trees: 130
+  - global_convergence_threshold: 0.005
+  - f1_weight: 0.6000000000000001
+  - local_roulette_weight: 0.7000000000000001
+  - pace_combination: 10_3
+  - roulette_pace: 10_15
+
+----------------------------------------------------------------------
+STATISTICS (completed trials)
+----------------------------------------------------------------------
+Mean mean_normalized_accuracy: 0.652560
+Std mean_normalized_accuracy: 0.038099
+Min mean_normalized_accuracy: 0.411461
+Max mean_normalized_accuracy: 0.694163
+Median mean_normalized_accuracy: 0.658787
+
+----------------------------------------------------------------------
+TOP 5 TRIALS
+----------------------------------------------------------------------
+
+Trial #55: 0.694163
+  f1_weight: 0.6000000000000001
+  global_convergence_threshold: 0.005
+  local_convergence_threshold: 0.002
+  local_roulette_weight: 0.7000000000000001
+  local_weight: 0.4
+  max_trees: 130
+  pace_combination: 10_3
+  roulette_pace: 10_15
+  use_weighted: True
+
+Trial #52: 0.692213
+  f1_weight: 0.5
+  global_convergence_threshold: 0.005
+  local_convergence_threshold: 0.002
+  local_roulette_weight: 0.7000000000000001
+  local_weight: 0.5
+  max_trees: 130
+  pace_combination: 10_3
+  roulette_pace: 10_15
+  use_weighted: True
+
+Trial #49: 0.689421
+  f1_weight: 0.6000000000000001
+  global_convergence_threshold: 0.001
+  local_convergence_threshold: 0.001
+  local_roulette_weight: 0.9
+  local_weight: 0.5
+  max_trees: 110
+  pace_combination: 10_3
+  roulette_pace: 10_15
+  use_weighted: True
+
+Trial #56: 0.687815
+  f1_weight: 0.8
+  global_convergence_threshold: 0.005
+  local_convergence_threshold: 0.005
+  local_roulette_weight: 0.5
+  local_weight: 0.5
+  max_trees: 130
+  pace_combination: 10_3
+  roulette_pace: 10_15
+  use_weighted: True
+
+Trial #44: 0.687732
+  f1_weight: 0.30000000000000004
+  global_convergence_threshold: 0.001
+  local_convergence_threshold: 0.001
+  local_roulette_weight: 0.6000000000000001
+  local_weight: 0.5
+  max_trees: 110
+  pace_combination: 10_3
+  roulette_pace: 10_15
+  use_weighted: True
+
+======================================================================
+END OF REPORT
+======================================================================

@@ -1,0 +1,22 @@
+best_params:
+  f1_weight: 0.6000000000000001
+  global_convergence_threshold: 0.005
+  local_convergence_threshold: 0.002
+  local_roulette_weight: 0.7000000000000001
+  local_weight: 0.4
+  max_trees: 130
+  pace_combination: '10_3'
+  roulette_pace: '10_15'
+  use_weighted: true
+best_trial: 55
+best_value: 0.6941627768565066
+direction: MAXIMIZE
+metadata:
+  dataset: sonar_vowel_spambase_nursery
+  duration_seconds: 0
+  metric: mean_normalized_accuracy
+  n_clients: 3
+  n_trials: 68
+  seed: 42
+  strategy: UNIFIED_BAYESIAN
+n_trials: 68
