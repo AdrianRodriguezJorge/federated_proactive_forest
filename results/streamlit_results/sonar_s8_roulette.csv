@@ -1,4 +1,0 @@
-timestamp,dataset,strategy,modelo,accuracy,macro_f1,macro_precision,macro_recall,pcd,forest_size,n_clients,use_weighted,local_weight,n_estimators,seed,convergence_round
-2026-05-08 01:14:44,Sonar,s8_roulette,Global,0.8095,0.7926,0.8036,0.7861,0.0,40,2,True,0.0,5,42,7
-2026-05-08 01:14:44,Sonar,s8_roulette,Client_0,0.6905,0.6816,0.6808,0.6899,0.875,16,2,True,0.0,5,42,7
-2026-05-08 01:14:44,Sonar,s8_roulette,Client_1,0.7143,0.7083,0.7091,0.7212,0.6875,24,2,True,0.0,5,42,7

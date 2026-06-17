@@ -1,4 +1,0 @@
-timestamp,dataset,strategy,modelo,accuracy,macro_f1,macro_precision,macro_recall,pcd,forest_size,n_clients,use_weighted,local_weight,n_estimators,seed,convergence_round
-2026-05-05 03:48:29,Iris,s1_simple_pool,Global,0.9333,0.9333,0.9333,0.9333,0.4,25,2,True,0.5,250,42,
-2026-05-05 03:48:29,Iris,s1_simple_pool,Client_0,0.9333,0.9333,0.9333,0.9333,0.3636,25,2,True,0.5,250,42,
-2026-05-05 03:48:29,Iris,s1_simple_pool,Client_1,0.9333,0.9333,0.9333,0.9333,0.1818,25,2,True,0.5,250,42,

@@ -67,6 +67,31 @@ DATASET_METADATA = {
         "sep": ",",
         "file_path": "data/spambase.csv",
     },
+    "glass": {
+        "target_column": "Type",
+        "sep": ",",
+        "file_path": "data/glass.csv",
+    },
+    "molecular": {
+        "target_column": "class",
+        "sep": ",",
+        "file_path": "data/molecular.csv",
+        "columns_to_drop": ["instance"],
+        "categorical_features": [
+            "p-50", "p-49", "p-48", "p-47", "p-46", "p-45", "p-44", "p-43",
+            "p-42", "p-41", "p-40", "p-39", "p-38", "p-37", "p-36", "p-35",
+            "p-34", "p-33", "p-32", "p-31", "p-30", "p-29", "p-28", "p-27",
+            "p-26", "p-25", "p-24", "p-23", "p-22", "p-21", "p-20", "p-19",
+            "p-18", "p-17", "p-16", "p-15", "p-14", "p-13", "p-12", "p-11",
+            "p-10", "p-9", "p-8", "p-7", "p-6", "p-5", "p-4", "p-3",
+            "p-2", "p-1", "p1", "p2", "p3", "p4", "p5", "p6", "p7",
+        ],
+    },
+    "pendigits": {
+        "target_column": "class",
+        "sep": ",",
+        "file_path": "data/pendigits.csv",
+    },
 }
 
 
