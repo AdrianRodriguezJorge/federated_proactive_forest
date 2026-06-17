@@ -15,7 +15,6 @@ By balancing **accuracy** (individual tree classification performance) and **div
 ## ✨ What's New
 
 *   **Deterministic Validation & Seeding Fixes**: Resolved client-side seed alignment and server-side ledger state persistence issues to eliminate run-to-run duplicate results and guarantee scientific reproducibility.
-*   **Single-Fold Benchmark Pipeline**: Introduced `benchmark_single_fold.py` with full results saved to `results/benchmark_single_fold_results.json` and reproducible via `configs/benchmark_hyperparameters.yaml`.
 *   **Enhanced Testing Suite**: Comprehensive test coverage for aggregation strategies, label services, and federated orchestration.
 *   **Improved CLI Integration**: Streamlined command-line interface with better error handling and configuration validation.
 *   **Optimized Hyperparameter Search**: Integrated Optuna-driven Bayesian search and optimization (`run_unified_optimization.py`, `unified_hyperparameter_search.py`) for faster convergence analysis.
@@ -202,9 +201,7 @@ print(f"✅ Active Trees in Global Pool: {results.n_trees_global}")
 
 ---
 
-## 📊 Supported Datasets
-
-The repository comes equipped with 8 built-in multi-class classification datasets pre-loaded under the `data/` directory.
+The repository comes equipped with 11 built-in multi-class classification datasets pre-loaded under the `data/` directory.
 
 | Dataset | Samples | Features | Classes | Type | Key Challenges |
 | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -216,6 +213,9 @@ The repository comes equipped with 8 built-in multi-class classification dataset
 | **Optdigits** | 5,620 | 64 (Numeric) | 10 | Numerical | High feature-space dimensionality |
 | **Sonar** | 208 | 60 (Numeric) | 2 | Numerical | Low sample ratio vs high feature space |
 | **Spambase** | 4,601 | 57 (Numeric) | 2 | Numerical | Complex binary classification skew |
+| **Glass** | 214 | 9 (Numeric) | 6 | Numerical | Glass classification, high class imbalance |
+| **Molecular** | 106 | 57 (Categorical) | 2 | Categorical | Small sample size, high categorical dimensions |
+| **Pendigits** | 10,992 | 16 (Numeric) | 10 | Numerical | Handwritten digit recognition |
 
 ### 📈 Data Partitioning: IID vs. Non-IID Dirichlet
 Data partitioning across clients is handled transparently by the `FedDataDistributor`.
@@ -737,57 +737,14 @@ python scripts/final_benchmark.py
 
 ### 📉 Additional Research Scripts
 
-*   **`benchmark_single_fold.py`**: A high-speed benchmarking utility that evaluates all **13 strategies** sequentially over a single dataset split across **7 benchmark datasets** (Iris, Car, Nursery, Vowel, Optdigits, Sonar, Spambase).
-    *   **Configuration Reproducibility**: All hyperparameters used for this benchmark are declared in [**`configs/benchmark_hyperparameters.yaml`**](configs/benchmark_hyperparameters.yaml).
-    *   **Result Output**: Detailed JSON metrics are saved at `results/benchmark_single_fold_results.json`.
-    ```bash
-    python scripts/benchmark_single_fold.py
-    ```
-
-#### 📊 Summary of Single-Fold Benchmark Results (May 2026)
-
-The following tables showcase the performance (Macro F1-score) and ensemble size (number of trees) across the 7 evaluated datasets under 3 clients (IID):
-
-##### Macro F1-Score
-| Strategy | Iris | Car | Nursery | Vowel | Optdigits | Sonar | Spambase |
-| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| **s1_simple_pool** | 0.8667 | 0.9303 | 0.9536 | 0.8586 | 0.9661 | 0.8056 | 0.9321 |
-| **s2_global_accuracy** | 0.8667 | 0.9250 | 0.9593 | 0.7941 | 0.9565 | 0.8864 | 0.9327 |
-| **s3_global_f1** | 0.8667 | 0.9367 | 0.9598 | 0.8322 | 0.9572 | 0.8719 | 0.9327 |
-| **s4_global_f1_pcd** | 0.8887 | 0.9469 | 0.9537 | 0.7908 | 0.9601 | 0.8215 | 0.9311 |
-| **s5_perclient_accuracy**| 0.8887 | 0.9210 | 0.9537 | 0.8093 | 0.9572 | 0.8858 | 0.9321 |
-| **s6_perclient_f1** | 0.8887 | 0.9374 | 0.9554 | 0.8120 | 0.9613 | 0.9182 | 0.9291 |
-| **s7_perclient_f1_pcd** | 0.8667 | 0.9337 | 0.9502 | 0.8256 | 0.9542 | 0.8534 | 0.9350 |
-| **s8_weighted_average** | 0.9107 | 0.7795 | 0.9243 | 0.6583 | 0.9409 | 0.6614 | 0.9200 |
-| **s8_simple_mean** | 0.9107 | 0.7795 | 0.9243 | 0.6583 | 0.9409 | 0.6614 | 0.9200 |
-| **s8_median** | 0.9107 | 0.7795 | 0.9243 | 0.6666 | 0.9415 | 0.6614 | 0.9200 |
-| **s8_consensus** | 0.9107 | 0.7795 | 0.9243 | 0.6583 | 0.9409 | 0.6614 | 0.9200 |
-| **s8_proactive_pcd** | 0.9107 | 0.7795 | 0.9243 | 0.6584 | 0.9409 | 0.6614 | 0.9200 |
-
-##### Average Forest Size (Number of Trees)
-| Strategy | Iris | Car | Nursery | Vowel | Optdigits | Sonar | Spambase |
-| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| **FLEX Strategies (S1-S7)**| ~110 | ~112 | ~114 | ~120 | ~115 | ~111 | ~118 |
-| **S8 Roulette Variants**| 21.6 | 21.6 | 21.6 | 28.3 | 30.0 | 21.6 | 30.0 |
-
 *   **`run_unified_optimization.py`**: Unified Bayesian hyperparameter optimization script using Optuna. Optimizes a single joint hyperparameter vector across representative strategies (S1, S4, S7, S8) and datasets (Sonar, Vowel, Spambase, Nursery) to find a robust configuration profile.
     ```bash
     python scripts/run_unified_optimization.py
     ```
 
-*   **`unified_hyperparameter_search.py`**: Grid search comparing Pace 3 (slower, finer-grained growth check) vs Pace 6 (faster, coarser-grained growth check) across progressive strategies over 4 datasets (Sonar, Vowel, Spambase, Nursery).
-    ```bash
-    python scripts/unified_hyperparameter_search.py
-    ```
-
 *   **`Friedman_test_new_results.py`**: Non-parametric statistical analysis. Performs Friedman rank-sum test to determine if strategy differences are statistically significant.
     ```bash
     python scripts/Friedman_test_new_results.py
-    ```
-
-*   **`weighted_vs_uniform.py`**: Comparative analysis between weighted and uniform aggregation weights in S8 Roulette strategies.
-    ```bash
-    python scripts/weighted_vs_uniform.py
     ```
 
 ---
