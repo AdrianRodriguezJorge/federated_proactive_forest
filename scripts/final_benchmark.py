@@ -98,7 +98,7 @@ HYPERPARAMS = {
 # ===========================================================================
 K_FOLDS = 10
 N_CLIENTS = 3
-N_WORKERS = 2  # Hilos de ejecución paralela
+N_WORKERS = 8  # Hilos de ejecución paralela
 
 DATASETS = [
     "Iris", "Car", "Nursery", "Vowel", "Optdigits",
