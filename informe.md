@@ -24,34 +24,48 @@ Se definieron los siguientes hiperparámetros a optimizar, agrupados según su �
 
 ### 3.1. Hiperparámetros del Modelo Local
 
-| Hiperparámetro                       | Tipo       | Rango / Valores           | Descripción                                                                                      |
-|:-------------------------------------|:----------:|:-------------------------:|:-------------------------------------------------------------------------------------------------|
-| Umbral de convergencia local         | Categórico | {0.001, 0.002, 0.005}     | Umbral de varianza mínima en el accuracy local para activar la parada temprana del cliente.       |
+| Hiperparámetro | Tipo | Rango / Valores | Descripción |
+|:---|:---:|:---:|:---|
+| Umbral de convergencia local (`local_convergence_threshold`) | Categórico | {0.001, 0.002, 0.005} | Umbral de varianza mínima en el accuracy local para activar la parada temprana del cliente. |
 
 ### 3.2. Hiperparámetros de Agregación en el Servidor
 
-| Hiperparámetro                       | Tipo       | Rango / Valores           | Descripción                                                                                      |
-|:-------------------------------------|:----------:|:-------------------------:|:-------------------------------------------------------------------------------------------------|
-| Tamaño máximo del pool global        | Entero     | [50, 150], paso 20        | Límite superior de árboles permitidos en el pool global agregado.                                |
-| Umbral de convergencia global        | Categórico | {0.001, 0.002, 0.005}     | Umbral de mejora mínima entre episodios consecutivos del servidor para continuar la agregación.   |
-| Peso de F1 en selección híbrida      | Float      | [0.0, 1.0], paso 0.1      | Balance entre F1-score y diversidad PCD en las estrategias S4 y S7. El peso de PCD es el complemento ($1 - w_{F1}$). |
-| Tamaño de episodio global            | Categórico | {3, 5, 6, 9, 10}          | Número de árboles que se añaden al pool global en cada paso de evaluación antes de verificar la convergencia. |
-| Árboles por cliente por episodio     | Categórico | {1, 2, 3}                 | Número de árboles que cada cliente contribuye por episodio en las estrategias con selección per-client. |
+| Hiperparámetro | Tipo | Rango / Valores | Descripción |
+|:---|:---:|:---:|:---|
+| Tamaño máximo del pool global (`max_trees`) | Entero | [50, 150], paso 20 | Límite superior de árboles permitidos en el pool global agregado. |
+| Umbral de convergencia global (`global_convergence_threshold`) | Categórico | {0.001, 0.002, 0.005} | Umbral de mejora mínima entre episodios consecutivos del servidor para continuar la agregación. |
+| Peso de F1 en selección híbrida (`f1_weight`) | Float | [0.0, 1.0], paso 0.1 | Balance entre F1-score y diversidad PCD en las estrategias S4 y S7. El peso de PCD es el complemento ($1 - w_{F1}$). |
+| Tamaño de episodio global (`global_episode_size`) | Categórico | {3, 5, 6, 9, 10} | Número de árboles que se añaden al pool global en cada paso de evaluación antes de verificar la convergencia. |
+| Árboles por cliente por episodio (`trees_per_client_per_episode`) | Categórico | {1, 2, 3} | Número de árboles que cada cliente contribuye por episodio en las estrategias con selección per-client. |
 
 ### 3.3. Hiperparámetros de la Estrategia S8 (Global Attribute Roulette)
 
-| Hiperparámetro                       | Tipo       | Rango / Valores           | Descripción                                                                                      |
-|:-------------------------------------|:----------:|:-------------------------:|:-------------------------------------------------------------------------------------------------|
-| Tamaño de ventana local              | Categórico | {5, 10, 15}               | Número de árboles que cada cliente entrena localmente antes de recalcular y transmitir su vector de importancia de atributos al servidor. |
-| Máximo de rondas federadas           | Categórico | {10, 15, 30}              | Límite superior del número de rondas de comunicación entre clientes y servidor.                   |
-| Peso del vector de atributos local   | Float      | [0.0, 1.0], paso 0.1      | Ponderación del vector de importancia local del cliente frente al vector global del servidor al actualizar las probabilidades de selección de atributos. |
+| Hiperparámetro | Tipo | Rango / Valores | Descripción |
+|:---|:---:|:---:|:---|
+| Tamaño de ventana local (`window_size`) | Categórico | {5, 10, 15} | Número de árboles que cada cliente entrena localmente antes de recalcular y transmitir su vector de importancia de atributos al servidor. |
+| Máximo de rondas federadas (`max_rounds`) | Categórico | {10, 15, 30} | Límite superior del número de rondas de comunicación entre clientes y servidor. |
+| Peso del vector de atributos local (`local_roulette_weight`) | Float | [0.0, 1.0], paso 0.1 | Ponderación del vector de importancia local del cliente frente al vector global del servidor al actualizar las probabilidades de selección de atributos. |
 
 ### 3.4. Hiperparámetros de Predicción Híbrida
 
-| Hiperparámetro                       | Tipo       | Rango / Valores           | Descripción                                                                                      |
-|:-------------------------------------|:----------:|:-------------------------:|:-------------------------------------------------------------------------------------------------|
-| Peso del modelo local                | Float      | [0.0, 1.0], paso 0.1      | Contribución del bosque local del cliente en la predicción híbrida. El peso global es el complemento ($1 - w_{local}$). |
-| Votación ponderada                   | Categórico | {True, False}             | Activa o desactiva la ponderación de los votos de los árboles según el rendimiento del cliente.   |
+| Hiperparámetro | Tipo | Rango / Valores | Descripción |
+|:---|:---:|:---:|:---|
+| Peso del modelo local (`local_weight`) | Float | [0.0, 1.0], paso 0.1 | Contribución del bosque local del cliente en la predicción híbrida. El peso global es el complemento ($1 - w_{local}$). |
+| Votación ponderada (`use_weighted`) | Categórico | {True, False} | Activa o desactiva la ponderación de los votos de los árboles según el rendimiento del cliente. |
+
+### 3.5. Hiperparámetros Fijos
+
+Durante todo el proceso de optimización, se mantuvieron constantes los siguientes parámetros para servir como base de control:
+
+| Hiperparámetro | Valor fijo | Descripción |
+|:---|:---:|:---|
+| Parámetro de diversidad del bosque (`alpha`) | `0.1` | Controla la penalización por redundancia en el crecimiento local del bosque. |
+| Criterio de división del nodo (`split_criterion`) | `"entropy"` | Criterio de ganancia de información utilizado para la construcción de cada árbol de decisión. |
+| Esquema de votación del ensamble (`voting`) | `"soft"` | Votación basada en el promedio ponderado de las probabilidades de clase predichas. |
+| Parada progresiva activa (`use_progressive_stopping`) | `True` | Habilita la comprobación dinámica de convergencia local y global. |
+| Tamaño de episodio local (`local_episode_size`) | `5` | Frecuencia de árboles evaluados localmente por el cliente para el cálculo de convergencia. |
+| Mínimo de episodios evaluados (`min_episodes`) | `4` | Número mínimo de comprobaciones globales obligatorias antes de permitir parada temprana. |
+| Mínimo de rondas federadas (`min_rounds`) | `4` | Número mínimo de rondas de comunicación obligatorias en la estrategia S8 antes de finalizar. |
 
 ## 4. Resultados de la Optimización
 
@@ -61,19 +75,19 @@ Se completaron un total de **63 ensayos** (de 68 lanzados; 2 fallidos y 3 incomp
 
 La optimización bayesiana identificó la siguiente combinación como la configuración con mayor accuracy medio sobre el conjunto de estrategias y datasets evaluados:
 
-| Hiperparámetro                       | Valor óptimo |
-|:-------------------------------------|:------------:|
-| Peso del modelo local                | 0.4          |
-| Tamaño máximo del pool global        | 110          |
-| Umbral de convergencia local         | 0.002        |
-| Umbral de convergencia global        | 0.002        |
-| Peso de F1 en selección híbrida      | 0.5          |
-| Peso del vector de atributos local   | 0.6          |
-| Tamaño de episodio global            | 10           |
-| Árboles por cliente por episodio     | 3            |
-| Ventana local S8                     | 10           |
-| Máximo de rondas federadas S8        | 15           |
-| Votación ponderada                   | Sí           |
+| Hiperparámetro | Valor óptimo |
+|:---|:---:|
+| Peso del modelo local (`local_weight`) | 0.4 |
+| Tamaño máximo del pool global (`max_trees`) | 110 |
+| Umbral de convergencia local (`local_convergence_threshold`) | 0.002 |
+| Umbral de convergencia global (`global_convergence_threshold`) | 0.002 |
+| Peso de F1 en selección híbrida (`f1_weight`) | 0.5 |
+| Peso del vector de atributos local (`local_roulette_weight`) | 0.6 |
+| Tamaño de episodio global (`global_episode_size`) | 10 |
+| Árboles por cliente por episodio (`trees_per_client_per_episode`) | 3 |
+| Tamaño de ventana local (`window_size`) | 10 |
+| Máximo de rondas federadas (`max_rounds`) | 15 |
+| Votación ponderada (`use_weighted`) | Sí |
 
 Esta configuración fue la utilizada en el experimento comparativo final.
 
