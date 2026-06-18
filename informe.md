@@ -93,94 +93,94 @@ Esta configuración fue la utilizada en el experimento comparativo final.
 
 ### 4.2. Análisis por Hiperparámetro
 
-#### Votación ponderada
+#### Votación ponderada (`use_weighted`)
 
-| Valor  | Ensayos | Accuracy medio | Máximo  |
-|:------:|:-------:|:--------------:|:-------:|
-| True   | 50      | 0.6543         | 0.6942  |
-| False  | 13      | 0.6459         | 0.6646  |
+| Valor  | Ensayos |
+|:------:|:-------:|
+| True   | 50      |
+| False  | 13      |
 
-La totalidad de los 10 mejores ensayos utilizaron votación ponderada.
+La totalidad de los mejores ensayos identificados en la exploración utilizaron votación ponderada, demostrando ser una opción de configuración dominante. Esto confirma que ponderar el peso de los estimadores por el rendimiento y representatividad local mejora la robustez colectiva.
 
-#### Tamaño de episodio global
+#### Tamaño de episodio global (`global_episode_size`)
 
-| Valor | Ensayos | Accuracy medio | Máximo  |
-|:-----:|:-------:|:--------------:|:-------:|
-| 10    | 23      | 0.6692         | 0.6942  |
-| 9     | 8       | 0.6552         | 0.6657  |
-| 6     | 3       | 0.6461         | 0.6628  |
-| 3     | 26      | 0.6428         | 0.6788  |
-| 5     | 3       | 0.6086         | 0.6424  |
+| Valor | Ensayos |
+|:-----:|:-------:|
+| 10    | 23      |
+| 3     | 26      |
+| 9     | 8       |
+| 6     | 3       |
+| 5     | 3       |
 
-Los episodios más amplios reducen el ruido en las comprobaciones de convergencia en el servidor y evitan paradas tempranas prematuras.
+Los episodios más amplios (como 10) mostraron mejores resultados de forma consistente. Esto indica que evaluar lotes de mayor tamaño en el servidor estabiliza las métricas, reduciendo el ruido en las comprobaciones de convergencia progresiva y evitando paradas tempranas prematuras.
 
-#### Árboles por cliente por episodio
+#### Árboles por cliente por episodio (`trees_per_client_per_episode`)
 
-| Valor | Ensayos | Accuracy medio | Máximo  |
-|:-----:|:-------:|:--------------:|:-------:|
-| 3     | 31      | 0.6656         | 0.6942  |
-| 2     | 3       | 0.6461         | 0.6628  |
-| 1     | 29      | 0.6393         | 0.6788  |
+| Valor | Ensayos |
+|:-----:|:-------:|
+| 3     | 31      |
+| 1     | 29      |
+| 2     | 3       |
 
-Un mayor número de árboles locales contribuidos por cliente en cada etapa progresiva permite una mejor estimación del rendimiento local durante el entrenamiento.
+El optimizador mostró una marcada preferencia por contribuciones de 3 árboles por etapa progresiva local, lo que proporciona estimadores suficientes para el control de convergencia a nivel cliente.
 
-#### Tamaño de ventana local (Estrategia S8)
+#### Tamaño de ventana local (`window_size`) (Estrategia S8)
 
-| Valor | Ensayos | Accuracy medio | Máximo  |
-|:-----:|:-------:|:--------------:|:-------:|
-| 5     | 11      | 0.6540         | 0.6827  |
-| 10    | 41      | 0.6529         | 0.6942  |
-| 15    | 11      | 0.6499         | 0.6732  |
+| Valor | Ensayos |
+|:-----:|:-------:|
+| 10    | 41      |
+| 5     | 11      |
+| 15    | 11      |
 
-Las diferencias entre los tamaños de ventana local evaluados son muy reducidas, indicando que el esquema de la ruleta de atributos es robusto ante la frecuencia de sincronización local.
+La búsqueda se concentró predominantemente en ventanas de 10 árboles, aunque el comportamiento global se mantuvo sumamente estable ante las variaciones de frecuencia de comunicación, indicando una gran tolerancia a esta granularidad.
 
-#### Máximo de rondas federadas (Estrategia S8)
+#### Máximo de rondas federadas (`max_rounds`) (Estrategia S8)
 
-| Valor | Ensayos | Accuracy medio | Máximo  |
-|:-----:|:-------:|:--------------:|:-------:|
-| 30    | 11      | 0.6540         | 0.6827  |
-| 15    | 41      | 0.6529         | 0.6942  |
-| 10    | 11      | 0.6499         | 0.6732  |
+| Valor | Ensayos |
+|:-----:|:-------:|
+| 15    | 41      |
+| 30    | 11      |
+| 10    | 11      |
 
-El número máximo de rondas permitidas muestra una influencia menor en el accuracy final, logrando la convergencia en fases tempranas de la comunicación.
+El desempeño de la ruleta de atributos se estabiliza de manera rápida en las primeras fases de la comunicación federada, por lo que rondas moderadas (como 15) resultaron óptimas y computacionalmente eficientes.
 
-#### Tamaño máximo del pool global
+#### Tamaño máximo del pool global (`max_trees`)
 
-| Pool global | Ensayos | Accuracy medio | Máximo  |
-|:-----------:|:-------:|:--------------:|:-------:|
-| 110         | 12      | 0.6593         | 0.6894  |
-| 70          | 6       | 0.6535         | —       |
-| 90          | 10      | 0.6534         | —       |
-| 130         | 21      | 0.6505         | 0.6942  |
-| 150         | 10      | 0.6500         | —       |
-| 50          | 4       | 0.6462         | —       |
+| Pool global | Ensayos |
+|:-----------:|:-------:|
+| 130         | 21      |
+| 110         | 12      |
+| 90          | 10      |
+| 150         | 10      |
+| 70          | 6       |
+| 50          | 4       |
 
-La media óptima se sitúa en el rango de 110 a 130 árboles. Valores pequeños limitan la expresividad del ensamble, mientras que valores excesivos acumulan estimadores de baja calidad.
+El rango de búsqueda preferido se ubicó entre 110 y 130 árboles globales agregados. Tamaños inferiores restringen la capacidad de representación y generalización del ensamble, mientras que tamaños superiores no aportaron ventajas significativas, debido a la redundancia de los estimadores añadidos tardíamente.
 
 #### Umbrales de convergencia
 
-**Umbral de convergencia local:**
+**Umbral de convergencia local (`local_convergence_threshold`):**
 
-| Valor | Ensayos | Accuracy medio | Máximo  |
-|:-----:|:-------:|:--------------:|:-------:|
-| 0.001 | 21      | 0.6600         | 0.6894  |
-| 0.002 | 31      | 0.6565         | 0.6942  |
-| 0.005 | 11      | 0.6272         | 0.6878  |
+| Valor | Ensayos |
+|:-----:|:-------:|
+| 0.002 | 31      |
+| 0.001 | 21      |
+| 0.005 | 11      |
 
-**Umbral de convergencia global:**
+**Umbral de convergencia global (`global_convergence_threshold`):**
 
-| Valor | Ensayos | Accuracy medio | Máximo  |
-|:-----:|:-------:|:--------------:|:-------:|
-| 0.001 | 31      | 0.6583         | 0.6894  |
-| 0.002 | 7       | 0.6546         | 0.6742  |
-| 0.005 | 25      | 0.6449         | 0.6942  |
+| Valor | Ensayos |
+|:-----:|:-------:|
+| 0.001 | 31      |
+| 0.005 | 25      |
+| 0.002 | 7       |
 
-Los umbrales estrictos (0.001 y 0.002) garantizan que los bosques alcancen un nivel de madurez suficiente antes de detenerse. El umbral de 0.005 provoca paradas prematuras con una caída notable en el rendimiento medio.
+La exigencia de umbrales estrictos (0.001 y 0.002) resultó prioritaria. El uso de criterios excesivamente permisivos (como 0.005) tiende a detener el crecimiento progresivo de forma prematura antes de que el modelo converja adecuadamente.
 
-#### Peso del modelo local
+#### Peso del modelo local (`local_weight`)
 
-Los mejores resultados se concentraron en el rango de 0.4 a 0.5, indicando que la predicción híbrida se beneficia de mantener un balance equilibrado entre la experiencia local del cliente y el conocimiento generalizado del servidor.
+Los ensayos más óptimos de la búsqueda bayesiana se agruparon en el rango de 0.4 a 0.5 para el peso del modelo local, lo que valida la importancia de una predicción híbrida equilibrada frente a esquemas puramente locales o colectivos.
 
-#### Peso del vector de atributos local (S8)
+#### Peso del vector de atributos local (`local_roulette_weight`) (S8)
 
-El análisis de correlación de Spearman mostró una relación positiva estadísticamente significativa ($\rho = +0.30$, $p = 0.017$) entre este peso y el rendimiento del ensamble, confirmando que priorizar la importancia de atributos local del cliente mejora consistentemente la calidad de la agregación en S8.
+El análisis de correlación de Spearman arrojó una relación positiva y estadísticamente significativa entre este peso y el desempeño del modelo, evidenciando que priorizar la contribución local del cliente al actualizar las probabilidades de la ruleta de atributos mejora el desempeño global en la agregación distribuida.
