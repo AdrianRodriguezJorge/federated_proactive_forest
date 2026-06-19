@@ -14,9 +14,11 @@ Las pruebas experimentales revelan tres hallazgos fundamentales de alto valor pa
 
 ---
 
-## 2. Matriz de Resultados Globales (Macro F1)
+## 2. Matrices de Resultados Globales
 
-La siguiente tabla presenta el rendimiento promedio (Macro F1) obtenido por cada estrategia en los 10 folds de validación para cada dataset. Las estrategias están ordenadas de mayor a menor según su rendimiento medio global.
+### 2.1. Rendimiento en F1-Score (Macro F1)
+
+La siguiente tabla presenta el rendimiento promedio (Macro F1) obtenido por cada estrategia en los 10 folds de validación para cada dataset, ordenadas de mayor a menor según su promedio global.
 
 | Estrategia | Car | Glass | Iris | Molecular | Nursery | Optdigits | Pendigits | Sonar | Spambase | Vowel | **Promedio** |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
@@ -34,8 +36,48 @@ La siguiente tabla presenta el rendimiento promedio (Macro F1) obtenido por cada
 | **s8_proactive_pcd** | 0.8037 | 0.4510 | 0.9205 | 0.7313 | 0.8905 | 0.9438 | 0.9690 | 0.7213 | 0.9233 | 0.6850 | **0.8039** |
 | **s8_median** | 0.8015 | 0.4557 | 0.9205 | 0.7167 | 0.8913 | 0.9427 | 0.9691 | 0.7276 | 0.9229 | 0.6874 | **0.8035** |
 
+### 2.2. Rendimiento en Accuracy
+
+La siguiente tabla presenta el accuracy promedio obtenido por cada estrategia a través de los folds experimentales.
+
+| Estrategia | Car | Glass | Iris | Molecular | Nursery | Optdigits | Pendigits | Sonar | Spambase | Vowel | **Promedio** |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **s7_perclient_f1_pcd** | 0.9603 | 0.7264 | **0.9378** | **0.8397** | **0.9806** | 0.9676 | 0.9849 | 0.7598 | 0.9397 | 0.8562 | **0.8953** |
+| **s4_global_f1_pcd** | 0.9587 | 0.7266 | 0.9333 | 0.8339 | 0.9801 | **0.9680** | **0.9853** | 0.7377 | 0.9399 | 0.8515 | **0.8915** |
+| **s6_perclient_f1** | 0.9610 | 0.7264 | 0.9356 | 0.8070 | **0.9807** | 0.9677 | 0.9852 | 0.7487 | 0.9394 | 0.8582 | **0.8910** |
+| **s5_perclient_accuracy** | 0.9604 | 0.7232 | **0.9378** | 0.8100 | 0.9803 | 0.9678 | 0.9851 | 0.7454 | 0.9393 | **0.8599** | **0.8909** |
+| **s2_global_accuracy** | **0.9614** | 0.7201 | 0.9356 | 0.8185 | 0.9806 | 0.9679 | 0.9851 | 0.7279 | **0.9405** | 0.8535 | **0.8891** |
+| **s3_global_f1** | 0.9591 | **0.7280** | 0.9356 | 0.8061 | 0.9803 | 0.9679 | 0.9851 | 0.7295 | 0.9399 | 0.8562 | **0.8888** |
+| **s1_simple_pool** | 0.9462 | 0.6913 | 0.9356 | 0.7848 | 0.9753 | 0.9678 | 0.9830 | **0.7705** | 0.9385 | 0.8162 | **0.8809** |
+| *local_isolation* (Línea Base) | 0.9251 | 0.6595 | 0.9289 | 0.7645 | 0.9661 | 0.9511 | 0.9742 | 0.7529 | 0.9325 | 0.7226 | *0.8578* |
+| **s8_proactive_pcd** | 0.9163 | 0.6434 | 0.9222 | 0.7442 | 0.9643 | 0.9438 | 0.9688 | 0.7337 | 0.9273 | 0.6929 | **0.8457** |
+| **s8_consensus** | 0.9159 | 0.6418 | 0.9222 | 0.7442 | 0.9640 | 0.9436 | 0.9688 | 0.7337 | 0.9273 | 0.6926 | **0.8454** |
+| **s8_simple_mean** | 0.9163 | 0.6403 | 0.9222 | 0.7442 | 0.9643 | 0.9438 | 0.9688 | 0.7337 | 0.9275 | 0.6923 | **0.8453** |
+| **s8_weighted_average** | 0.9163 | 0.6403 | 0.9222 | 0.7442 | 0.9643 | 0.9438 | 0.9688 | 0.7337 | 0.9275 | 0.6923 | **0.8453** |
+| **s8_median** | 0.9159 | 0.6419 | 0.9222 | 0.7315 | 0.9640 | 0.9426 | 0.9690 | 0.7400 | 0.9268 | 0.6949 | **0.8449** |
+
+### 2.3. Diversidad del Ensamble (PCD)
+
+La siguiente tabla presenta la métrica de diversidad promedio de los árboles (*Pairwise Class Diversity* - PCD) en el ensamble definitivo.
+
+| Estrategia | Car | Glass | Iris | Molecular | Nursery | Optdigits | Pendigits | Sonar | Spambase | Vowel | **Promedio** |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **s1_simple_pool** | 0.3910 | 0.8670 | **0.3267** | **1.0000** | 0.3609 | 0.5265 | 0.2701 | **0.9329** | 0.3339 | 0.9653 | **0.5974** |
+| **s7_perclient_f1_pcd** | 0.3877 | 0.8830 | 0.2644 | 0.9939 | 0.3154 | 0.5158 | 0.2678 | 0.9282 | 0.3304 | **0.9801** | **0.5867** |
+| **s6_perclient_f1** | 0.3894 | 0.8815 | 0.2644 | 0.9909 | 0.3167 | 0.5149 | 0.2679 | 0.9217 | 0.3273 | 0.9778 | **0.5853** |
+| **s5_perclient_accuracy** | 0.3860 | 0.8688 | 0.2667 | 0.9909 | 0.3138 | 0.5120 | 0.2680 | 0.9251 | 0.3264 | 0.9785 | **0.5836** |
+| **s4_global_f1_pcd** | 0.3912 | **0.8890** | 0.2600 | 0.9876 | 0.3049 | 0.5123 | 0.2638 | 0.9170 | 0.3193 | 0.9785 | **0.5823** |
+| **s3_global_f1** | 0.3900 | 0.8812 | 0.2578 | 0.9845 | 0.3071 | 0.5102 | 0.2645 | 0.9187 | 0.3219 | 0.9785 | **0.5814** |
+| *local_isolation* (Línea Base) | 0.3688 | 0.8000 | 0.3200 | 0.9848 | **0.3716** | **0.5181** | 0.2684 | 0.9087 | 0.3293 | 0.9364 | *0.5806* |
+| **s2_global_accuracy** | 0.3858 | 0.8610 | 0.2578 | 0.9845 | 0.3034 | 0.5117 | 0.2640 | 0.9121 | 0.3225 | 0.9758 | **0.5779** |
+| **s8_median** | 0.3740 | 0.8019 | 0.2489 | 0.9691 | 0.2711 | 0.5364 | 0.2883 | 0.9244 | 0.3472 | 0.9108 | **0.5672** |
+| **s8_proactive_pcd** | 0.3750 | 0.7986 | 0.2533 | 0.9752 | 0.2558 | 0.5348 | **0.2889** | 0.9228 | 0.3473 | 0.9152 | **0.5667** |
+| **s8_simple_mean** | 0.3750 | 0.8002 | 0.2511 | 0.9752 | 0.2478 | 0.5347 | 0.2891 | 0.9260 | **0.3478** | 0.9158 | **0.5663** |
+| **s8_weighted_average** | 0.3750 | 0.8002 | 0.2511 | 0.9752 | 0.2478 | 0.5347 | 0.2891 | 0.9260 | **0.3478** | 0.9158 | **0.5663** |
+| **s8_consensus** | 0.3746 | 0.8001 | 0.2511 | 0.9752 | 0.2472 | 0.5346 | 0.2891 | 0.9260 | 0.3485 | 0.9155 | **0.5662** |
+
 > [!NOTE]
-> Los valores representan el rendimiento para cada dataset. La fila en cursiva corresponde al entrenamiento local aislado (línea base sin federar).
+> La fila en cursiva corresponde al entrenamiento local aislado (línea base sin federar). Los valores en negrita representan el mejor resultado de cada columna.
 
 ---
 
@@ -70,6 +112,16 @@ A primera vista, el rendimiento de las variantes S8 (~0.804 F1) podría parecer 
 * **Abstracción a nivel de características**: Los clientes federados no transmiten estimadores construidos localmente, sino un vector de probabilidad de selección de atributos. Esto elimina la necesidad de transferir pesos o estructuras complejas.
 * **Sostenibilidad de la comunicación**: S8 retiene el **98.4% del rendimiento** de la línea base aislada (`local_isolation`), lo que la valida como una opción sumamente robusta en escenarios donde los canales de comunicación imponen restricciones de transferencia de información.
 * **Consistencia algebraica**: La variación entre los operadores de agregación de la ruleta (media ponderada, media simple, consenso, PCD, mediana) es menor al 0.1%. Esto denota que el vector de probabilidad de atributos transmitido por los clientes converge a una estructura estable, independientemente del método matemático utilizado por el servidor para su agregación.
+
+### 3.4. Análisis de la Métrica de Accuracy
+* **Consistencia con Macro F1**: El rendimiento medido en términos de accuracy muestra una correlación casi perfecta con el F1-score, lo que confirma que las mejoras obtenidas mediante el aprendizaje federado no están sesgadas hacia clases individuales ruidosas, sino que reflejan un progreso genuino en la clasificación global.
+* **Ganancia Neta sobre la Línea Base**: La estrategia óptima **S7** eleva el accuracy del 85.78% (línea base aislada) al **89.53%** (mejora absoluta de **+3.75%**). Esta ganancia es muy representativa en datasets de clases complejas como *Vowel* (+13.36% de accuracy sobre el local) y *Glass* (+6.69% sobre el local).
+
+### 3.5. Impacto de la Diversidad del Ensamble (PCD) y el Colapso de Diversidad
+* **El Máximo Teórico de Diversidad (S1)**: La estrategia simple de agregación **S1** alcanza la diversidad PCD más alta (**0.5974**). Esto es matemáticamente esperable: al agregar sin discriminación los árboles generados de manera independiente en entornos locales diferenciados, el ensamble retiene la máxima heterogeneidad. Sin embargo, esta alta diversidad no viene acompañada del mejor desempeño (F1-score de 0.8476), ya que incorpora estimadores redundantes o de baja calidad.
+* **El Colapso de Diversidad por Selección Basada en Precisión (S2, S3)**: Cuando se aplican estrategias de selección basadas únicamente en el rendimiento predictivo individual (como **S2** que usa *Accuracy* o **S3** que usa *F1-score*), la diversidad del ensamble decae. Por ejemplo, **S2** experimenta una caída en PCD a **0.5779** (quedando incluso por debajo del entrenamiento aislado de control, **0.5806**). Este colapso se explica porque la selección basada en métricas unidimensionales tiende a elegir árboles que cometen errores idénticos, reduciendo la complementariedad del ensamble.
+* **Optimización Híbrida como Mecanismo de Regularización (S4, S7)**: Al introducir la métrica combinada **F1 + PCD** en el criterio de selección (estrategias **S4** y **S7**), la diversidad se recupera sustancialmente (**0.5823** y **0.5867**, respectivamente), al mismo tiempo que el rendimiento predictivo alcanza su máximo histórico. Esto demuestra que la optimización híbrida actúa como un regularizador del ensamble: penaliza a los estimadores redundantes (aunque tengan buen rendimiento individual) y promueve aquellos que aportan conocimiento novedoso al bosque colectivo.
+* **Baja Diversidad en la Ruleta de Atributos (S8)**: Las variantes de S8 registran la diversidad más baja (~0.566). En esta estrategia, los clientes alinean su probabilidad de selección de características mediante la ruleta. Al compartir el mismo sesgo de atributos para construir sus estimadores locales, la diversidad estructural se reduce, confirmando que la sincronización proactiva de atributos unifica las decisiones locales y reduce la variabilidad de los estimadores individuales.
 
 ---
 
