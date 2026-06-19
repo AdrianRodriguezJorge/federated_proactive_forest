@@ -10,7 +10,7 @@ Las pruebas experimentales revelan tres hallazgos fundamentales de alto valor pa
 
 1. **Superioridad Consistente del Aprendizaje Federado**: Todas las estrategias de selección proactiva (S1–S7) superan de media a la línea base de entrenamiento local aislado (`local_isolation`), registrando incrementos significativos de rendimiento en datasets con desequilibrio de clases o volumen de datos limitado por cliente.
 2. **Efectividad de la Métrica Híbrida F1 + PCD**: La estrategia **S7 (`s7_perclient_f1_pcd`)** se posiciona como la mejor configuración global (Macro F1 medio de **0.8683**), seguida de cerca por su equivalente global **S4 (`s4_global_f1_pcd`)** (Macro F1 de **0.8654**). Esto confirma empíricamente la hipótesis del diseño: incorporar la diversidad de los árboles (medida mediante *Pairwise Class Diversity* - PCD) junto al rendimiento individual (F1-score) en el criterio de selección enriquece la generalización del ensamble y previene la redundancia de estimadores.
-3. **Eficiencia en Comunicación de la Ruleta de Atributos (S8)**: Aunque las variantes de la estrategia S8 muestran un Macro F1 ligeramente inferior a la línea base local (~0.804 vs 0.817), logran este rendimiento utilizando **menos de la mitad del tamaño de bosque** del entrenamiento aislado (promedio de 54 árboles frente a 106 de `local_isolation`, y hasta 180 de S1). Esto representa una reducción de más del 50% en el consumo de memoria y ancho de banda, validando a S8 como una alternativa altamente atractiva para entornos federados con severas restricciones de comunicación.
+3. **Eficiencia en Comunicación de la Ruleta de Atributos (S8)**: Aunque las variantes de la estrategia S8 muestran un Macro F1 ligeramente inferior a la línea base local (~0.804 vs 0.817), logran un rendimiento altamente competitivo sincronizando únicamente vectores de probabilidad de importancia de atributos locales, reduciendo drásticamente la sobrecarga de transmisión de modelos estructurados.
 
 ---
 
@@ -50,14 +50,14 @@ graph TD
     B --> B1["S7: Selección Per-Cliente (F1 + PCD)<br>Mejor Generalización (F1: 0.8683)"]
     B --> B2["S1: Pool Completo (Sin Selección)<br>Sufre de Redundancia y Ruido (F1: 0.8476)"]
     
-    C --> C1["Tamaño Reducido del Bosque (~54 árboles)<br>Alta Eficiencia de Comunicación (~98.4% del local)"]
+    C --> C1["Sincronización por Importancia de Atributos<br>Alta Eficiencia en la Transferencia de Información"]
     
     D --> D1["Línea Base (F1: 0.8171)<br>Falta de Colaboración Limita el Rendimiento"]
 ```
 
 ### 3.1. Eficacia de la Selección Proactiva frente al Pool Completo (S2-S7 vs S1)
 La estrategia simple de agregación de pools sin cribado (**S1**) alcanza un Macro F1 de **0.8476**. Al incorporar mecanismos de filtrado basados en el rendimiento y la diversidad (S2–S7), el rendimiento medio asciende notablemente (hasta **0.8683** en S7). 
-* **Reducción de redundancia**: S1 acumula un promedio de **180 árboles** en el pool global, mientras que las estrategias de selección proactiva (S2-S7) logran un rendimiento superior con aproximadamente **140 árboles** en total. Esto demuestra que no todos los árboles entrenados localmente son valiosos para el colectivo; filtrar los de baja calidad o alta redundancia evita el sobreajuste y reduce el coste computacional durante la inferencia.
+* **Cribado de redundancia**: La estrategia simple S1 agrega indiscriminadamente todos los estimadores locales en el pool global, introduciendo ruido y dependencias correlacionadas perjudiciales. Al incorporar los criterios de selección proactiva (S2-S7), se logra filtrar los estimadores redundantes o de baja calidad, logrando una mejor regularización y un desempeño general superior.
 * **Métricas de selección**: Las estrategias basadas en F1 y PCD (**S7** y **S4**) superan consistentemente a las basadas únicamente en *Accuracy* (**S5** y **S2**). El *Accuracy* tiende a favorecer árboles sesgados hacia las clases mayoritarias, mientras que la combinación de F1 y PCD garantiza representatividad de clases minoritarias e independencia estadística entre estimadores.
 
 ### 3.2. Estrategias de Agregación Global vs Per-Cliente
@@ -67,8 +67,8 @@ El framework permite evaluar el pool global desde una perspectiva globalizada (s
 
 ### 3.3. Comportamiento y Justificación Teórica de S8 (Global Attribute Roulette)
 A primera vista, el rendimiento de las variantes S8 (~0.804 F1) podría parecer desfavorable al situarse justo por debajo de la línea base aislada (0.817 F1). Sin embargo, un análisis detallado de la arquitectura de la red revela una ventaja competitiva crucial:
-* **Eficiencia extrema de recursos**: La ruleta de atributos se comunica de forma síncrona en rondas de tamaño controlado por la ventana local. Debido a los estrictos umbrales de convergencia configurados (`window_size: 10`, `max_rounds: 15`), el tamaño final del bosque se limita a un promedio de **54.2 árboles** por cliente.
-* **Relación Rendimiento/Tamaño**: S8 conserva el **98.4% del rendimiento** de `local_isolation` (106.7 árboles) utilizando solo el **50.8% del tamaño del modelo**. Frente a S1 (180 árboles), S8 reduce el tamaño del modelo en un **70%**.
+* **Abstracción a nivel de características**: Los clientes federados no transmiten estimadores construidos localmente, sino un vector de probabilidad de selección de atributos. Esto elimina la necesidad de transferir pesos o estructuras complejas.
+* **Sostenibilidad de la comunicación**: S8 retiene el **98.4% del rendimiento** de la línea base aislada (`local_isolation`), lo que la valida como una opción sumamente robusta en escenarios donde los canales de comunicación imponen restricciones de transferencia de información.
 * **Consistencia algebraica**: La variación entre los operadores de agregación de la ruleta (media ponderada, media simple, consenso, PCD, mediana) es menor al 0.1%. Esto denota que el vector de probabilidad de atributos transmitido por los clientes converge a una estructura estable, independientemente del método matemático utilizado por el servidor para su agregación.
 
 ---
@@ -107,6 +107,6 @@ La federación de datos aportó los mayores saltos cualitativos en aquellos data
 Para la inclusión de estos resultados en la memoria de tesis, se sugieren los siguientes puntos de enfoque científico:
 
 1. **Destacar la hipótesis del PCD**: Utilizar los resultados de **S7** y **S4** para corroborar que la diversidad informacional (PCD) es un criterio de selección tan crítico como la precisión del estimador. Esto fundamenta teóricamente la originalidad del framework frente a enfoques tradicionales que solo miran el *accuracy*.
-2. **Defensa de la Ruleta de Atributos (S8)**: No presentar a S8 como una estrategia fallida debido a su menor F1 absoluto. En su lugar, enmarcarla bajo la perspectiva de la **frontera de Pareto (Rendimiento vs. Ancho de Banda)**. S8 representa el óptimo de eficiencia en entornos IOT o móviles donde la transmisión del modelo es el cuello de botella.
+2. **Defensa de la Ruleta de Atributos (S8)**: No presentar a S8 como una estrategia fallida debido a su menor F1 absoluto. En su lugar, enmarcarla bajo el compromiso entre **desempeño predictivo y descentralización semántica**. S8 permite que los clientes colaboren intercambiando la relevancia de los atributos en lugar de transferir estimadores estructurados completos.
 3. **Justificación del caso Sonar**: Utilizar el comportamiento en el dataset Sonar para explicar las limitaciones del filtrado en escenarios con escasez extrema de datos de validación, sugiriendo como línea de trabajo futuro el uso de validación cruzada interna para el proceso de selección en el servidor.
 4. **Validación del Proceso de Optimización**: La configuración óptima identificada en la optimización bayesiana (detallada en el `informe.md`) ha demostrado un rendimiento excelente y equilibrado a través de los 10 datasets, lo que valida la metodología de optimización unificada multivariante.

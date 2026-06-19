@@ -1,120 +1,135 @@
 import os
-import json
 import pandas as pd
 import numpy as np
 from scipy.stats import friedmanchisquare, wilcoxon
 
-# 1. Definir los resultados de la Tesis de Nayma (Baseline Centralizado) extraídos del CSV
-NAYMA_F1 = {
-    "Iris": 0.954981,
-    "Car": 0.945782,
-    "Nursery": 0.954848,
-    "Vowel": 0.968468,
-    "Optdigits": 0.982218,
-    "Sonar": 0.823483,
-    "Spambase": 0.952755,
-}
-
-NAYMA_ACC = {
-    "Iris": 0.956000,
-    "Car": 0.976626,
-    "Nursery": 0.995911,
-    "Vowel": 0.971919,
-    "Optdigits": 0.983236,
-    "Sonar": 0.848299,
-    "Spambase": 0.953880,
-}
-
-NAYMA_PCD = {
-    "Iris": 0.112000,
-    "Car": 0.309630,
-    "Nursery": 0.396870,
-    "Vowel": 0.937000,
-    "Optdigits": 0.583070,
-    "Sonar": 0.907250,
-    "Spambase": 0.330740,
-}
-
-def run_single_fold_analysis() -> None:
-    """Loads comparative F1, Accuracy, and PCD JSON and runs Friedman and Wilcoxon tests."""
-    json_path = os.path.join("results", "benchmark_single_fold_results.json")
-    
-    if not os.path.exists(json_path):
-        print(f"Error: No se encontró el archivo de benchmark {json_path}")
-        return
-
-    # Leer resultados del benchmark federado
-    with open(json_path, 'r', encoding='utf-8') as f:
-        json_data = json.load(f)
+def parse_markdown_tables(filepath):
+    if not os.path.exists(filepath):
+        raise FileNotFoundError(f"No se encontró el archivo: {filepath}")
         
-    results = json_data["results"]
-    common_datasets = list(NAYMA_F1.keys())
+    with open(filepath, "r", encoding="utf-8") as f:
+        lines = f.readlines()
+    
+    tables = {}
+    current_table_name = None
+    table_lines = []
+    
+    def parse_lines_to_df(t_lines):
+        header_line = t_lines[0]
+        headers = [h.strip().replace("**", "") for h in header_line.split("|")[1:-1]]
+        
+        data = []
+        for line in t_lines[2:]:  # skip header and separator
+            row = [cell.strip().replace("**", "") for cell in line.split("|")[1:-1]]
+            if row:
+                data.append(row)
+                
+        df = pd.DataFrame(data, columns=headers)
+        df = df.set_index(headers[0])
+        for col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors='coerce')
+        return df
 
-    # Extraer registros federados
-    records = []
-    for dataset, strategies in results.items():
-        if dataset not in common_datasets:
-            continue
-        for strategy, details in strategies.items():
-            if details.get("success"):
-                metrics = details.get("metrics", {})
-                records.append({
-                    "Dataset": dataset,
-                    "Strategy": strategy,
-                    "Accuracy": metrics.get("accuracy"),
-                    "F1": metrics.get("f1"),
-                    "PCD": metrics.get("pcd")
-                })
-    df_fed = pd.DataFrame(records)
+    for line in lines:
+        line_str = line.strip()
+        if line_str.startswith("**Tabla"):
+            if current_table_name and table_lines:
+                tables[current_table_name] = parse_lines_to_df(table_lines)
+                table_lines = []
+            if "Exactitud" in line_str or "accuracy" in line_str.lower():
+                current_table_name = "Accuracy"
+            elif "Macro-F1" in line_str or "f1" in line_str.lower():
+                current_table_name = "F1"
+            elif "PCD" in line_str:
+                current_table_name = "PCD"
+            else:
+                current_table_name = line_str
+        elif line_str.startswith("|"):
+            table_lines.append(line_str)
+            
+    if current_table_name and table_lines:
+        tables[current_table_name] = parse_lines_to_df(table_lines)
+        
+    return tables
 
-    # Pivotear la tabla de resultados para F1
-    df_f1 = df_fed.pivot(index="Dataset", columns="Strategy", values="F1")
-    df_f1["Centralized"] = df_f1.index.map(NAYMA_F1)
-    df_f1 = df_f1.loc[common_datasets]
-
-    # Preparar datos para Friedman
-    strategies = [col for col in df_f1.columns if col != "Centralized"]
-    columns_friedman = [df_f1["Centralized"].values] + [df_f1[strat].values for strat in strategies]
-
+def analyze_metric(metric_name, df):
+    baseline_col = "PF Cent."
+    if baseline_col not in df.columns:
+        raise ValueError(f"La columna de baseline '{baseline_col}' no se encuentra en el DataFrame.")
+        
+    strategies = [col for col in df.columns if col != baseline_col]
+    columns_friedman = [df[baseline_col].values] + [df[strat].values for strat in strategies]
+    
     print("=" * 80)
-    print("--- ANÁLISIS ESTADÍSTICO DE COMPARACIÓN DE EFICACIA (F1-score) ---")
+    print(f"--- ANÁLISIS ESTADÍSTICO PARA LA MÉTRICA: {metric_name} ---")
     print("=" * 80)
-    print(f"Datasets analizados ({len(common_datasets)}): {', '.join(common_datasets)}")
-    print(f"Resultados de benchmark cargados de: {json_path}\n")
-
+    print(f"Datasets analizados ({len(df.index)}): {', '.join(df.index)}\n")
+    
     # Friedman Test
     stat_global, p_friedman_global = friedmanchisquare(*columns_friedman)
     print("PASO 1: Test de Friedman (Diferencias Globales)")
     print(f"  Estadístico: {stat_global:.4f}")
-    print(f"  p-value: {p_friedman_global:.6f}")
+    print(f"  p-value: {p_friedman_global:.6e}")
     if p_friedman_global < 0.05:
         print("  Conclusión: EXISTEN diferencias significativas globales (p < 0.05).")
     else:
         print("  Conclusión: NO existen diferencias significativas globales.")
     print("-" * 80)
-
+    
     # Wilcoxon Tests
     print("PASO 2: Análisis Post-hoc (Centralizado vs Cada Estrategia)")
-    print(f"{'Estrategia':<25} | {'Mean F1':<10} | {'p-value':<10} | {'Diferencia':<10} | {'Significativa':<12}")
+    print(f"{'Estrategia':<25} | {'Mean ' + metric_name:<12} | {'p-value':<12} | {'Diferencia':<10} | {'Significativa':<12}")
     print("-" * 80)
     
-    mean_cent = df_f1["Centralized"].mean()
-    print(f"{'* Centralized PF *':<25} | {mean_cent:.6f} | {'-':<10} | {'-':<10} | Baseline")
+    mean_cent = df[baseline_col].mean()
+    print(f"{'* ' + baseline_col + ' *':<25} | {mean_cent:.6f} | {'-':<12} | {'-':<10} | Baseline")
     
-    sorted_strategies = sorted(strategies, key=lambda s: df_f1[s].mean(), reverse=True)
+    # Decidir orden de las estrategias basándose en la métrica.
+    sorted_strategies = sorted(strategies, key=lambda s: df[s].mean(), reverse=True)
+    
     for strat in sorted_strategies:
-        mean_strat = df_f1[strat].mean()
+        mean_strat = df[strat].mean()
         diff = mean_strat - mean_cent
         try:
-            _, p_w = wilcoxon(df_f1["Centralized"].values, df_f1[strat].values)
+            _, p_w = wilcoxon(df[baseline_col].values, df[strat].values)
             sig = "Sí (p<0.05)" if p_w < 0.05 else "No"
             p_w_str = f"{p_w:.6f}"
-        except Exception:
-            p_w_str = "Error"
+        except Exception as e:
+            p_w_str = "Error/Empate"
             sig = "N/A"
-        print(f"{strat:<25} | {mean_strat:.6f} | {p_w_str:<10} | {diff:+.6f} | {sig:<12}")
+        print(f"{strat:<25} | {mean_strat:.6f} | {p_w_str:<12} | {diff:+.6f} | {sig:<12}")
+    print("=" * 80 + "\n")
+
+def main():
+    possible_paths = [
+        "tablas.md",
+        "../tablas.md",
+        os.path.join(os.path.dirname(__file__), "tablas.md") if "__file__" in locals() or "__file__" in globals() else "",
+        os.path.join(os.path.dirname(__file__), "..", "tablas.md") if "__file__" in locals() or "__file__" in globals() else "",
+    ]
+    
+    filepath = None
+    for path in possible_paths:
+        if path and os.path.exists(path):
+            filepath = path
+            break
+            
+    if not filepath:
+        print("Error: No se encontró 'tablas.md' en los directorios esperados.")
+        return
         
-    print("=" * 80)
+    print(f"Cargando datos desde: {filepath}\n")
+    try:
+        tables = parse_markdown_tables(filepath)
+    except Exception as e:
+        print(f"Error al analizar el archivo markdown: {e}")
+        return
+        
+    for name in ["Accuracy", "F1", "PCD"]:
+        if name in tables:
+            analyze_metric(name, tables[name])
+        else:
+            print(f"Advertencia: No se encontró la tabla para la métrica '{name}'.")
 
 if __name__ == "__main__":
-    run_single_fold_analysis()
+    main()
