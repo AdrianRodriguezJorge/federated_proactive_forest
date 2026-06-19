@@ -12,6 +12,9 @@ Las pruebas experimentales revelan tres hallazgos fundamentales de alto valor pa
 2. **Efectividad de la Métrica Híbrida F1 + PCD**: La estrategia **S7 (`s7_perclient_f1_pcd`)** se posiciona como la mejor configuración global (Macro F1 medio de **0.8683**), seguida de cerca por su equivalente global **S4 (`s4_global_f1_pcd`)** (Macro F1 de **0.8654**). Esto confirma empíricamente la hipótesis del diseño: incorporar la diversidad de los árboles (medida mediante *Pairwise Class Diversity* - PCD) junto al rendimiento individual (F1-score) en el criterio de selección enriquece la generalización del ensamble y previene la redundancia de estimadores.
 3. **Eficiencia en Comunicación de la Ruleta de Atributos (S8)**: Aunque las variantes de la estrategia S8 muestran un Macro F1 ligeramente inferior a la línea base local (~0.804 vs 0.817), logran un rendimiento altamente competitivo sincronizando únicamente vectores de probabilidad de importancia de atributos locales, reduciendo drásticamente la sobrecarga de transmisión de modelos estructurados.
 
+> [!NOTE]
+> **Definición de Aislamiento Local (`local_isolation` / `local`)**: Esta línea base de control representa el escenario de entrenamiento tradicional donde cada cliente de la red construye su modelo *Proactive Forest* de forma estrictamente local utilizando únicamente sus propios datos. En esta configuración no existe ningún tipo de transferencia de información, estimadores, agregación en el servidor o comunicación entre nodos. Sirve como el punto de comparación fundamental para cuantificar el beneficio neto (ganancia de rendimiento predictivo, generalización y robustez) aportado por la colaboración federada frente a no colaborar.
+
 ---
 
 ## 2. Matrices de Resultados Globales
