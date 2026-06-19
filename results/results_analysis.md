@@ -162,7 +162,32 @@ La federación de datos aportó los mayores saltos cualitativos en aquellos data
 
 ---
 
-## 5. Recomendaciones y Conclusiones para la Redacción de la Tesis
+## 5. Análisis de Significancia Estadística (Tests de Friedman y Wilcoxon)
+
+Para validar si las diferencias observadas en las métricas predictivas (Macro-F1 y Accuracy) y de diversidad (PCD) son estadísticamente significativas, se llevó a cabo un análisis formal en dos etapas: el test de Friedman para diferencias globales y el test de rangos con signo de Wilcoxon como análisis *post-hoc* para comparaciones pareadas contra el modelo de control centralizado (*PF Centralizado*).
+
+### 5.1. Análisis de Accuracy
+* **Test de Friedman (Global)**: Se obtuvo un estadístico de **102.3794** con un *p-valor* de $5.73 \times 10^{-16}$. Dado que el *p-valor* es significativamente menor que el nivel de significancia estándar $\alpha = 0.05$, se rechaza la hipótesis nula, confirmando la existencia de diferencias globales estadísticamente significativas entre las estrategias evaluadas.
+* **Análisis Post-hoc de Wilcoxon (vs. PF Centralizado)**:
+  * Todas las comparaciones individuales entre el *PF Centralizado* (baseline) y las estrategias federadas/locales (desde S7 hasta S8) arrojaron un *p-valor* de **0.001953** (el límite inferior posible para 10 observaciones del test de Wilcoxon de dos colas).
+  * **Conclusión**: El modelo centralizado es estadísticamente superior en *accuracy* a todas las demás estrategias evaluadas con un nivel de confianza del 95%. La brecha observada, aunque numéricamente pequeña en algunos escenarios (p. ej., -0.0425 para S7), es estadísticamente consistente a través de los diversos datasets.
+
+### 5.2. Análisis de Macro F1-Score
+* **Test de Friedman (Global)**: El estadístico obtenido fue de **102.2866** con un *p-valor* de $5.97 \times 10^{-16}$. Se rechaza la hipótesis nula, estableciendo que existen diferencias de rendimiento predictivo globales estadísticamente significativas.
+* **Análisis Post-hoc de Wilcoxon (vs. PF Centralizado)**:
+  * Al igual que con el *accuracy*, la comparación pareada contra el *PF Centralizado* arrojó un *p-valor* de **0.001953** para todas las estrategias (S7, S4, S6, S3, S5, S2, S1, Local y las variantes de S8).
+  * **Conclusión**: Ninguna estrategia federada logra alcanzar el rendimiento del modelo centralizado de manera que la diferencia sea atribuible al azar; el dominio predictivo de la cota superior centralizada es estadísticamente significativo.
+
+### 5.3. Análisis de Diversidad (PCD)
+* **Test de Friedman (Global)**: Se obtuvo un estadístico de **18.1671** con un *p-valor* de **0.1512**. 
+  * **Conclusión**: Dado que el *p-valor* es mayor que $\alpha = 0.05$, **no se rechaza la hipótesis nula**. Esto significa que no existen diferencias globales estadísticamente significativas en cuanto a la diversidad estructural (PCD) entre las diferentes configuraciones del ensamble.
+* **Análisis Post-hoc de Wilcoxon (vs. PF Centralizado)**:
+  * En línea con el test global, las comparaciones pareadas contra el *PF Centralizado* no mostraron diferencias significativas en ningún caso (S1 vs. Centralizado: $p = 0.1601$; S7 vs. Centralizado: $p = 0.4316$; variantes de S8 vs. Centralizado: $p = 1.0000$).
+  * **Interpretación de la Diversidad**: Aunque las estrategias federadas (especialmente S1 y S7) muestran promedios globales de diversidad superiores a la cota centralizada (0.5974 y 0.5867 frente a 0.5623, respectivamente), el análisis estadístico demuestra que la inyección de variabilidad observada no es estadísticamente significativa bajo un nivel de confianza del 95%. Esto sugiere que la variabilidad local del no-IID genera diferencias de diversidad que dependen fuertemente del dataset individual (por ejemplo, en *Iris* o *Pendigits* el colapso del centralizado es drástico, pero en otros como *Nursery* o *Glass* las diferencias son mínimas o inversas), evitando una tendencia estadísticamente generalizable.
+
+---
+
+## 6. Recomendaciones y Conclusiones para la Redacción de la Tesis
 
 Para la inclusión de estos resultados en la memoria de tesis, se sugieren los siguientes puntos de enfoque científico:
 
