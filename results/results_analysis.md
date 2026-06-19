@@ -190,7 +190,134 @@ Para validar si las diferencias observadas en las métricas predictivas (Macro-F
 
 ---
 
-## 6. Recomendaciones y Conclusiones para la Redacción de la Tesis
+## 6. Metodología Detallada y Resultados del Análisis Estadístico Comparativo
+
+Este apartado detalla tanto la metodología estadística adoptada como los resultados numéricos obtenidos al evaluar y comparar el rendimiento de las diferentes estrategias de aprendizaje federado frente al modelo centralizado (**Proactive Forest Centralizado**) a través de múltiples bases de datos, incorporando la totalidad de la información metodológica y de contraste.
+
+### 6.1. Diseño Experimental
+
+El análisis compara un conjunto de algoritmos o estrategias de aprendizaje (tratamientos) sobre un grupo de bases de datos (bloques). 
+
+* **Bases de datos ($N = 10$)**: Car, Glass, Iris, Molecular, Nursery, Optdigits, Pendigits, Sonar, Spambase, Vowel.
+* **Estrategias ($k = 13$)**:
+  * **Baseline Centralizado**: `PF Cent.` (Proactive Forest Centralizado).
+  * **Estrategias Federadas Directas**: `S1`, `S2`, `S3`, `S4`, `S5`, `S6`, `S7`.
+  * **Estrategias Federadas con Agregación (Variantes S8)**: `S8_Mean`, `S8_Weighted`, `S8_Median`, `S8_Consensus`, `S8_PCD`.
+* **Métricas Evaluadas**:
+  1. **Exactitud (Accuracy)**: Medida global de clasificación correcta.
+  2. **PCD (Diversity)**: Medida de diversidad estructural de los bosques.
+
+Dado que las distribuciones de las métricas de rendimiento en aprendizaje automático no suelen cumplir con los supuestos de normalidad y homocedasticidad requeridos por las pruebas paramétricas (como ANOVA), se adopta un **enfoque estadístico no paramétrico**, de acuerdo con las recomendaciones metodológicas de Demšar (2006) para la comparación de clasificadores sobre múltiples conjuntos de datos.
+
+### 6.2. Procedimiento Estadístico
+
+El análisis se estructura en dos fases consecutivas y condicionales: una prueba global de diferencias (Test de Friedman) y un análisis post-hoc por parejas con corrección por comparaciones múltiples (Procedimiento de Holm).
+
+```mermaid
+graph TD
+    A[Inicio del Análisis por Métrica] --> B[Fase 1: Test de Friedman]
+    B --> C{p-value < 0.05?}
+    C -- Sí --> D[Existen diferencias globales significativas]
+    C -- No --> E[No existen diferencias globales significativas]
+    D --> F[Fase 2: Análisis Post-hoc con Ajuste de Holm]
+    E --> G[Fin del Análisis: Detener ejecución]
+    F --> H[Comparación Pareada contra PF Cent.]
+    H --> G
+```
+
+#### Fase 1: Test de Friedman (Comparación Global)
+
+El test de Friedman es el equivalente no paramétrico de la prueba ANOVA de medidas repetidas. Se utiliza para contrastar si al menos uno de los métodos presenta un comportamiento significativamente distinto de los demás.
+
+1. **Hipótesis Nula ($H_0$)**: Las medianas de las diferencias de rendimiento entre todos los métodos son iguales (todas las estrategias tienen un rendimiento equivalente en promedio).
+2. **Hipótesis Alternativa ($H_1$)**: Al menos una de las estrategias tiene un rendimiento significativamente diferente al de las demás.
+3. **Cálculo del Estadístico**:
+   Los valores de rendimiento para cada base de datos se ordenan por rangos de $1$ a $k$ (donde $1$ representa el peor rendimiento y $k$ el mejor). El estadístico de Friedman se distribuye aproximadamente como una distribución chi-cuadrado ($\chi^2$) con $k - 1$ grados de libertad:
+   
+   $$\chi_F^2 = \frac{12N}{k(k+1)} \left[ \sum_{j=1}^k R_j^2 - \frac{k(k+1)^2}{4} \right]$$
+   
+   Donde $R_j$ es la suma de los rangos para la estrategia $j$-ésima, $N=10$ y $k=13$.
+4. **Criterio de Decisión**: Si el valor de probabilidad obtenido ($p$-value) es menor que el nivel de significancia establecido ($\alpha = 0.05$), se rechaza $H_0$ y se procede a la Fase 2.
+
+#### Fase 2: Análisis Post-hoc con Ajuste de Holm
+
+> [!WARNING]
+> **Advertencia Metodológica**: Esta segunda fase está estrictamente condicionada al rechazo de la hipótesis nula en la Fase 1. Si la prueba de Friedman no es significativa ($p \ge 0.05$), no se permite proceder al análisis post-hoc, deteniéndose el flujo para evitar el incremento de falsos positivos.
+
+Cuando el test de Friedman detecta diferencias significativas globales, se realiza una comparación post-hoc enfocada en evaluar cada estrategia federada individualmente contra el baseline de control (`PF Cent.`). Para ello, se utiliza la **prueba de rangos con signo de Wilcoxon** para muestras dependientes.
+
+Dado que realizar múltiples pruebas de hipótesis simultáneas incrementa linealmente la Tasa de Error por Familia (FWER - *Family-Wise Error Rate*), se aplica el **procedimiento secuencial descendente de Holm** (Holm, 1979) para ajustar los p-valores.
+
+##### Funcionamiento del Procedimiento de Holm:
+1. Se calculan los p-valores originales (crudos) de las $m = k - 1$ comparaciones ($12$ comparaciones en este estudio).
+2. Se ordenan de menor a mayor: $p_1 \le p_2 \le \dots \le p_m$.
+3. Cada p-valor $p_i$ se compara secuencialmente con un nivel de significancia adaptado:
+   
+   $$\alpha_i = \frac{\alpha}{m - i + 1}$$
+   
+4. Si $p_i < \alpha_i$, se rechaza la hipótesis nula correspondiente y se continúa con el siguiente nivel. En el momento en que un p-valor no cumpla la condición de rechazo ($p_i \ge \alpha_i$), el procedimiento se detiene inmediatamente, y todas las hipótesis restantes se declaran como no significativas.
+5. El p-valor ajustado de Holm se calcula como:
+   
+   $$p^{\text{adj}}_i = \min\left(1, \max_{j \le i} \left( (m - j + 1) \cdot p_j \right)\right)$$
+
+La decisión de significancia final se basa de manera exclusiva en si el p-valor ajustado de Holm es inferior al umbral global establecido ($\alpha = 0.05$).
+
+### 6.3. Resultados Experimentales y Análisis Estadístico
+
+A continuación se exponen los resultados numéricos obtenidos tras ejecutar el pipeline de análisis condicional.
+
+#### 6.3.1. Exactitud (Accuracy)
+
+* **Test de Friedman**:
+  * Estadístico $\chi_F^2$: `91.9977`
+  * $p$-value: `2.024176e-14`
+  * **Conclusión**: **Existen diferencias globales significativas** ($p < 0.05$) en la exactitud. Se autoriza la ejecución del análisis post-hoc.
+
+* **Resultados Wilcoxon con Ajuste de Holm (PF Cent. como Control)**:
+
+| Estrategia | Mean Accuracy | $p$-value (raw) | $p$-value (Holm) | Diferencia de Media | Significativa (Holm, p < 0.05) |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **PF Cent. (Control)** | **0.937810** | **-** | **-** | **-** | **Control** |
+| `S7` | 0.895300 | 0.001953 | 0.023438 | -0.042510 | Sí |
+| `S4` | 0.891500 | 0.001953 | 0.023438 | -0.046310 | Sí |
+| `S6` | 0.890990 | 0.001953 | 0.023438 | -0.046820 | Sí |
+| `S5` | 0.890920 | 0.001953 | 0.023438 | -0.046890 | Sí |
+| `S2` | 0.889110 | 0.001953 | 0.023438 | -0.048700 | Sí |
+| `S3` | 0.888770 | 0.001953 | 0.023438 | -0.049040 | Sí |
+| `S1` | 0.880920 | 0.001953 | 0.023438 | -0.056890 | Sí |
+| `S8_PCD` | 0.845690 | 0.001953 | 0.023438 | -0.092120 | Sí |
+| `S8_Consensus` | 0.845410 | 0.001953 | 0.023438 | -0.092400 | Sí |
+| `S8_Mean` | 0.845340 | 0.001953 | 0.023438 | -0.092470 | Sí |
+| `S8_Weighted` | 0.845340 | 0.001953 | 0.023438 | -0.092470 | Sí |
+| `S8_Median` | 0.844880 | 0.001953 | 0.023438 | -0.092930 | Sí |
+
+* **Interpretación**: Todas las estrategias federadas muestran un descenso en exactitud estadísticamente significativo frente a la versión centralizada tras aplicar el ajuste de Holm. La estrategia federada con menor pérdida es `S7` ($-4.25\%$), seguida de cerca por `S4` ($-4.63\%$). Las variantes de agregación de `S8` presentan el comportamiento más bajo en esta métrica.
+
+#### 6.3.2. Diversidad Estructural (PCD)
+
+* **Test de Friedman**:
+  * Estadístico $\chi_F^2$: `18.7281`
+  * $p$-value: `9.530408e-02`
+  * **Conclusión**: **NO existen diferencias globales significativas** ($p = 0.0953 \ge 0.05$) en cuanto a diversidad estructural. 
+  
+> [!NOTE]
+> De acuerdo con la condición de parada establecida, la evaluación estadística para la métrica PCD finaliza en este punto. No se procede a la aplicación de pruebas post-hoc al no haberse detectado significancia en el contraste global de Friedman.
+
+* **Interpretación**: La diversidad estructural (medida mediante PCD) no muestra diferencias estadísticamente significativas entre el modelo centralizado y el resto de las estrategias. Esto sugiere que las arquitecturas federadas conservan niveles de diversidad en la construcción de los bosques equivalentes a los del modelo centralizado.
+
+### 6.4. Referencias Bibliográficas
+
+#### Formato IEEE:
+* [1] J. Demšar, "Statistical comparisons of classifiers over multiple data sets," *Journal of Machine Learning Research*, vol. 7, no. 1, pp. 1-30, 2006.
+* [2] S. Holm, "A simple sequentially rejective multiple test procedure," *Scandinavian Journal of Statistics*, vol. 6, no. 2, pp. 65-70, 1979.
+
+#### Formato APA:
+* Demšar, J. (2006). Statistical comparisons of classifiers over multiple data sets. *Journal of Machine Learning Research*, 7(1), 1-30.
+* Holm, S. (1979). A simple sequentially rejective multiple test procedure. *Scandinavian Journal of Statistics*, 6(2), 65-70.
+
+---
+
+## 7. Recomendaciones y Conclusiones para la Redacción de la Tesis
 
 Para la inclusión de estos resultados en la memoria de tesis, se sugieren los siguientes puntos de enfoque científico:
 
