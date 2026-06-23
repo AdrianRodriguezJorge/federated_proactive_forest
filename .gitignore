@@ -152,3 +152,6 @@ configs/last_config.json
 *.tmp
 *.temp
 .tmp/
+
+# Windows
+desktop.ini

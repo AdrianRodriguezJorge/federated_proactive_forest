@@ -21,6 +21,7 @@ By balancing **accuracy** (individual tree classification performance) and **div
 *   **Production-Grade Benchmarking**: Fully automated benchmark pipeline (`final_benchmark.py`) with robust checkpoint and recovery mechanisms.
 *   **Statistical Validation**: Non-parametric Friedman tests and Wilcoxon post-hoc analyses with Bonferroni correction for rigorous strategy comparison.
 *   **Python 3.12+ Standardization**: Full compatibility and optimization for Python 3.12+ with updated dependency versions.
+*   **Workspace Cleanup & Hygiene**: Purged Windows-specific configuration files (`desktop.ini`), removed tracking for dynamic run config overrides (`last_config.json`), organized diagnostic/scratchpads into a dedicated gitignored `scratch/` directory, and cleaned temporary python bytecode and test runner caches.
 
 ---
 
@@ -654,10 +655,31 @@ pytest tests/
 
 ### 📋 Test Modules Overview
 *   **`test_aggregation.py`**: Validates the tree combination math for S1 (Simple Pool) and verifies selection boundaries.
+*   **`test_all_strategies_integration.py`**: Integrates and validates all 12 strategies under a common test run.
+*   **`test_config_models.py`**: Ensures that parsing configuration files matches domain-level schemas and validation rules.
+*   **`test_dataset_loaders.py`**: Verifies dataset loading, scaling, and partitioning correctness.
 *   **`test_fix_local_isolation.py`**: Ensures client local models are set up correctly, data is split, and out-of-bag scores are measured without network interaction.
+*   **`test_hybrid_forest.py`**: Tests the hybrid model combinations and custom prediction voting strategies.
+*   **`test_hyperparam_optimizer.py`**: Validates optimizer logic and Optuna search space initialization.
 *   **`test_label_service.py`**: Validates class/index consistency. Ensures that transforming multi-class arrays and executing `inverse_transform` yields identical strings.
 *   **`test_metrics.py`**: Verifies dynamic Percentage Correct Diversity (PCD) calculations under extreme settings (such as zero diversity vs. maximum diversity).
 *   **`test_proactive_forest.py`**: Validates core tree growth, split probabilities, and early stopping threshold activation.
+*   **`test_progressive_forest_wrapper.py`**: Verifies encapsulation of progressive learning ensembles.
+*   **`test_progressive_selector.py`**: Validates client-side and server-side selection criteria under progressive ranking.
+*   **`test_results_logger.py`**: Ensures output CSV formatting, writing, and directory creation are correctly logged.
+*   **`test_s8_roulette.py`**: Tests all S8 roulette variations (Mean, Weighted, Median, Consensus, Proactive PCD).
+*   **`test_tree_ranking_pipeline.py`**: Verifies step-by-step scoring, sorting, and validation filtering.
+*   **`verify_all_strategies.py`**: Comprehensive verification script asserting correctness across all strategies.
+
+### 🛠️ Diagnostic & Scratch Scripts (`scratch/`)
+Diagnostic scripts, temporary work, and convergence scratchpads are kept in the `scratch/` directory (which is ignored by Git). These scripts were used during development to debug specific behaviors and explore model parameters:
+*   **`diagnostic_efficacy_test.py`**: Explores local vs. global classification performance difference.
+*   **`diagnostic_label_bug.py`**: Diagnostic utility for label misalignment issues.
+*   **`diagnostic_strategy_flow.py`**: Analyzes the logic and correctness of strategy execution sequences.
+*   **`scratch_convergence_test.py`**: Simple script to explore Proactive Forest convergence.
+*   **`scratch_convergence_variants.py`**: Explores multiple variations of convergence early stopping criteria.
+*   **`scratch_s8_collapse_test.py`**: Investigates probability vector collapse scenarios in S8 roulette runs.
+*   **`strategy_flow_analyzer.py`**: Tooling to trace tree selection flow metrics.
 
 ---
 
