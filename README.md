@@ -17,7 +17,7 @@ By balancing **accuracy** (individual tree classification performance) and **div
 *   **Deterministic Validation & Seeding Fixes**: Resolved client-side seed alignment and server-side ledger state persistence issues to eliminate run-to-run duplicate results and guarantee scientific reproducibility.
 *   **Enhanced Testing Suite**: Comprehensive test coverage for aggregation strategies, label services, and federated orchestration.
 *   **Improved CLI Integration**: Streamlined command-line interface with better error handling and configuration validation.
-*   **Optimized Hyperparameter Search**: Integrated Optuna-driven Bayesian search and optimization (`run_unified_optimization.py`, `unified_hyperparameter_search.py`) for faster convergence analysis.
+*   **Optimized Hyperparameter Search**: Integrated Optuna-driven Bayesian search and optimization (`run_optimization.py`) for faster convergence analysis.
 *   **Production-Grade Benchmarking**: Fully automated benchmark pipeline (`final_benchmark.py`) with robust checkpoint and recovery mechanisms.
 *   **Statistical Validation**: Non-parametric Friedman tests and Wilcoxon post-hoc analyses with Bonferroni correction for rigorous strategy comparison.
 *   **Python 3.12+ Standardization**: Full compatibility and optimization for Python 3.12+ with updated dependency versions.
@@ -395,6 +395,8 @@ The following PlantUML diagram maps the design patterns and architectural layers
 
 ```plantuml
 @startuml
+top to bottom direction
+
 skinparam class {
     BackgroundColor #F8F9FA
     ArrowColor #2D5889
@@ -403,146 +405,94 @@ skinparam class {
 skinparam stereotypeCBackgroundColor #D9E1F2
 
 package "Capa de Interfaces (Presentación)" {
-    class StreamlitAppUI {
-        + run()
-    }
-    class CLIEntryPoint {
-        + main()
-    }
+    class CLIEntryPoint
 }
 
 package "Capa de Aplicación (Orquestación)" {
-    class FLEXOrchestrator {
-        - config: dict
-        - metrics_svc: IMetricsService
-        - diversity_svc: IDiversityService
-        - label_svc: SimpleLabelService
-        + setup_federation(dataset_split: DatasetSplit)
-        + run_federated_round(): FLResults
+    class FLEXOrchestrator <<Facade>> {
+        + setup_federation()
+        + run_federated_round()
     }
-    class RouletteOrchestrator {
-        - config: dict
-        + setup_federation(dataset_split: DatasetSplit)
-        + run_federated_round(): FLResults
-    }
-    class FedDataDistributor {
-        + distribute(dataset_split: DatasetSplit, seed: int): Tuple
+    class RouletteOrchestrator <<Facade>> {
+        + setup_federation()
+        + run_federated_round()
     }
 }
 
 package "Capa de Dominio (Núcleo Hexagonal)" {
     interface IAggregationStrategy <<Strategy>> {
-        + metrics_svc: IMetricsService
-        + diversity_svc: IDiversityService
-        + aggregate(client_trees, client_metadata, ...): Tuple
-        + strategy_id(): String
+        + aggregate()
     }
 
     interface IDatasetAdapter <<Port>> {
         + load(): DatasetSplit
-        + name(): String
-        + n_classes(): int
     }
 
-    interface IMetricsService <<Port>> {
-        + compute_accuracy(): float
-        + compute_f1(): float
-    }
-
-    interface IDiversityService <<Port>> {
-        + compute_diversity(): float
-    }
+    interface IMetricsService <<Port>>
+    interface IDiversityService <<Port>>
 
     class ProactiveForest {
-        - n_estimators: int
-        - alpha: float
-        - trees: List<DecisionTree>
-        + fit(X, y)
-        + predict(X): np.ndarray
+        + fit()
     }
 
-    class DecisionTree {
-        - root: Node
-        + predict(X)
-    }
+    class DecisionTree
 
     class TreeBuilder <<Builder>> {
-        + build_tree(X, y, n_classes): DecisionTree
+        + build_tree(): DecisionTree
     }
 
-    class DatasetSplit {
-        + X_train: np.ndarray
-        + y_train: np.ndarray
-        + X_test: np.ndarray
-        + y_test: np.ndarray
-        + get_all_labels(): np.ndarray
-    }
-
-    class SimpleLabelService {
-        + fit(labels)
-        + transform(labels): np.ndarray
-        + inverse_transform(indices): np.ndarray
-    }
+    class DatasetSplit
 
     class AggregationFactory <<Factory>> {
-        + create_strategy(name: String): IAggregationStrategy
+        + create_strategy(): IAggregationStrategy
     }
 
-    class S1SimplePoolStrategy {
-        + aggregate(...): Tuple
-    }
-
-    class S7PerClientF1PCDStrategy {
-        + aggregate(...): Tuple
-    }
-
-    class S8RouletteStrategy {
-        + aggregate(...): Tuple
-    }
-
-    class PredictionBasedDiversityService {
-        + compute_pcd(predictions): float
-    }
+    class S1SimplePoolStrategy
+    class S7PerClientF1PCDStrategy
+    class S8RouletteStrategy
 }
 
 package "Capa de Infraestructura (Adaptadores)" {
-    class CsvDatasetAdapter <<Adapter>> {
-        - file_path: str
-        + load(): DatasetSplit
-    }
-    class FlexPoolFactory <<Factory>> {
-        + create_client_server_pool(...): FlexPool
+    class CsvDatasetAdapter <<Adapter>>
+    class SklearnMetricsService <<Adapter>>
+    class PredictionBasedDiversityService <<Adapter>>
+    
+    class DatasetFactory <<Factory>> {
+        + get_adapter(): IDatasetAdapter
     }
 }
 
-' Relaciones entre componentes
-CLIEntryPoint --> FLEXOrchestrator : "Usa para ejecutar"
-StreamlitAppUI --> FLEXOrchestrator : "Usa para ejecutar"
-StreamlitAppUI --> RouletteOrchestrator : "Usa para ejecutar"
+' Fachada
+CLIEntryPoint --> FLEXOrchestrator : "Usa"
+CLIEntryPoint --> RouletteOrchestrator : "Usa"
 
-FLEXOrchestrator --> IDatasetAdapter : "Carga datos mediante"
+' Factory
+CLIEntryPoint ..> DatasetFactory : "Pide datos"
+DatasetFactory ..> IDatasetAdapter : "Crea"
+FLEXOrchestrator --> AggregationFactory : "Pide estrategia"
+AggregationFactory ..> IAggregationStrategy : "Crea"
+
+' Adapter y Datos
+CsvDatasetAdapter .up.|> IDatasetAdapter : "Implementa"
+IDatasetAdapter ..> DatasetSplit : "Produce"
+FLEXOrchestrator --> DatasetSplit : "Utiliza"
+
+' Strategy
 FLEXOrchestrator --> IAggregationStrategy : "Aplica"
-FLEXOrchestrator --> FedDataDistributor : "Delega particionamiento"
-FLEXOrchestrator --> SimpleLabelService : "Normaliza etiquetas con"
-FLEXOrchestrator --> AggregationFactory : "Resuelve estrategia via"
-FLEXOrchestrator --> FlexPoolFactory : "Crea pool FLEX con"
-
-' Herencias e Implementaciones
 S1SimplePoolStrategy .up.|> IAggregationStrategy : "Implementa"
 S7PerClientF1PCDStrategy .up.|> IAggregationStrategy : "Implementa"
 S8RouletteStrategy .up.|> IAggregationStrategy : "Implementa"
 
-CsvDatasetAdapter .up.|> IDatasetAdapter : "Implementa"
+' DI
+SklearnMetricsService .up.|> IMetricsService : "Implementa"
 PredictionBasedDiversityService .up.|> IDiversityService : "Implementa"
-
 IAggregationStrategy o-- IMetricsService : "Inyecta"
 IAggregationStrategy o-- IDiversityService : "Inyecta"
 
-' Composición y Creación
-ProactiveForest "1" *-- "many" DecisionTree : "Contiene"
-ProactiveForest --> TreeBuilder : "Delega creación a"
+' Builder
+ProactiveForest --> TreeBuilder : "Delega"
 TreeBuilder ..> DecisionTree : "Construye"
-IDatasetAdapter ..> DatasetSplit : "Produce"
+
 @enduml
 ```
 
@@ -737,15 +687,12 @@ python scripts/final_benchmark.py
 
 ### 📉 Additional Research Scripts
 
-*   **`run_unified_optimization.py`**: Unified Bayesian hyperparameter optimization script using Optuna. Optimizes a single joint hyperparameter vector across representative strategies (S1, S4, S7, S8) and datasets (Sonar, Vowel, Spambase, Nursery) to find a robust configuration profile.
+*   **`run_optimization.py`**: Unified Bayesian hyperparameter optimization script using Optuna. Optimizes a single joint hyperparameter vector across representative strategies (S1, S4, S7, S8) and datasets (Sonar, Vowel, Spambase, Nursery) to find a robust configuration profile.
     ```bash
-    python scripts/run_unified_optimization.py
+    python scripts/run_optimization.py
     ```
 
-*   **`Friedman_test_new_results.py`**: Non-parametric statistical analysis. Performs Friedman rank-sum test to determine if strategy differences are statistically significant.
-    ```bash
-    python scripts/Friedman_test_new_results.py
-    ```
+*   **`Friedman_test_new_results.ipynb`**: Non-parametric statistical analysis. Interactive Jupyter notebook that performs the Friedman rank-sum test and post-hoc Wilcoxon tests with Holm adjustment for rigorous strategy comparison, including result visualization.
 
 ---
 
