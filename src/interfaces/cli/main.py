@@ -92,13 +92,17 @@ def main() -> None:
         "--config", required=False, help="Path to experiment YAML config file."
     )
     parser.add_argument(
-        "--dataset", required=False, help="Target dataset name (e.g. Iris, Letter)."
+        "--dataset",
+        required=False,
+        help="Target dataset name (presets: Iris, Car, Nursery, Vowel, Letter, Optdigits, Sonar, Spambase, Glass, Molecular, Pendigits).",
     )
     parser.add_argument(
         "--clients", required=False, type=int, help="Number of federated clients."
     )
     parser.add_argument(
-        "--strategy", required=False, help="Aggregation strategy (e.g. S1, s7_perclient_f1_pcd, S8)."
+        "--strategy",
+        required=False,
+        help="Aggregation strategy (e.g. S1-S7, or S8 variants: S8_WEIGHTED, S8_MEAN, S8_MEDIAN, S8_CONSENSUS, S8_PROACTIVE_PCD).",
     )
     parser.add_argument(
         "--trees", required=False, type=int, help="Maximum number of trees per client."
@@ -121,7 +125,16 @@ def main() -> None:
     if args.clients:
         cfg["federation"]["n_clients"] = args.clients
     if args.strategy:
-        cfg["aggregation"]["strategy"] = args.strategy
+        strategy_upper = args.strategy.upper()
+        if strategy_upper.startswith("S8"):
+            cfg["aggregation"]["strategy"] = "S8"
+            if strategy_upper == "S8":
+                if "variant" not in cfg["aggregation"]:
+                    cfg["aggregation"]["variant"] = "S8_MEAN"
+            else:
+                cfg["aggregation"]["variant"] = strategy_upper
+        else:
+            cfg["aggregation"]["strategy"] = args.strategy
     if args.trees:
         cfg["model"]["n_estimators"] = args.trees
         cfg["aggregation"]["max_trees"] = args.trees
@@ -150,7 +163,8 @@ def main() -> None:
     is_s8 = (normalized_name == "S8")
 
     if is_s8:
-        print(f"[CLI] Usando RouletteOrchestrator para estrategia {normalized_name}...")
+        variant = cfg.get("aggregation", {}).get("variant", "S8_MEAN")
+        print(f"[CLI] Usando RouletteOrchestrator para estrategia {normalized_name} (variante: {variant})...")
         orch = RouletteOrchestrator(cfg, step_callback=cb)
     else:
         print(f"[CLI] Usando FLEXOrchestrator para estrategia {normalized_name}...")

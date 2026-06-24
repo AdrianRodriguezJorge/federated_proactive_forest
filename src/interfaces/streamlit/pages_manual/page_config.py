@@ -140,8 +140,10 @@ def get_default_config() -> Dict[str, Any]:
             "dirichlet_alpha": 0.5,
         },
         "model": {
-            "n_estimators": 100,
+            "n_estimators": 110,
+            "alpha": 0.1,
             "alpha_pf": 0.1,
+            "voting": "soft",
             "split_criterion": "entropy",
             "feature_selection": "prob",
             "use_progressive_stopping": True,
@@ -153,9 +155,13 @@ def get_default_config() -> Dict[str, Any]:
             "f1_weight": 0.5,
             "pcd_weight": 0.5,
             "global_convergence_threshold": 0.002,
-            "global_episode_size": 5,
-            "window_size": 5,
-            "max_rounds": 20,
+            "global_episode_size": 10,
+            "trees_per_client_per_episode": 3,
+            "trees_per_round_per_client": 3,
+            "min_episodes": 4,
+            "min_rounds": 4,
+            "window_size": 10,
+            "max_rounds": 15,
             "alpha_pf": 0.5,
         },
         "prediction": {
@@ -180,20 +186,20 @@ def render() -> None:
     strategy_key = current_config["aggregation"].get(
         "strategy", "s6_perclient_f1"
     )
-    window_size = current_config["aggregation"].get("window_size", 5)
-    max_rounds = current_config["aggregation"].get("max_rounds", 20)
+    window_size = current_config["aggregation"].get("window_size", 10)
+    max_rounds = current_config["aggregation"].get("max_rounds", 15)
 
     s8_variant = current_config.get("aggregation", {}).get(
         "variant", "S8_MEAN"
     )
     s8_local_roulette_weight = float(
-        current_config.get("aggregation", {}).get("local_roulette_weight", 0.1)
+        current_config.get("aggregation", {}).get("local_roulette_weight", 0.6)
     )
     s8_window_size = int(
-        current_config.get("aggregation", {}).get("window_size", 5)
+        current_config.get("aggregation", {}).get("window_size", 10)
     )
     s8_max_rounds = int(
-        current_config.get("aggregation", {}).get("max_rounds", 20)
+        current_config.get("aggregation", {}).get("max_rounds", 15)
     )
 
     convergence = current_config["model"].get(
@@ -204,21 +210,22 @@ def render() -> None:
         "global_convergence_threshold", convergence
     )
     episode_size_agg = current_config["aggregation"].get(
-        "global_episode_size", episode_size
+        "global_episode_size", 10
     )
 
     f1_weight = current_config["aggregation"].get("f1_weight", 0.5)
     pcd_weight = current_config["aggregation"].get("pcd_weight", 0.5)
     pw_local_weight = current_config.get("prediction", {}).get(
-        "local_weight", 0.5
+        "local_weight", 0.4
     )
     use_weighted = current_config.get("prediction", {}).get(
         "use_weighted", True
     )
     local_w = current_config.get("prediction", {}).get("local_weight", 0.4)
 
-    n_estimators = current_config["model"].get("n_estimators", 100)
+    n_estimators = current_config["model"].get("n_estimators", 110)
     alpha_pf = current_config["model"].get("alpha_pf", 0.1)
+    voting = current_config["model"].get("voting", "soft")
     split_crit = current_config["model"].get("split_criterion", "entropy")
     feat_sel = current_config["model"].get("feature_selection", "prob")
     use_cpf = current_config["model"].get("use_progressive_stopping", True)
@@ -226,6 +233,11 @@ def render() -> None:
 
     max_trees = current_config["aggregation"].get("max_trees", n_estimators)
     seed = current_config.get("seed", 42)
+
+    trees_per_client_per_episode = current_config["aggregation"].get("trees_per_client_per_episode", 3)
+    trees_per_round_per_client = current_config["aggregation"].get("trees_per_round_per_client", 3)
+    min_episodes = current_config["aggregation"].get("min_episodes", 4)
+    min_rounds = current_config["aggregation"].get("min_rounds", 4)
 
     is_s8 = strategy_key == "s8_roulette"
     is_progressive = strategy_key in (
@@ -427,6 +439,13 @@ def render() -> None:
             ),
             help="Número de features candidatas por nodo.",
         )
+        voting_opts = ["soft", "hard"]
+        voting = st.selectbox(
+            "Tipo de votación",
+            voting_opts,
+            index=voting_opts.index(voting),
+            help="Votación suave (probabilidades promedio) o dura (mayoría de votos).",
+        )
     with col4:
         use_cpf = st.checkbox(
             "Usar Progressive Forest (CPF)",
@@ -497,6 +516,13 @@ def render() -> None:
                 format="%.4f",
                 help="Delta global: Mejora mínima global requerida.",
             )
+            min_episodes = st.number_input(
+                "Episodios mínimos",
+                1,
+                20,
+                value=min_episodes,
+                help="Episodios mínimos requeridos antes de permitir parada temprana.",
+            )
         with col_ep:
             episode_size_agg = st.number_input(
                 "Tamaño episodio (global)",
@@ -504,6 +530,20 @@ def render() -> None:
                 20,
                 value=episode_size_agg,
                 help="Árboles añadidos antes de evaluar convergencia global.",
+            )
+            trees_per_client_per_episode = st.number_input(
+                "Árboles por cliente por episodio (S5-S7)",
+                1,
+                20,
+                value=trees_per_client_per_episode,
+                help="Árboles generados localmente por cliente en cada episodio.",
+            )
+            trees_per_round_per_client = st.number_input(
+                "Árboles por ronda por cliente (FLEX)",
+                1,
+                20,
+                value=trees_per_round_per_client,
+                help="Árboles por ronda local por cliente.",
             )
 
     if strategy_key in ("s4_global_f1_pcd", "s7_perclient_f1_pcd"):
@@ -546,6 +586,13 @@ def render() -> None:
                 20,
                 value=s8_window_size,
                 help="Árboles locales antes de enviar vector de ruleta.",
+            )
+            min_rounds = st.number_input(
+                "Rondas mínimas",
+                1,
+                20,
+                value=min_rounds,
+                help="Rondas federadas mínimas antes de permitir parada temprana.",
             )
         with col_s8b:
             s8_local_roulette_weight = st.slider(
@@ -620,8 +667,8 @@ def render() -> None:
             max_rounds_calc = s8_max_rounds
         else:
             max_trees_calc = max_trees
-            window_size_calc = 5
-            max_rounds_calc = 20
+            window_size_calc = 10
+            max_rounds_calc = 15
 
         is_weight_strat = strategy_key in (
             "s4_global_f1_pcd",
@@ -650,8 +697,10 @@ def render() -> None:
                 "dirichlet_alpha": dirichlet_alpha,
             },
             "model": {
-                "n_estimators": n_estimators,
+                "n_estimators": n_estimators if strategy_key != "s8_roulette" else max_trees_calc,
+                "alpha": alpha_pf,
                 "alpha_pf": alpha_pf,
+                "voting": voting,
                 "split_criterion": split_crit,
                 "feature_selection": feat_sel,
                 "use_progressive_stopping": use_cpf,
@@ -669,6 +718,10 @@ def render() -> None:
                 "max_rounds": max_rounds_calc,
                 "variant": s8_variant if strategy_key == "s8_roulette" else "",
                 "local_roulette_weight": s8_local_roulette_weight if strategy_key == "s8_roulette" else 0.0,
+                "trees_per_client_per_episode": trees_per_client_per_episode,
+                "trees_per_round_per_client": trees_per_round_per_client,
+                "min_episodes": min_episodes,
+                "min_rounds": min_rounds,
             },
             "prediction": {
                 "local_weight": pred_local_w,
